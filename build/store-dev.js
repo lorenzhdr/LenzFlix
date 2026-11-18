@@ -10,6 +10,16 @@
 //   ?botsocial=0 (Bots chatten/emoten nicht von selbst), ?mpchat=0 (Chat-Schalter aus). window.__devMp.bots.say(i,text)/emote(i,code)/park(i,xcm,zcm)/inbox(i)/kick(i,c);
 //   window.__devFigs = alle per npc.figure() angelegten Figuren (fig.getNetState().a = Animationscode, nur Mehrspieler-Läufe mit ?mp=…).
 // opts.dev: alle Query-Parameter (1.17.0), Module lesen ihre eigenen
+// Raufen (1.18.0), alle Werte stehen in ctx.opts.dev (Wert als String); wer liest was:
+//   ?gang=1|0|day   Bande erzwingen / aus / auch tagsüber (Lesen: Modul gang, modules/gang.js)
+//   ?weapon=hand|belt|whip|laser   Startwaffe (Lesen: Provider fight, modules/fight.js)
+//   ?hp=10   Startenergie 0..100 (Lesen: modules/fight.js, createEnergy)
+//   ?ko=1    sofort der K.O.-Ablauf (Lesen: modules/fight.js)
+//   ?temper=hot|shy|normal   Temperament aller Passanten (Lesen: Modul npc, npc/temper-logic.js temperOf)
+//   ?safe=kids|hall   Start in der Schutzzone Kinder-Ecke bzw. Kinosaal (Lesen: modules/fight.js/Start-Position, zusammen mit opts.spawn)
+//   ?blind=1  löst nach dem Start den Blendschleier aus (Lesen: modules/fight.js → ui/blindveil.js)
+//   ?mpcap=nofight  Fake/Relay ohne Fähigkeit fight (das Harness entfernt fight aus dem hi; zusätzlich ?mpcap=nolook wie 1.17.0; die Module müssen nichts lesen, sie sehen has() = false)
+//   ?botgang=1  (mit ?mp=fake&bots=N) Bot 0 ist Bandenführer (gc/gs); Bots bekommen zufällige Waffen, schlagen und lasern von selbst (?botfight=0 aus).
 // Eigene Figur (1.17.0): deps.profile = Fake-Profil im Speicher (kein Netzwerk). ?profile=ok (Standard) | offline (state 'local') | slow (Konto kommt nach 6 s per onRemote) | fail (state 'unknown');
 //   ?char=keep (Standard: vorhandener Look) | new (leeres Profil → Figuren-Gate) | look:<csv> (Look-Code, 26 Ganzzahlen); ?unlock=all (alle Entdeckungen gesetzt);
 //   ?member=bronze|silver|gold (Zähler/Entdeckungen passend zur Stufe, Ausweisnummer 123456). window.__devProfile = Fake-Profil.
@@ -682,8 +692,22 @@
     // Mitschnitt für das Prüfskript: erstes 'wl' (Wetter-Seed wx.sd, Fähigkeiten) und Zähler je Nachrichtentyp (window.__devNet)
     var net = window.__devNet = { wl: null, types: {} };
     var NativeWS = window.WebSocket;
+    var noFight = q.get('mpcap') === 'nofight';
     window.WebSocket = function (url, protocols) {
       var ws = protocols === undefined ? new NativeWS(url) : new NativeWS(url, protocols);
+      if (noFight) { // alter Worker: Fähigkeit fight aus dem hi nehmen
+        var nativeSend = ws.send.bind(ws);
+        ws.send = function (d) {
+          if (typeof d === 'string' && d.indexOf('"hi"') >= 0) {
+            try {
+              var j = JSON.parse(d);
+              var fix = function (m) { return m && m.t === 'hi' && Array.isArray(m.cap) ? Object.assign({}, m, { cap: m.cap.filter(function (x) { return x !== 'fight'; }) }) : m; };
+              d = JSON.stringify(Array.isArray(j) ? j.map(fix) : fix(j));
+            } catch { /* egal */ }
+          }
+          return nativeSend(d);
+        };
+      }
       ws.addEventListener('message', function (ev) {
         if (typeof ev.data !== 'string' || ev.data === 'pong') return;
         try {
@@ -704,7 +728,7 @@
     return import('/build/mp-dev/fake.js').then(function (m) {
       var w = m.createFakeWorld({
         mode: mpQ === 'fake' ? 'ok' : mpQ, bots: mpQ === 'fake' ? Number(q.get('bots')) || 0 : 0, seed: Number(q.get('mpseed')) || 1, latency: q.get('mplat') !== null ? Number(q.get('mplat')) : undefined, uid: 'dev-user', name: 'Du',
-        admin: q.get('mpadmin') === '1', botAdmin: q.get('mpbotadmin') !== null ? Number(q.get('mpbotadmin')) : -1, botSocial: q.get('botsocial') !== '0',
+        admin: q.get('mpadmin') === '1', botAdmin: q.get('mpbotadmin') !== null ? Number(q.get('mpbotadmin')) : -1, botSocial: q.get('botsocial') !== '0', botFight: q.get('botfight') !== '0', botGang: q.get('botgang') === '1' ? 0 : -1, noFight: q.get('mpcap') === 'nofight',
         prefs: q.get('mpchat') === '0' ? { chat: false } : undefined,
       });
       w.start();
@@ -730,7 +754,8 @@
       full.cnt.rent.devdev01 = n[0]; full.cnt.cine.devdev01 = n[1];
       ids.slice(0, n[2]).forEach(function (id, i) { full.disc[id] = now - (i + 1) * 3600000; });
     }
-    if (q.get('unlock') === 'all') ids.forEach(function (id, i) { full.disc[id] = now - (i + 1) * 3600000; });
+    // ?unlock=all: alle Entdeckungen des Katalogs (discover/catalog.js, per boot() vorab geladen), sonst die feste Liste oben
+    if (q.get('unlock') === 'all') (allIds || ids).forEach(function (id, i) { full.disc[id] = now - (i + 1) * 3600000; });
     var empty = JSON.parse(JSON.stringify(full));
     empty.fig.slots = [null, null, null];
     var data = mode === 'slow' || mode === 'fail' ? empty : full;
@@ -747,9 +772,15 @@
     window.__devProfile = p;
     return p;
   }
+  var allIds = null;
   function boot() {
-    deps.profile = makeProfile();
-    loadMp().then(function () { start(false); });
+    var cat = q.get('unlock') === 'all'
+      ? import('/src/js/store3d/discover/catalog.js').then(function (m) { allIds = m.CATALOG.map(function (e) { return e.id; }); }).catch(function (e) { console.warn('[dev] catalog', e && e.message); })
+      : Promise.resolve();
+    cat.then(function () {
+      deps.profile = makeProfile();
+      return loadMp();
+    }).then(function () { start(false); });
     window.addEventListener('pagehide', function () { if (bridge) bridge.dispose(); if (inst) inst.dispose(); });
   }
   if (!window.LenzFlixStore3D) { deps.onFatal(new Error('dist/lenzstore.js fehlt – erst npm run build')); return; }

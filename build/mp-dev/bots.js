@@ -4,6 +4,9 @@
 // Welle 2: Bots chatten (alle 9–18 s) und emoten (alle 7–12 s, reihum 1..8) von selbst (social, setSocial(false) schaltet ab; eigener Zufallsstrom, Routen bleiben gleich);
 //   Debug-API say/emote/kick/park/inbox/setSocial; ein Bot kann Admin sein (adminBot = Index). Kick (4403) → Bot reconnectet nicht (dead).
 // 1.17.0: Bots mit Fähigkeit look (Option look, Standard an) senden einen zufälligen v2-Look (randomLook, Seed je Bot) und einen Ausweis (mc); look:false = alter Worker (kein look in hi).
+// 1.18.0 (Raufen): Bots mit Fähigkeit fight (Option fight, Standard an) melden sie im hi, wählen eine zufällige Waffe (wp, 0 hand 1 belt 2 whip 3 laser), schlagen gelegentlich (fh, nur Ziele ≤ 3,2 m,
+//   Option fightAuto, Standard an), schalten den Laser an/aus (lz) und können Bandenführer sein (Option gangBot = Index, Debug gangLead): gc → bei ga auf die eigene Verbindung gs mit 6 Hz (2 Rowdys am Gassenmund).
+//   Debug: hit(i, c, w?) / weapon(i, w) / laser(i, on, xcm?, ycm?, zcm?) / gangLead(i, on) / peers(i). fight:false = alter Worker (kein fight im hi).
 // Routen: Straße, Laden, Tür (Laden ↔ Straße), Palast-Saal sitzend, Palast-Foyer (Eingang ↔ Foyer). Die Zuordnung r (0 Laden, 1 Palast, 2 draußen) folgt dem Netzrahmen.
 import { build, F, NET_A, SUB } from '../../src/js/store3d/net/proto.js';
 import { randomLook } from '../../src/js/store3d/char/look2.js';
@@ -38,10 +41,12 @@ function mulberry32(seed) {
 const frame = (msgs) => JSON.stringify(msgs.filter(Boolean));
 const cRad = (yaw) => Math.max(-314, Math.min(314, Math.round(yaw * 100)));
 
-export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -1, look = true } = {}) {
+export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -1, look = true, fight = true, fightAuto = true, gangBot = -1 } = {}) {
   const rnd = mulberry32(seed * 7919 + 13);
   const rndSoc = mulberry32(seed * 104729 + 7); // eigener Strom: Routen bleiben mit/ohne Chat identisch
+  const rndFight = mulberry32(seed * 15485863 + 3); // eigener Strom: Routen bleiben mit/ohne fight gleich
   let socialOn = !!social;
+  let fightOn = !!fightAuto;
   const t0 = world.now();
   const bots = [];
   let disposed = false;
@@ -54,7 +59,11 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
       x: route.pts[0][0], z: route.pts[0][1], yaw: 0, a: NET_A.STAND,
       pauseUntil: 0, lastTick: 0, lastSent: null, lastPing: 0, sent: 0, win: [], conn: null, started: false,
       admin: i === adminBot, code: look ? randomLook(mulberry32(seed * 6151 + i * 97 + 5)) : null, lookDue: false, parked: null, dead: false, inbox: [], emotes: [], errs: [], bye: null, nextSay: 0, nextEmo: 0, emoIdx: i % 8,
+      c: 0, peers: new Map(), w: 0, wDue: false, nextHit: 0, laserOn: false, laserUntil: 0, nextLaser: 0, lead: false, wantLead: i === gangBot, gangG: 0, gangAt: 0, gangPhase: 0, gangSeed: 0, nextGc: 0,
     };
+    b.w = Math.floor(rndFight() * 4);
+    b.nextHit = t0 + 6000 + Math.floor(rndFight() * 6000);
+    b.nextLaser = t0 + 8000 + Math.floor(rndFight() * 8000);
     b.nextSay = t0 + 5000 + Math.floor(rndSoc() * 7000);
     b.nextEmo = t0 + 9000 + Math.floor(rndSoc() * 6000);
     const w = route.pts[b.wp];
@@ -73,8 +82,11 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
     b.lastTick = t;
     b.lastPing = t;
     b.lastSent = null;
-    send(b, [build.hi({ cap: [...(b.admin ? ['pres', 'chat', 'emote', 'admin'] : ['pres', 'chat', 'emote']), ...(look ? ['look'] : [])], f: F.NAME | F.CHAT, cv: 'bot' })]);
+    send(b, [build.hi({ cap: [...(b.admin ? ['pres', 'chat', 'emote', 'admin'] : ['pres', 'chat', 'emote']), ...(look ? ['look'] : []), ...(fight ? ['fight'] : [])], f: F.NAME | F.CHAT, cv: 'bot' })]);
     b.lookDue = look; // lk/mc erst im nächsten Takt (nach dem wl)
+    b.wDue = fight;
+    b.peers.clear();
+    b.lead = false;
   }
 
   /** Eingehende Frames mitschreiben: Chat (x/m) in inbox, Fehler (er) in errs, bye (Kick) in bye. Nur Debug, höchstens 40 Einträge. */
@@ -84,6 +96,13 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
     if (!Array.isArray(arr)) arr = [arr]; // Server schickt Einzelnachrichten als Objekt
     for (const m of arr) {
       if (!m || typeof m !== 'object') continue;
+      if (m.t === 'wl') { b.c = m.c; for (const pe of m.peers || []) if (pe && pe.c !== b.c) b.peers.set(pe.c, { x: 0, z: 0 }); } else if (m.t === 'j' && m.c !== b.c) b.peers.set(m.c, { x: 0, z: 0 });
+      if (m.t === 'wl' && m.gl === b.c) { b.lead = true; b.gangAt = 0; }
+      if (m.t === 'x') for (const e of m.ev || []) if (e && e.t === 'ga') { b.lead = e.c === b.c; if (b.lead) { b.gangG = e.g || 0; b.gangAt = 0; } }
+      if (m.t === 'b') {
+        for (const pe of m.p || []) if (pe[0] !== b.c) b.peers.set(pe[0], { x: pe[1], z: pe[3] });
+        for (const e of m.ev || []) if (e && e.t === 'l') b.peers.delete(e.c);
+      }
       if (m.t === 'x' && Array.isArray(m.ev)) {
         for (const e of m.ev) {
           if (e && e.t === 'm' && typeof e.x === 'string') { b.inbox.push({ c: e.c, x: e.x }); if (b.inbox.length > 40) b.inbox.shift(); } else if (e && e.t === 'er') { b.errs.push(e); if (b.errs.length > 20) b.errs.shift(); }
@@ -129,6 +148,8 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
       const day = Math.floor(world.now() / 86400000);
       send(b, [build.lk(b.code), build.mc([1, 100000 + b.i * 7919, day - 20 - b.i * 9, 2 + b.i * 3, b.i % 4, (0x5a5a5a >> (b.i % 5)) & 0x7fffff])]);
     }
+    if (b.wDue) { b.wDue = false; send(b, [build.wp(b.w)]); }
+    tickFight(b, t);
     if (socialOn) {
       if (t >= b.nextSay) { b.nextSay = t + 9000 + Math.floor(rndSoc() * 9000); send(b, [build.m(SAY_LINES[Math.floor(rndSoc() * SAY_LINES.length)])]); }
       if (t >= b.nextEmo) { b.nextEmo = t + 7000 + Math.floor(rndSoc() * 5000); b.emoIdx = (b.emoIdx % 8) + 1; send(b, [build.e(b.emoIdx)]); }
@@ -181,6 +202,54 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
     if (m) send(b, [m]);
   }
 
+  const nearest = (b, maxCm) => {
+    let best = null;
+    let bd = maxCm;
+    for (const [c, p] of b.peers) {
+      const d = Math.hypot(p.x - b.x, p.z - b.z);
+      if (d <= bd) { bd = d; best = { c, p }; }
+    }
+    return best;
+  };
+  const sendHit = (b, c, w) => {
+    const p = b.peers.get(c) || { x: b.x, z: b.z + 100 };
+    let dx = Math.round(p.x - b.x);
+    let dz = Math.round(p.z - b.z);
+    if (!dx && !dz) dz = 1;
+    send(b, [build.fh(c, w, [dx, dz], 0)]);
+  };
+  const sendLaser = (b, on, x, y, z) => {
+    b.laserOn = !!on;
+    send(b, [build.lz(on ? 1 : 0, [Math.round(x ?? b.x), Math.round(y ?? 150), Math.round(z ?? b.z - 300)])]);
+  };
+  const GANG_SPOTS = [[-180, 1960], [-60, 2010], [-300, 2040]]; // cm, ungefähr der Gassenmund (Dev-Näherung)
+  function tickFight(b, t) {
+    if (!b.conn || !fight) return;
+    if (b.wantLead && !b.lead && t >= b.nextGc) { b.nextGc = t + 2000; send(b, [build.gc()]); }
+    if (b.lead && t - b.gangAt >= 166) {
+      b.gangAt = t;
+      b.gangPhase = (b.gangPhase + 1) & 255;
+      const q = [b.gangPhase, 4242, 2];
+      GANG_SPOTS.slice(0, 2).forEach((sp, k) => q.push(k === 0 ? 1 : 3, sp[0], 0, sp[1], 0, 0, 0, 60));
+      send(b, [build.gs(b.gangG, q)]);
+    }
+    if (!fightOn) return;
+    if (b.laserOn && t >= b.laserUntil) sendLaser(b, false);
+    if (t >= b.nextLaser) {
+      b.nextLaser = t + 12000 + Math.floor(rndFight() * 10000);
+      const nb = nearest(b, 1500);
+      b.w = 3;
+      send(b, [build.wp(3)]);
+      sendLaser(b, true, nb ? nb.p.x : undefined, 160, nb ? nb.p.z : undefined);
+      b.laserUntil = t + 1500;
+    }
+    if (t >= b.nextHit) {
+      b.nextHit = t + 8000 + Math.floor(rndFight() * 8000);
+      const nb = nearest(b, 320);
+      if (nb && b.w < 3) sendHit(b, nb.c, b.w);
+    }
+  }
+
   function fps(b, t) {
     while (b.win.length && t - b.win[0] > 1000) b.win.shift();
     return b.win.length;
@@ -215,6 +284,19 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
     kick(i, c) { const b = bots[i]; if (!b || !b.conn) return false; send(b, [build.ki(c)]); return true; },
     /** Bot i bleibt stehen bei (xcm, zcm); null löst. */
     park(i, xcm, zcm) { const b = bots[i]; if (!b) return false; b.parked = Number.isFinite(xcm) ? { x: xcm, z: zcm } : null; return true; },
+    // ---- 1.18.0 Raufen (Debug)
+    /** Raufen von selbst (Schlag, Laser) an/aus. */
+    setFight(on) { fightOn = !!on; },
+    /** Bot i schlägt Verbindung c mit Waffe w (Standard: seine). true = gesendet (der Server prüft den Abstand ≤ 3,6 m). */
+    hit(i, c, w) { const b = bots[i]; if (!b || !b.conn || !fight) return false; sendHit(b, c, Number.isInteger(w) ? w : Math.min(b.w, 2)); return true; },
+    /** Bot i wählt Waffe w (0..3). */
+    weapon(i, w) { const b = bots[i]; if (!b || !b.conn || !fight || !(w >= 0 && w <= 3)) return false; b.w = w; send(b, [build.wp(w)]); return true; },
+    /** Bot i schaltet den Laser (Zielpunkt in cm, Standard vor ihm). */
+    laser(i, on, x, y, z) { const b = bots[i]; if (!b || !b.conn || !fight) return false; sendLaser(b, on, x, y, z); b.laserUntil = on ? Infinity : 0; return true; },
+    /** Bot i fordert/gibt die Bandenführung (gc/gr). */
+    gangLead(i, on) { const b = bots[i]; if (!b || !b.conn || !fight) return false; b.wantLead = !!on; if (!on) { send(b, [build.gr()]); b.lead = false; } return true; },
+    /** Dem Bot i bekannte Mitspieler { c: {x, z} } (cm). */
+    peers(i) { const b = bots[i]; return b ? Object.fromEntries(b.peers) : null; },
     /** Empfangene Chatzeilen / Emotes (alle Spieler) / Fehler / bye von Bot i. */
     inbox(i) { const b = bots[i]; return b ? { chat: b.inbox.slice(), emotes: b.emotes.slice(), errs: b.errs.slice(), bye: b.bye } : null; },
     dispose() {

@@ -5,6 +5,9 @@
 // Ablauf Stuhl: einfrieren → Kamerafahrt in den Spiegel → eigene Figur sitzt (selfview.playAnim('sit')) → avatar.openEditor('chair','hair',{live})
 // → Kamera zurück, aufstehen. Umkleide: Vorhang zu → openEditor('booth','top'). In VR: Stuhl und Umkleide öffnen das „VR light“-Panel (xrchar).
 // Fremde Provider (avatar, selfview, npc, cashier, sound, areas, xrchar) werden bei Gebrauch geholt und mit Guard benutzt.
+// 1.18.0: Provokation (Schlag im Salon, nicht während salon.busy, nie in VR): Gabi droht mit dem Föhn (setHandItem 'dryer', Pose threat; beim 2. Schlag
+// binnen 8 s auch Hieb), Ronny droht mit dem Kleiderbügel und schlägt (setHandItem 'hanger', Pose swing); Treffer über fight.hitPlayer({ dmg, knock, src: 'npc', from }).
+// Gedächtnis/Abklingzeit in npc/aggro-logic.js, Sprüche aus char/salon-lines.js (threat, attack, struck, blinded). Laserblick: Pose cover 2 s.
 import { buildSalon, drawPosterAtlas } from '../world/build-salon.js';
 import { createMirror, MIRROR_RT } from '../world/mirror.js';
 import { canvasTexture } from './m3-gfx.js';
@@ -12,6 +15,7 @@ import { FONT } from '../world/textures.js';
 import { toRender } from '../char/look2.js';
 import { npcCodes, VOICES, pickSalonLine } from '../char/salon-lines.js';
 import { debugHook } from './m3-debug.js';
+import { createAggro, provoke as aggroProvoke, stepAggro, AGGRO } from '../npc/aggro-logic.js';
 
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
 const GREET_GAP = 45; // s zwischen zwei Begrüßungen
@@ -83,9 +87,11 @@ export default {
           const l = pickSalonLine(who, 'hit', rand, people[who].lastIdx.hit ?? -1);
           if (l) { people[who].lastIdx.hit = l.index; handle.say(l.text, 3600); }
           sfx('oof');
+          provoked(who);
         },
+        onLaser: () => blinded(who),
       }) : () => {};
-      people[who] = { handle, rect, off, speaker: null, speakerOf: null, lastIdx: {}, wave: 6 + rand() * 8, chat: 14 + rand() * 12, anchor };
+      people[who] = { handle, rect, off, speaker: null, speakerOf: null, lastIdx: {}, wave: 6 + rand() * 8, chat: 14 + rand() * 12, anchor, aggro: createAggro(who), strikeAt: null, coverAt: null };
       return true;
     }
     const mountAll = () => {
@@ -93,6 +99,56 @@ export default {
       if (!people.ronny) mountPerson('ronny', sa.ronny);
     };
     mountAll();
+
+    // ------------------------------------------------------------ Provokation (1.18.0)
+    let clockS = 0; // s aus dt
+    const tooFar = (who, p) => Math.hypot(p.x - people[who].handle.root.position.x, p.z - people[who].handle.root.position.z) > AGGRO[who].reach;
+    function provoked(who) {
+      const p = people[who];
+      if (!p || !p.handle || p.handle.disposed || busy || disposed || xr()) return;
+      const act = aggroProvoke(p.aggro, clockS);
+      if (!act) return;
+      try { p.handle.setHandItem(AGGRO[who].item); p.handle.setAnim('threat', { restart: true }); } catch { /* egal */ }
+      say(who, 'threat');
+    }
+    function strike(who) {
+      const p = people[who];
+      if (!p || !p.handle || p.handle.disposed) return;
+      try { p.handle.setAnim('swing', { restart: true }); } catch { /* egal */ }
+      say(who, 'attack');
+      p.strikeAt = clockS + 0.22;
+    }
+    function landStrike(who) {
+      const p = people[who];
+      const f = ctx.use('fight');
+      if (!p || !p.handle || p.handle.disposed || busy || xr() || !f || typeof f.hitPlayer !== 'function') return;
+      const pl = ctx.player.getPose();
+      if (tooFar(who, pl)) return;
+      const dx = pl.x - p.handle.root.position.x;
+      const dz = pl.z - p.handle.root.position.z;
+      const l = Math.hypot(dx, dz) || 1;
+      let ok;
+      try { ok = f.hitPlayer({ dmg: AGGRO[who].dmg, knock: { x: dx / l, z: dz / l }, src: 'npc', from: { x: p.handle.root.position.x, z: p.handle.root.position.z } }); } catch { ok = false; }
+      if (ok) sfx('slap');
+    }
+    function blinded(who) {
+      const p = people[who];
+      if (!p || !p.handle || p.handle.disposed || busy) return;
+      try { p.handle.setAnim('cover', { restart: true }); } catch { /* egal */ }
+      say(who, 'blinded');
+      p.coverAt = clockS + 2;
+    }
+    function stepAggroAll(dt) {
+      clockS += dt;
+      for (const who of Object.keys(people)) {
+        const p = people[who];
+        if (!p || !p.handle || p.handle.disposed) continue;
+        const a = stepAggro(p.aggro, clockS);
+        if (a === 'swing') { if (!busy && !xr() && !tooFar(who, ctx.player.getPose())) strike(who); } else if (a === 'calm') { try { p.handle.setHandItem(null); } catch { /* egal */ } }
+        if (p.strikeAt !== null && clockS >= p.strikeAt) { p.strikeAt = null; landStrike(who); }
+        if (p.coverAt !== null && clockS >= p.coverAt) { p.coverAt = null; if (p.handle.anim.anim === 'cover') p.handle.setAnim('idle', { restart: true }); }
+      }
+    }
 
     /** Gabi während der Stuhl-Sitzung seitlich versetzen (sonst steht ihr Kopf im Spiegel genau über dem der Figur); on=false → Ausgangsplatz. */
     const GABI_SIDE = 0.45;
@@ -168,7 +224,7 @@ export default {
       };
       busy = true;
       abort = abortAll;
-      let ok = false;
+      let ok;
       try {
         ctx.player.freeze(true);
         other.setSuppressed(true);
@@ -347,6 +403,7 @@ export default {
       update(dt) {
         dt = Math.min(dt, 0.1);
         mountAll();
+        stepAggroAll(dt);
         // Vorhang
         if (curtainK !== curtainTo) {
           const step = dt / CURTAIN_S;

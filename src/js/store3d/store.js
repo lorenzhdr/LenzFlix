@@ -21,6 +21,7 @@ import { createHud, DESKTOP_HELP, touchHint } from './ui/hud.js';
 import { createPause } from './ui/pause.js';
 import { HoldView } from './ui/holdview.js';
 import { createHands } from './ui/hands.js';
+import { weaponInfo } from './fight/weapons.js';
 import { prefersReducedMotion } from './modules/m4-util.js';
 import { createFullscreen } from './ui/fullscreen.js';
 import { wrapDeps } from './xr/guard.js';
@@ -253,6 +254,12 @@ export class StoreApp {
       onTake: (src) => this.doUse(src || 'click'),
       onJump: () => this.doJump(),
       onHit: () => this.doHit('key'),
+      onHitUp: () => this.onHitUp(),
+      onTakeUp: () => this.onHitUp(),
+      onWheel: () => this.onWeaponWheel(true),
+      onWheelUp: () => this.onWeaponWheel(false),
+      onWeaponPick: (n) => this.onWeaponPick(n),
+      onWeaponCycle: (dir) => this.onWeaponCycle(dir),
       onThrow: () => this.doThrow('key'),
       onChat: () => this.doChat('key'),
       onEmote: () => this.doEmote('key'),
@@ -268,8 +275,8 @@ export class StoreApp {
       },
     });
     this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune, debug: !!this.opts.debug, touchApi: this.opts.touchApi,
-      onJump: () => this.doJump(), onUse: () => this.doUse('touch'), onHit: () => this.doHit('touch'), onThrow: () => this.doThrow('touch'),
-      onView: () => this.doView(),
+      onJump: () => this.doJump(), onUse: () => this.doUse('touch'), onHit: () => this.doHit('touch'), onHitUp: () => this.onHitUp(), onThrow: () => this.doThrow('touch'),
+      onView: () => this.doView(), onAux: () => this.onAux(), onAuxUp: () => this.onAuxUp(),
     }) : null;
 
     this.progress(0.86, 'Module werden geladen');
@@ -502,7 +509,11 @@ export class StoreApp {
     cam.getWorldDirection(this._d);
     const sv = this.modUse('selfview');
     const origin = sv && sv.mode() === 'third' ? sv.eye(new Vector3()) : cam.position.clone(); // Außenansicht: Auge der Figur statt Kamera
-    return { name, source, aim: this.aim, origin, dir: this._d.clone(), weapon: 'hand', range: 1.6, max: 1 };
+    // 1.18.0: Waffe, Reichweite und Trefferzahl aus der gewählten Waffe (Laser zählt wie die Hand; er sendet nie 'hit')
+    const fi = this.modUse('fight');
+    const wid = fi && typeof fi.weapon === 'function' ? fi.weapon() : 'hand';
+    const wi = weaponInfo(wid === 'laser' ? 'hand' : wid);
+    return { name, source, aim: this.aim, origin, dir: this._d.clone(), weapon: wi.id, range: wi.range, max: wi.max };
   }
 
   /**
@@ -543,11 +554,24 @@ export class StoreApp {
   /** Schlagen (F; Linksklick ohne Ziel): Arm-Schwung und ctx.input.onAction('hit') / Ereignis 'hit'. */
   doHit(src = 'key') {
     if (!this.canAct()) return false;
+    const f = this.modUse('fight');
+    if (f && typeof f.weapon === 'function') {
+      // 1.18.0: Laser leuchtet, solange gehalten (kein Hieb, nie ein 'hit'-Ereignis); Abklingzeit vor Schwung, Ton und Handlern
+      if (f.weapon() === 'laser') return !!(f.laser && f.laser(true));
+      if (typeof f.swingOk === 'function' && !f.swingOk()) return false;
+    }
     const ev = this.actionEvent('hit', src);
     this.player.swing();
-    if (this.hands) this.hands.swing();
+    if (this.hands) this.hands.swing(ev.weapon);
+    if (f && typeof f.swung === 'function') f.swung(ev);
     return this.mods.action('hit', ev);
   }
+
+  /** Loslassen von F bzw. der linken Maustaste: Laser aus (1.18.0). */
+  onHitUp() { const f = this.modUse('fight'); if (f && typeof f.laser === 'function') f.laser(false); }
+  /** Waffenknopf (Touch): tippen = Waffenrad, halten mit Laser = leuchten (1.18.0). */
+  onAux() { const f = this.canAct() ? this.modUse('fight') : null; if (f && f.auxDown) f.auxDown(); }
+  onAuxUp() { const f = this.modUse('fight'); if (f && f.auxUp) f.auxUp(); }
 
   /** Werfen (G): ctx.input.onAction('throw') / Ereignis 'throw'; ev.carried = getragene Hülle oder null. Welle 1: nur Animation. */
   doThrow(src = 'key') {
@@ -571,11 +595,11 @@ export class StoreApp {
 
   // --- Kampf (1.18.0, Welle 4: leere Nähte; Tasten/Rad belegt Welle 6) ---
   /** Waffenrad öffnen/schließen (R halten). Reicht nur an den Provider fight durch. */
-  onWeaponWheel(open) { const f = this.modUse('fight'); return !!(f && f.wheel && f.wheel(!!open)); }
+  onWeaponWheel(open) { if (open && !this.canAct()) return false; const f = this.modUse('fight'); return !!(f && f.wheel && f.wheel(!!open)); }
   /** Direktwahl 1–4. */
-  onWeaponPick(n) { const f = this.modUse('fight'); if (!f) return false; const id = ['hand', 'belt', 'whip', 'laser'][(n | 0) - 1]; if (!id) return false; f.setWeapon(id); return true; }
+  onWeaponPick(n) { if (!this.canAct()) return false; const f = this.modUse('fight'); if (!f) return false; const id = ['hand', 'belt', 'whip', 'laser'][(n | 0) - 1]; if (!id) return false; f.setWeapon(id); return true; }
   /** Mausrad: nächste/vorige Waffe (dir = ±1). */
-  onWeaponCycle(dir) { const f = this.modUse('fight'); return !!(f && f.cycle && f.cycle(dir < 0 ? -1 : 1)); }
+  onWeaponCycle(dir) { if (!this.canAct()) return false; const f = this.modUse('fight'); return !!(f && f.cycle && f.cycle(dir < 0 ? -1 : 1)); }
 
   doEmote(src = 'key') { return this.canAct() && this.mods.action('emote', this.actionEvent('emote', src)); }
 
@@ -805,6 +829,14 @@ export class StoreApp {
     }
     if (this.hands) {
       const svm = this.modUse('selfview');
+      // 1.18.0: gewählte Waffe in die Ego-Hand (eine getragene Hülle geht vor; nach dem Ablegen kommt die Waffe zurück); der Laser leuchtet nur bei laufendem Strahl
+      const fw = this.modUse('fight');
+      if (fw && typeof fw.heldWeapon === 'function' && !this.carried && !(this.holdview && this.holdview.isOpen)) {
+        const hw = fw.heldWeapon();
+        if (hw !== this.hands.weapon) this.hands.setHeld(hw ? { weapon: hw } : null);
+        const ls = typeof fw.laserState === 'function' ? fw.laserState() : null;
+        this.hands.setLaser(!!(ls && ls.on));
+      }
       this.hands.setVisible(!inXr && this.mode === 'play' && !this.mods.cam && !(svm && svm.mode && svm.mode() === 'third'));
       if (!inXr) this.hands.update(dt);
     }

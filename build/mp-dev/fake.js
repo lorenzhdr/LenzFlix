@@ -8,6 +8,8 @@
 //     setPrefs(partial), start() (Browser: Takt per setInterval 25 ms), advance(ms) (nur virtual), pump(), stats(), dispose() }
 //   Welle 2: admin = ich bin Admin (Ticket a=1), prefs = Start-Prefs (z. B. { chat:false }), botSocial (Standard true: Bots chatten/emoten von selbst), botAdmin = Bot-Index mit Admin-Rolle.
 //   1.17.0: noLook (oder Browser-Query ?mpcap=nolook) = verhält sich wie ein alter Worker ohne Fähigkeit look: die Fähigkeit wird aus dem hi des Clients entfernt (wl.cap ohne look), Bots melden sie nicht an.
+//   1.18.0: noFight (oder Browser-Query ?mpcap=nofight) = alter Worker ohne Fähigkeit fight (aus dem hi entfernt, Bots melden sie nicht); fake.js kennt fight über den echten Reducer (Unter-Reducer fight.js).
+//   botFight (Standard true: Bots wählen Waffen, schlagen, lasern), botGang = Index des Bots, der die Bandenführung übernimmt (Browser: ?botgang=1 → Bot 0).
 //   mode: 'ok' | 'nourl' | '404' | '503' | '401' | 'blocked' | 'drop' (Verbindung bricht sofort nach dem Öffnen ab, 1006).
 //   virtual: eigene Uhr (Start opts.start), advance(ms) treibt Server, Latenz, Alarm und Bots in 25-ms-Schritten.
 import { createState, step, precheck } from '../../charts-worker/src/mp/room.js';
@@ -53,6 +55,7 @@ export function createFakeWorld(o = {}) {
   let disposed = false;
   const stats = { framesIn: 0, framesOut: 0, opens: 0, rejected: 0 };
   const noLook = !!o.noLook || (typeof location !== 'undefined' && /[?&]mpcap=nolook(&|$)/.test(String(location.search || '')));
+  const noFight = !!o.noFight || (typeof location !== 'undefined' && /[?&]mpcap=nofight(&|$)/.test(String(location.search || '')));
   const uid = o.uid || 'fake-user';
   const prefs = { on: true, name: true, film: false, chat: true, mute: [], hint: false, ...(o.prefs || {}) };
 
@@ -95,12 +98,12 @@ export function createFakeWorld(o = {}) {
     apply(r);
     return r.c;
   }
-  /** noLook: Fähigkeit look aus dem hi nehmen (alter Worker kennt sie nicht). */
+  /** noLook / noFight: Fähigkeit look bzw. fight aus dem hi nehmen (alter Worker kennt sie nicht). */
   function stripLook(data) {
-    if (!noLook || typeof data !== 'string' || data.indexOf('"hi"') < 0) return data;
+    if ((!noLook && !noFight) || typeof data !== 'string' || data.indexOf('"hi"') < 0) return data;
     try {
       const j = JSON.parse(data);
-      const fix = (m) => (m && m.t === 'hi' && Array.isArray(m.cap) ? { ...m, cap: m.cap.filter((x) => x !== 'look') } : m);
+      const fix = (m) => (m && m.t === 'hi' && Array.isArray(m.cap) ? { ...m, cap: m.cap.filter((x) => !(noLook && x === 'look') && !(noFight && x === 'fight')) } : m);
       return JSON.stringify(Array.isArray(j) ? j.map(fix) : fix(j));
     } catch { return data; }
   }
@@ -285,6 +288,6 @@ export function createFakeWorld(o = {}) {
       conns.clear();
     },
   };
-  world.bots = createBots(world, { n: Math.max(0, Math.floor(o.bots || 0)), seed: o.seed || 1, social: o.botSocial !== false, adminBot: Number.isInteger(o.botAdmin) ? o.botAdmin : -1, look: !noLook });
+  world.bots = createBots(world, { n: Math.max(0, Math.floor(o.bots || 0)), seed: o.seed || 1, social: o.botSocial !== false, adminBot: Number.isInteger(o.botAdmin) ? o.botAdmin : -1, look: !noLook, fight: !noFight && o.botFight !== false, gangBot: Number.isInteger(o.botGang) ? o.botGang : -1 });
   return world;
 }

@@ -10,6 +10,7 @@ import { createPush } from './push.js';
 import { createRichard } from './richard.js';
 import { createWeather } from './weather.js';
 import { createLook } from './look.js';
+import { createFightNet } from './fight.js';
 
 const stub = () => ({});
 
@@ -22,4 +23,5 @@ export const PART_FACTORIES = {
   weather: createWeather, // Welle c (C2)
   kino: stub, // Welle d
   look: createLook, // 1.17.0: eigener Look und Ausweis (Fähigkeit look)
+  fight: createFightNet, // 1.18.0: Waffenwahl, Treffer, Laser, Bandenführung (Fähigkeit fight); Provider-Anteil net.fight
 };

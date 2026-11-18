@@ -10,6 +10,7 @@ import { UNLOCK_BAGS, UNLOCK_TOPS, UNLOCK_HATS, UNLOCK_GLASSES } from '../src/js
 import { createEnergyHud } from '../src/js/store3d/ui/energy.js';
 import { createWeaponWheel } from '../src/js/store3d/ui/weaponwheel.js';
 import { createBlindVeil } from '../src/js/store3d/ui/blindveil.js';
+import { makeCtx } from './helpers/fight-ctx.js';
 
 const fakeCtx = () => { const m = {}; return { m, provide: (n, i) => { m[n] = i; return () => { delete m[n]; }; } }; };
 
@@ -20,20 +21,21 @@ describe('Welle 4 Nähte', () => {
     expect(names.indexOf('gang')).toBeGreaterThan(names.indexOf('fight'));
     expect(names.indexOf('net')).toBeGreaterThan(names.indexOf('gang'));
   });
-  it('Provider fight und gang sind No-ops', () => {
-    const c = fakeCtx();
-    const h = fight.init(c);
-    const f = c.m.fight;
+  it('Provider fight (Welle 6, gefüllt) und gang (Stub)', () => {
+    const k = makeCtx();
+    const h = fight.init(k.ctx);
+    const f = k.providers.get('fight');
     expect(f.weapon()).toBe('hand');
     expect(f.energy()).toBe(100);
     expect(f.protected()).toBe(false);
-    expect(f.hitPlayer({ dmg: 5 })).toBe(false);
+    expect(f.hitPlayer({ dmg: 5, knock: { x: 1, z: 0 } })).toBe(true);
     expect(typeof f.onKO(() => {})).toBe('function');
     f.setWeapon('belt');
-    f.blind(100);
-    expect(f.weapon()).toBe('hand');
+    expect(f.blind).toBe(f.blindPlayer);
+    expect(f.weapon()).toBe('belt');
     h.dispose();
-    expect(c.m.fight).toBeUndefined();
+    expect(k.providers.get('fight')).toBeUndefined();
+    const c = fakeCtx();
     const g = gang.init(c);
     const gp = c.m.gang;
     expect(gp.active()).toBe(false);

@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Mehrspieler (lfx-mp.1, Welle c): Schubsen, Teil „push“ des Moduls net (Fabrik createPush, siehe net/parts.js).
 // Schlagen auf eine Fremdfigur ist nur ein Stoß, kein Schaden: Jede Fremdfigur hängt per npc.registerPerson (Schlag-Priorität Personen 20) ein,
 // onHit zeigt lokal die Reaktion und sendet pu {c, d (Richtung x100), s}; der Server reicht pu an das Ziel (Frame x), das ctx.player.knock(dir, Stärke)
-// lokal anwendet. Stärke: nav/collide.js PUSH_KNOCK * s/100. Nie in VR (weder senden noch empfangen noch an VR-Ziele), nur im Laufmodus,
+// lokal anwendet. Mit ausgehandelter Fähigkeit `fight` (1.18.0) sendet dieser Teil NICHT mehr selbst (nur die lokale Reaktion und der Empfang bleiben). Stärke: nav/collide.js PUSH_KNOCK * s/100. Nie in VR (weder senden noch empfangen noch an VR-Ziele), nur im Laufmodus,
 // gedrosselt (senden 2/s wie der Server, empfangen höchstens alle 350 ms), Abstand höchstens 3,4 m (Server 3,5 m). pu löst im Transport selbst höchstens einen vorgezogenen Takt aus.
 //   createPush(core) → { x(frame x), stop(), dispose() }
 import { PUSH_KNOCK } from '../nav/collide.js';
@@ -31,6 +31,7 @@ export function createPush(core) {
   function hit(c, fig, dir) {
     try { if (typeof fig.hitReact === 'function') fig.hitReact(dir); } catch (err) { warn('hitReact', err); }
     if (disposed || xrOn() || !core.active() || !core.cap('push') || !dir) return;
+    if (core.cap('fight')) return; // 1.18.0: mit Fähigkeit fight sendet das Modul fight den Hieb als `fh` (der Server macht für alte Peers selbst ein pu); kein doppelter Rückstoß
     const info = core.peers && core.peers.get ? core.peers.get(c) : null;
     if (info && (info.f & F.VR)) return; // VR-Ziele lassen sich nicht schubsen
     const t = clock();

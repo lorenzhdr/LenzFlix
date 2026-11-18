@@ -70,6 +70,9 @@ export class TouchControls {
       onJump: () => { if (c.onJump) c.onJump(); },
       onUse: () => { if (c.onUse) c.onUse(); },
       onHit: () => { if (c.onHit) c.onHit(); },
+      onHitUp: () => { if (c.onHitUp) c.onHitUp(); },
+      onAux: () => { if (c.onAux) c.onAux(); },
+      onAuxUp: () => { if (c.onAuxUp) c.onAuxUp(); },
       onThrow: () => { if (c.onThrow) c.onThrow(); },
       onView: () => { if (c.onView) c.onView(); },
       debug: !!ctx.debug,
@@ -187,6 +190,7 @@ export class TouchControls {
         this.pad.setAimed(this.aimed);
         this.pad.setCarrying(this.carrying);
         if (this.pad.setViewShown) this.pad.setViewShown(!!c.onView);
+        if (this.pad.setAux && c.onAux) this.pad.setAux(true, 'WAFFE'); // 1.18.0: Waffenknopf neben „Schlagen“ (tippen = Rad, halten mit Laser = leuchten)
         this.padKind = 'game';
         this.game.attach(this.pad); // übernimmt den aktuellen Gate-Zustand
       }

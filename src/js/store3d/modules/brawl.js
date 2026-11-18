@@ -244,7 +244,7 @@ export default {
       if (!tr) return;
       const to = tr.to;
       R.setBusy(to === 'shove' || to === 'throw' || to === 'chase' || to === 'banned');
-      if (to === 'annoyed') { play('stagger', 0.8); say(tr.reason === 'objectHit' ? 'hitObject' : 'hit1', {}, { always: true }); }
+      if (to === 'annoyed') { play(hitCat === 'laserHit' ? 'cover' : 'stagger', hitCat === 'laserHit' ? 1.6 : 0.8); say(hitCat || (tr.reason === 'objectHit' ? 'hitObject' : 'hit1'), {}, { always: true }); }
       if (to === 'shove') {
         play('armsup', 0.6);
         say('hit2', {}, { always: true });
@@ -309,26 +309,32 @@ export default {
       });
     }
 
-    function reactHit(dir) {
+    function reactHit(dir, kind) {
       if (dir) { recoil.x = dir.x * 0.28; recoil.z = dir.z * 0.28; }
-      if (!hostile() || fsm.state === 'throw') play('stagger', 0.8);
+      if (!hostile() || fsm.state === 'throw') play(kind === 'laser' ? 'cover' : 'stagger', kind === 'laser' ? 1.6 : 0.8);
     }
 
-    function doHit(source, dir) {
+    // 1.18.0: Waffen-Treffer. kind 'laser' (Augen zuhalten, kein Rückstoß), 'whip', 'belt' (eigene Sprüche); sonst Hand/Objekt wie 1.17.
+    const KIND_CAT = { laser: 'laserHit', whip: 'whipHit', belt: 'beltHit' };
+    let hitCat = null; // Spruch-Kategorie des laufenden Treffers (nur für den ersten Übergang auf 'annoyed')
+
+    function doHit(source, dir, kind) {
       if (netRole === 'mirror') {
         // fremder Streit: nur Rückstoß; ist Richard (noch) nicht feindlich, übernimmt der Treffer die Autorität
-        if (hostile() || !(netHook && netHook.claim())) { reactHit(dir); return; }
+        if (hostile() || !(netHook && netHook.claim())) { reactHit(kind === 'laser' ? null : dir, kind); return; }
         setNetRole('owner');
       }
       const wasLocal = netRole === 'local';
       const res = fsm.hit(source, T);
       if (res.accepted) {
         if (wasLocal && netHook && netHook.claim()) netRole = 'owner';
+        hitCat = KIND_CAT[kind] || null;
         onTransition(res.transition);
+        hitCat = null;
         if (source === 'object' && res.transition.to !== 'annoyed' && res.transition.to !== 'throw') say('hitObject', {}, { always: true });
-        reactHit(dir);
+        reactHit(kind === 'laser' ? null : dir, kind);
       } else if (fsm.state !== 'banned') {
-        reactHit(dir);
+        reactHit(kind === 'laser' ? null : dir, kind);
       }
     }
 
@@ -336,9 +342,11 @@ export default {
     offs.push(ctx.input.onAction('hit', (ev) => {
       if (xrOn() || !ev || !ev.origin || !ev.dir) return false;
       if (fsm.state === 'banned') return false;
-      const c = inCone(ev.origin, ev.dir, { x: R.pos.x, y: R.pos.y + 1.0, z: R.pos.z });
+      // 1.18.0: Reichweite der gewählten Waffe (ev.range; Standard 1,6 m wie bisher), Gürtel/Peitsche mit eigenen Sprüchen
+      const range = Number.isFinite(ev.range) && ev.range > 0 ? ev.range : 1.6;
+      const c = inCone(ev.origin, ev.dir, { x: R.pos.x, y: R.pos.y + 1.0, z: R.pos.z }, { range });
       if (!c.hit) return false;
-      doHit('player', { x: ev.dir.x, z: ev.dir.z });
+      doHit('player', { x: ev.dir.x, z: ev.dir.z }, ev.weapon === 'belt' || ev.weapon === 'whip' ? ev.weapon : null);
       return true;
     }, { prio: 30 }));
 
@@ -410,10 +418,15 @@ export default {
       isBanned: () => fsm.isBanned(),
       canTalk: () => !task && (fsm.state === 'calm' || fsm.state === 'annoyed' || fsm.state === 'grudge'),
       /** Treffer durch ein geworfenes Objekt (Paket „physics“ ruft das auf). dir = { x, z } vom Objekt weg oder null. */
-      hitBy(source, dir) { if (xrOn()) return; doHit(source === 'player' ? 'player' : 'object', dir || null); },
+      hitBy(source, dir) {
+        if (xrOn()) return;
+        // 1.18.0: 'laser' (Augen zuhalten, zählt wie ein Schlag), 'whip'/'belt'/'hand' wie ein Schlag des Spielers
+        const kind = source === 'laser' || source === 'whip' || source === 'belt' ? source : null;
+        doHit(kind || source === 'player' || source === 'hand' ? 'player' : 'object', dir || null, kind);
+      },
       /** Netzformat (1.16.0): Zustand + Ort + Animation. */
       getNetState() {
-        return { v: 1, f: fsm.getNetState(T), x: Math.round(R.pos.x * 100) / 100, z: Math.round(R.pos.z * 100) / 100, y: Math.round(R.pos.y * 100) / 100, yaw: Math.round(R.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name)) };
+        return { v: 1, f: fsm.getNetState(T), x: Math.round(R.pos.x * 100) / 100, z: Math.round(R.pos.z * 100) / 100, y: Math.round(R.pos.y * 100) / 100, yaw: Math.round(R.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name === 'cover' ? 'stagger' : anim.name)) }; // 'cover' ist nur lokal (der Worker begrenzt rs.a auf 0..9)
       },
       /** Zustand + Ort übernehmen. Rolle 'mirror': glättet auf das Ziel, Hausverbot nur mit o.self; sonst wie 1.15 (hart). */
       applyRemote(net, o) {

@@ -16,6 +16,8 @@ const ACTIONS = { Space: 'onJump', KeyF: 'onHit', KeyG: 'onThrow', KeyV: 'onView
 /**
  * Loslass-Rückrufe (1.18-Naht, ohne Wirkung, solange ctx sie nicht liefert): ctx[<Aktion>Up]() beim keyup der Aktionstaste (auch außerhalb von 'play'),
  * ctx.onTakeUp() beim Loslassen der linken Maustaste; außerdem bei blur, Lock-Verlust und detach.
+ * 1.18.0 Waffen: R halten = Waffenrad (ctx.onWheel() beim Drücken, true = geöffnet; ctx.onWheelUp() beim Loslassen, auch bei blur/detach; Wiederholungen werden
+ * verschluckt, der Pointer-Lock-Verlust beim Öffnen löst es nicht), Ziffern 1–4 (ctx.onWeaponPick(n), im Laufmodus verschluckt), Mausrad (ctx.onWeaponCycle(±1), gedrosselt).
  */
 const ACTION_UP = (name) => name + 'Up';
 /** Mehrspieler-Tasten (Enter/T): nur im Modus 'play' mit Pointer-Lock und nur verbraucht, wenn der Rückruf true liefert (sonst bleibt die Taste unberührt, wie in 1.15). */
@@ -62,6 +64,8 @@ export class DesktopControls {
     this.eaten = new Set(); // Mehrspieler-Tasten, deren keydown verbraucht wurde (Wiederholung und keyup folgen)
     this.actHeld = new Map(); // gedrückte Aktionstasten: Code -> Rückrufname (für den Loslass-Rückruf)
     this.clickHeld = false; // linke Maustaste im Spiel gedrückt (onTake('click') gefeuert)
+    this.wheelHeld = false; // R gehalten (Waffenrad offen), bewusst außerhalb von actHeld (das Rad gibt den Pointer-Lock frei)
+    this.wheelAt = -Infinity;
     this.h = {
       key: (e) => this.onKey(e, true),
       keyUp: (e) => this.onKey(e, false),
@@ -74,12 +78,31 @@ export class DesktopControls {
         if (e && e.button === 2) { this.zoomBtn = false; this.syncZoom(); }
         if (e && e.button === 0 && this.clickHeld) { this.clickHeld = false; if (typeof this.ctx.onTakeUp === 'function') this.ctx.onTakeUp(); }
       },
-      blur: () => { this.down.clear(); this.eaten.clear(); this.releaseHeld(); this.zoomKey = false; this.zoomBtn = false; this.syncZoom(); },
+      wheel: (e) => this.onWheelEvent(e),
+      blur: () => { this.down.clear(); this.eaten.clear(); this.releaseHeld(); this.releaseWheel(); this.zoomKey = false; this.zoomBtn = false; this.syncZoom(); },
       noCtx: (e) => e.preventDefault(),
     };
   }
 
   get locked() { return document.pointerLockElement === this.ctx.canvas; }
+
+  /** R losgelassen (oder abgebrochen): Waffenrad wählt das markierte Segment und schließt. */
+  releaseWheel() {
+    if (!this.wheelHeld) return;
+    this.wheelHeld = false;
+    if (typeof this.ctx.onWheelUp === 'function') this.ctx.onWheelUp();
+  }
+
+  /** Mausrad im Laufmodus: nächste/vorige Waffe (gedrosselt, nur mit Pointer-Lock oder Zieh-Modus). */
+  onWheelEvent(e) {
+    if (typeof this.ctx.onWeaponCycle !== 'function' || this.ctx.getMode() !== 'play' || !(this.locked || this.dragLook)) return;
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const dy = e ? Number(e.deltaY) || 0 : 0;
+    const now = performance.now();
+    if (Math.abs(dy) < 1 || now - this.wheelAt < 140) return;
+    this.wheelAt = now;
+    this.ctx.onWeaponCycle(dy > 0 ? 1 : -1);
+  }
 
   /** Alle gehaltenen Aktionen loslassen (Loslass-Rückrufe, falls vorhanden). */
   releaseHeld() {
@@ -110,6 +133,7 @@ export class DesktopControls {
     document.addEventListener('pointerlockerror', this.h.lockErr);
     c.addEventListener('mousedown', this.h.down);
     c.addEventListener('contextmenu', this.h.noCtx);
+    c.addEventListener('wheel', this.h.wheel, { passive: false });
     window.addEventListener('mouseup', this.h.up);
   }
 
@@ -126,7 +150,9 @@ export class DesktopControls {
     document.removeEventListener('pointerlockerror', this.h.lockErr);
     c.removeEventListener('mousedown', this.h.down);
     c.removeEventListener('contextmenu', this.h.noCtx);
+    c.removeEventListener('wheel', this.h.wheel);
     window.removeEventListener('mouseup', this.h.up);
+    this.releaseWheel();
     this.down.clear();
     this.releaseHeld();
     this.clearLockTimer();
@@ -277,6 +303,7 @@ export class DesktopControls {
       const up = this.ctx[ACTION_UP(name)];
       if (typeof up === 'function') up.call(this.ctx);
     }
+    if (!isDown && e.code === 'KeyR' && this.wheelHeld) { e.preventDefault(); e.stopPropagation(); this.releaseWheel(); return; }
     if (esc ? typingText(e.target) : typing(e.target)) return;
     // Design-Wähler/Profil-Popover der Hülle (aus dem Pause-Menü geöffnet) schließen sich selbst: Esc gehört ihnen
     if (esc && document.documentElement.classList.contains('lfx-themepicker-open') || esc && document.documentElement.classList.contains('lfx-popover-open')) return;
@@ -295,6 +322,25 @@ export class DesktopControls {
     }
     // Re-Lock: Tastendruck ist (anders als Esc) eine Nutzeraktivierung, requestPointerLock() läuft synchron im Handler
     if (isDown && !e.repeat && mode === 'play' && this.relockArmed && !this.locked && !this.dragLook && !this.inflight && e.code !== 'Escape') this.requestLock();
+    // Waffenwahl (1.18.0): R halten = Rad, Wiederholungen verschlucken (sonst schließt die eigene R-Taste des Rads es sofort), Ziffern 1–4 wählen direkt
+    if (e.code === 'KeyR' && this.ctx.onWheel) {
+      if (this.wheelHeld) { e.preventDefault(); e.stopPropagation(); return; }
+      if (isDown && !e.repeat && mode === 'play' && (this.locked || this.dragLook) && this.ctx.onWheel() === true) {
+        this.wheelHeld = true;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+    if (this.ctx.onWeaponPick && mode === 'play' && (this.locked || this.dragLook)) {
+      const m = /^(?:Digit|Numpad)([1-4])$/.exec(e.code);
+      if (m) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isDown && !e.repeat) this.ctx.onWeaponPick(Number(m[1]));
+        return;
+      }
+    }
     const k = KEYS[e.code];
     if (k) {
       if (isDown && mode !== 'play' && e.code.startsWith('Arrow')) return;

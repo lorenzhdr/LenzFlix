@@ -13,6 +13,9 @@ const GAP = 2.4; // Wunschabstand zum Vordermann (m)
 export const HORN_COOL = 7; // s zwischen zwei Hupsignalen eines Autos
 const HORN_AFTER = 1.0; // s Blockade, bevor gehupt wird
 export const NUDGE_AFTER = 3.8; // s Blockade durch den Spieler, bevor das Auto vorsichtig anrollt
+export const BLIND_DEC = 9; // m/s² Vollbremsung eines geblendeten Fahrers (Laser, 1.18.0)
+export const BLIND_STAND = 2.5; // s stehen (und hupen), danach fährt das Auto wieder an
+const BLIND_HONK_EVERY = 0.8; // s zwischen den Hupsignalen während der Blendung
 const UPSTREAM_WINDOW = 6; // Zebra gilt als „vor der Haltelinie“, wenn sie höchstens so weit davor beginnt
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -53,8 +56,19 @@ export function createCar(lane, o = {}) {
   return {
     id: o.id || 0, lane: lane.id, p: o.p !== undefined ? o.p : lane.from, v: o.v !== undefined ? o.v : 0, state: 'drive', timer: 0,
     hornCool: 0, blockedT: 0, nudgeCool: 0, speedMul: o.speedMul || 1, style: o.style || 0, away: false, sign: s,
-    stopped: false, blockKind: null,
+    stopped: false, blockKind: null, blindT: 0, blindHonk: 0,
   };
+}
+
+/** Fahrer blenden (Laserpunkt auf die Kabine): Vollbremsung, dann stehen und hupen. false bei 'away' (nicht sichtbar). */
+export function blindCar(car, o = {}) {
+  if (!car || car.state === 'away') return false;
+  car.state = 'blind';
+  car.blindT = o.stand > 0 ? o.stand : BLIND_STAND;
+  car.blindDec = o.decel > 0 ? o.decel : BLIND_DEC;
+  car.blindHonk = 0; // sofort das erste Hupsignal
+  car.blockedT = 0;
+  return true;
 }
 
 /**
@@ -77,6 +91,18 @@ export function stepCar(car, dt, env) {
       if (clear) { car.state = 'drive'; car.p = lane.from; car.v = lane.speed * 0.6 * car.speedMul; car.blockedT = 0; }
       else car.timer = 0.6;
     }
+    return ev;
+  }
+  if (car.state === 'blind') {
+    // Vollbremsung (9 m/s²), nach dem Stillstand blindT Sekunden stehen, dabei lang hupen; ohne Ampel/Zebra-Logik, kein Unfall (Folgeautos sehen das Auto als Vordermann).
+    car.v = Math.max(0, car.v - (car.blindDec || BLIND_DEC) * dt);
+    car.p += s * car.v * dt;
+    car.stopped = car.v < 0.25;
+    car.blindHonk -= dt;
+    if (car.blindHonk <= 0 && car.blindT > 0) { car.blindHonk = BLIND_HONK_EVERY; ev.push({ type: 'honk', toPlayer: false, long: true }); }
+    if (car.v <= 0) car.blindT -= dt;
+    if (car.blindT <= 0) { car.state = 'drive'; car.blindT = 0; car.hornCool = HORN_COOL; }
+    if ((car.p - lane.to) * s >= 0) { car.state = 'away'; car.timer = 3 + (env.rand ? env.rand() : 0.5) * 8; car.v = 0; }
     return ev;
   }
   const front = car.p + s * (CAR_LEN / 2);
@@ -106,7 +132,7 @@ export function stepCar(car, dt, env) {
   }
   // 3) Vordermann
   for (const c of env.cars || []) {
-    if (c === car || c.lane !== car.lane || c.state !== 'drive') continue;
+    if (c === car || c.lane !== car.lane || (c.state !== 'drive' && c.state !== 'blind')) continue;
     const rear = c.p - s * (CAR_LEN / 2);
     const d = (rear - front) * s - GAP;
     if ((c.p - car.p) * s > 0) consider(Math.max(0, d), 'car');

@@ -1,5 +1,5 @@
 // VIDEOTHEK LENZ · Modul `discover`: Entdeckungen (Paket F). Provider 'discover'
-//   found(id, opts?) → true wenn neu (Toast „Entdeckung n/15: Titel“ + Jingle; opts.silent unterdrückt beides) · has(id) · list() → [{id,found,title,desc,hint}]
+//   found(id, opts?) → true wenn neu (Toast „Entdeckung n/19: Titel“ + Jingle; opts.silent unterdrückt beides) · has(id) · list() → [{id,found,title,desc,hint}]
 //   (1.17.0) Konto: deps.profile.disc wird beim Start mit dem lokalen Speicher vereinigt, found() schreibt zusätzlich ins Profil.
 //   summary() → { count, total, items } (Pause-Menü) · onChange(fn) → off · getNetState() → { found: [ids] } (Mehrspieler vorbereitet) · reset()
 // Eigene Fundstücke: Goldene Kassette (Dach, Lüftungsbox, nur per Sprung/Klettern), Graffiti (Hinterhof, Hinsehen), lose Wandplatte
@@ -219,6 +219,14 @@ export default {
       };
     }
 
+    // --- 1.18.0 „Neuer Schnitt“ (salon-first): erster Frisörstuhl. Das Salon-Modul setzt profile.evt.salonChair und sitting(); hier nur beobachten.
+    //     Ist der Eintrag schon da (Konto-Altbestand), wird die Entdeckung leise nachgetragen. ---
+    const salonSeen = () => {
+      try { const sa = ctx.use('salon'); if (sa && typeof sa.sitting === 'function' && sa.sitting()) return true; } catch { /* egal */ }
+      try { const e = prof && prof.get() && prof.get().evt; return !!(e && e.salonChair); } catch { return false; }
+    };
+    if (!api.has('salon-first') && prof) { try { const e = prof.get() && prof.get().evt; if (e && e.salonChair) api.found('salon-first', { silent: true }); } catch { /* egal */ } }
+
     // --- Dach-Funde und Hinseh-Erkennung ---
     const gaze = createGaze({ range: 4, dwell: 1.5 });
     const dir = new Vector3();
@@ -239,6 +247,7 @@ export default {
         if (acc < 0.1) return;
         const step = acc;
         acc = 0;
+        if (!api.has('salon-first') && salonSeen()) api.found('salon-first');
         const pose = ctx.player.getPose();
         const area = areaAt(L, pose.x, pose.z, pose.y || 0);
         if (area === 'roof') {

@@ -61,15 +61,19 @@ beforeEach(() => { vi.useFakeTimers(); sockets = []; });
 afterEach(() => { vi.useRealTimers(); document.body.innerHTML = ''; });
 
 describe('Modul net: ohne deps.mp', () => {
-  it('kein Handle, kein Provider, keine Listener, kein DOM', () => {
+  it('kein net-Provider, keine Listener, kein Social-DOM; nur der lokale Provider emotes (1.18.0, Emote-Rad ohne Mehrspieler)', () => {
     const t = setup({ noMp: true });
     const add = vi.spyOn(document, 'addEventListener');
-    expect(net.init(t.ctx)).toBeNull();
-    expect(t.provided.size).toBe(0);
+    const h = net.init(t.ctx);
+    expect(h).toBeTruthy();
+    expect([...t.provided.keys()]).toEqual(['emotes']);
+    expect(t.provided.get('net')).toBeUndefined();
     expect(t.listeners.size).toBe(0);
     expect(add).not.toHaveBeenCalled();
     expect(t.host.querySelector('.lfx-store-social')).toBeNull();
     add.mockRestore();
+    h.dispose();
+    expect(t.provided.size).toBe(0);
   });
 });
 
@@ -88,7 +92,7 @@ describe('Modul net: Verbindung', () => {
     expect(sockets[0].protocols).toEqual(['lfx-mp.1', 't.a.b']);
     sockets[0].open();
     const hi = sockets[0].frames()[0];
-    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
+    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
     h.dispose();
   });
 
@@ -410,10 +414,11 @@ describe('Modul net: Welle b (Chat, Emotes, Liste, Kick)', () => {
     const h = net.init(t.ctx);
     const p = t.provided.get('net');
     expect(p.openChat()).toBe(false); // noch nicht verbunden
-    expect(p.openEmotes()).toBe(false);
+    expect(p.openEmotes()).toBe(true); // 1.18.0: ohne Verbindung öffnet der lokale Zweig das Rad
+    expect(ov.open).toHaveBeenCalledTimes(1);
     await goLive(t, WL({ cap: ['pres', 'chat', 'emote'] }));
     expect(p.openChat()).toBe(true);
-    expect(ov.open).toHaveBeenCalledTimes(1);
+    expect(ov.open).toHaveBeenCalledTimes(2);
     h.dispose();
   });
 
@@ -510,6 +515,59 @@ describe('Modul net: Welle b (Chat, Emotes, Liste, Kick)', () => {
     vi.advanceTimersByTime(500);
     h.update(0.016, 3);
     expect(ws.frames().filter((m) => m.t === 'ki')).toEqual([{ t: 'ki', c: 2 }]);
+    h.dispose();
+  });
+});
+
+describe('Modul net: 1.18.0 (fight, Posen-Code, Emote-Hook)', () => {
+  it('Provider net.fight: has() erst mit ausgehandelter Fähigkeit; Posen-Code 9..15 aus dem Modul fight, nie über das Sitzen', async () => {
+    const t = setup();
+    let code = 0;
+    t.provided.set('fight', { poseCode: () => code });
+    const h = net.init(t.ctx);
+    const f = t.provided.get('net').fight;
+    expect(f).toBeTruthy();
+    expect(f.has()).toBe(false);
+    const ws = await goLive(t, WL({ cap: ['pres', 'chat', 'fight'] }));
+    expect(f.has()).toBe(true);
+    code = 15;
+    h.update(0.016, 1);
+    await vi.advanceTimersByTimeAsync(300);
+    h.update(0.016, 2);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws.frames().filter((m) => m.t === 'p').some((m) => m.q[5] === 15)).toBe(true);
+    code = 3; // ungültiger Code wird ignoriert
+    h.dispose();
+  });
+
+  it('gesendetes Emote spielt lokal und meldet onPlayerEmote (Provider emotes)', async () => {
+    const t = setup();
+    t.ctx.overlay = { open: vi.fn(), close: vi.fn(), isOpen: () => false };
+    const anim = [];
+    t.provided.set('selfview', { playAnim: (a) => anim.push(a) });
+    const h = net.init(t.ctx);
+    const em = t.provided.get('emotes');
+    const hook = vi.fn();
+    em.onPlayerEmote(hook);
+    await goLive(t, WL({ cap: ['pres', 'emote'] }));
+    expect(em.emote('cheer')).toBe(true);
+    expect(anim).toEqual(['cheer']);
+    expect(hook).toHaveBeenCalledWith({ name: 'cheer', code: 2, anim: 'cheer' });
+    h.dispose();
+    expect(t.provided.get('emotes')).toBeUndefined();
+  });
+
+  it('ohne Verbindung/Fähigkeit spielt der Provider emotes lokal (Rad auch ohne Mehrspieler)', () => {
+    const t = setup({ noMp: true });
+    t.ctx.overlay = { open: vi.fn(), close: vi.fn(), isOpen: () => false };
+    t.ctx.playing = () => true;
+    const h = net.init(t.ctx);
+    const em = t.provided.get('emotes');
+    const hook = vi.fn();
+    em.onPlayerEmote(hook);
+    expect(em.emote('wave')).toBe(true);
+    expect(hook).toHaveBeenCalledTimes(1);
+    expect(em.usable()).toBe(true);
     h.dispose();
   });
 });

@@ -291,7 +291,7 @@ export default {
     const offHit = ctx.input.onAction('hit', (ev) => {
       const p = ctx.player.getPose();
       const yaw = p.yaw;
-      const hit = pickInCone(world.bodies, { x: p.x, z: p.z, dx: -Math.sin(yaw), dz: -Math.cos(yaw), y: p.y || 0, range: HIT_RANGE, deg: HIT_CONE_DEG });
+      const hit = pickInCone(world.bodies, { x: p.x, z: p.z, dx: -Math.sin(yaw), dz: -Math.cos(yaw), y: p.y || 0, range: Number.isFinite(ev.range) && ev.range > 0 ? ev.range : HIT_RANGE, deg: HIT_CONE_DEG }); // 1.18.0: Reichweite der Waffe (Gürtel 2,2 m, Peitsche 3,5 m)
       if (!hit) return false;
       const b = hit.body;
       const hx = Math.hypot(ev.dir.x, ev.dir.z) || 1;

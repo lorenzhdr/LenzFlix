@@ -9,7 +9,7 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const yawTo = (dx, dz) => Math.atan2(-dx, -dz);
 
 // ---------------------------------------------------------------- Katze
-export const CAT = { sitMin: 4, sitMax: 11, groomT: 2.8, walkSpeed: 0.8, fleeSpeed: 5.2, purrT: 3.6, startleDist: 3.2, closeDist: 1.1, petDist: 2.4, petSpeed: 1.3 };
+export const CAT = { sitMin: 4, sitMax: 11, groomT: 2.8, walkSpeed: 0.8, fleeSpeed: 5.2, purrT: 3.6, startleDist: 3.2, closeDist: 1.1, petDist: 2.4, petSpeed: 1.3, laserRange: 8, laserSpeed: 4.2, laserFound: 3, pounceT: 0.5, pounceMin: 1 };
 
 /** Geradenprüfung gegen Rechtecke {x0,z0,x1,z1,y1}: frei, wenn keine Hindernisse mit Höhe > 0,3 gekreuzt werden (Stichproben alle 0,2 m). */
 export function lineFree(colliders, a, b, pad = 0.15) {
@@ -90,7 +90,11 @@ export function scareCat(cat, env) {
   if (t >= 0) go(cat, t, env, 'flee');
 }
 
-/** env = { rand, spots: [{x,z,y}], free(a,b), player: {x,z,speed,y}|null }. Rückgabe Ereignisse [{type:'meow'|'purr'|'startle'}]. */
+/**
+ * env = { rand, spots: [{x,z,y}], free(a,b), player: {x,z,speed,y}|null, laser?: {x,z}|null (1.18.0) }. Rückgabe Ereignisse [{type:'meow'|'purr'|'startle'|'catlaser'}].
+ * Laserpunkt (1.18.0): sitzende/putzende/laufende Katze im Umkreis von 8 m mit freier Sicht jagt den Punkt (Zustand `chase`); nach >= 1 s Jagd und
+ * ausgehendem Laser springt sie (`pounce`); nach 3 s Jagd einmal Ereignis `catlaser`. Ohne env.laser bleibt alles wie zuvor.
+ */
 export function stepCat(cat, dt, env) {
   const ev = [];
   cat.meowCool = Math.max(0, cat.meowCool - dt);
@@ -99,6 +103,20 @@ export function stepCat(cat, dt, env) {
   const pl = env.player;
   const dist = pl ? Math.hypot(pl.x - cat.x, pl.z - cat.z) : Infinity;
   const sp = pl ? pl.speed || 0 : 0;
+  const lz = env.laser || null;
+  if (cat.state === 'chase') return stepChase(cat, dt, env, lz, ev);
+  if (cat.state === 'pounce') {
+    cat.timer -= dt;
+    const p = 1 - Math.max(0, cat.timer) / CAT.pounceT;
+    cat.y = Math.sin(Math.min(1, p) * Math.PI) * 0.4;
+    cat.x += -Math.sin(cat.yaw) * 1.2 * dt; cat.z += -Math.cos(cat.yaw) * 1.2 * dt;
+    if (cat.timer <= 0) { cat.state = 'sit'; cat.y = 0; cat.timer = 3 + env.rand() * 4; cat.moveSpeed = 0; }
+    return ev;
+  }
+  if (lz && cat.state !== 'flee' && Math.hypot(lz.x - cat.x, lz.z - cat.z) < CAT.laserRange && (!env.free || env.free({ x: cat.x, z: cat.z }, lz))) {
+    cat.state = 'chase'; cat.chaseT = 0; cat.chk = 0.25; cat.laserDone = false; cat.moveSpeed = CAT.laserSpeed;
+    return stepChase(cat, dt, env, lz, ev);
+  }
   if (cat.state === 'walk' || cat.state === 'flee') {
     const speed = cat.state === 'flee' ? CAT.fleeSpeed : CAT.walkSpeed;
     const total = Math.hypot(cat.to.x - cat.from.x, cat.to.z - cat.from.z) || 1;
@@ -139,8 +157,31 @@ export function stepCat(cat, dt, env) {
   return ev;
 }
 
+function stepChase(cat, dt, env, lz, ev) {
+  if (!lz || Math.hypot(lz.x - cat.x, lz.z - cat.z) > CAT.laserRange + 2) {
+    cat.moveSpeed = 0;
+    if (cat.chaseT >= CAT.pounceMin && !lz) { cat.state = 'pounce'; cat.timer = CAT.pounceT; } else { cat.state = 'sit'; cat.timer = 3 + env.rand() * 3; cat.y = 0; }
+    return ev;
+  }
+  cat.chaseT += dt;
+  cat.chk -= dt;
+  if (cat.chk <= 0) { cat.chk = 0.25; if (env.free && !env.free({ x: cat.x, z: cat.z }, lz)) { cat.state = 'sit'; cat.timer = 2; cat.moveSpeed = 0; return ev; } }
+  const dx = lz.x - cat.x;
+  const dz = lz.z - cat.z;
+  const d = Math.hypot(dx, dz);
+  if (d > 0.25) {
+    const step = Math.min(d, CAT.laserSpeed * dt);
+    cat.x += (dx / d) * step; cat.z += (dz / d) * step;
+    cat.yaw = yawTo(dx, dz);
+    cat.moveSpeed = CAT.laserSpeed;
+  } else cat.moveSpeed = 0;
+  cat.y += (0 - cat.y) * Math.min(1, dt * 6);
+  if (!cat.laserDone && cat.chaseT >= CAT.laserFound) { cat.laserDone = true; ev.push({ type: 'catlaser' }); }
+  return ev;
+}
+
 // ---------------------------------------------------------------- Tauben
-export const PIGEON = { flushDist: 3.4, flushRunDist: 7, runSpeed: 3.4, flySpeed: 5.2, altitude: 4.2, flyMin: 6, flyMax: 14 };
+export const PIGEON = { laserDist: 2.5, flushDist: 3.4, flushRunDist: 7, runSpeed: 3.4, flySpeed: 5.2, altitude: 4.2, flyMin: 6, flyMax: 14 };
 
 export function createFlock(homes, n, rand) {
   const out = [];
@@ -173,6 +214,12 @@ export function flush(flock, from, rand) {
 export function stepFlock(flock, dt, env) {
   const ev = [];
   const pl = env.player;
+  const lz = env.laser || null;
+  if (lz) { // 1.18.0: Laserpunkt in Taubennähe scheucht den Schwarm auf
+    for (const p of flock) {
+      if ((p.state === 'peck' || p.state === 'walk') && Math.hypot(lz.x - p.x, lz.z - p.z) < PIGEON.laserDist) { flush(flock, lz, env.rand); ev.push({ type: 'flush' }); break; }
+    }
+  }
   if (pl) {
     let trig = false;
     for (const p of flock) {

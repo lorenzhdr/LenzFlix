@@ -24,7 +24,7 @@ function setup(o = {}) {
   };
   const out = [];
   const core = {
-    ctx, frame: createFrame({ w: 12.5, d: 18 }), now: () => T, active: () => o.active !== false, cap: (c) => !(o.nocap === c), me: () => ({ c: 1, k: 'me' }),
+    ctx, frame: createFrame({ w: 12.5, d: 18 }), now: () => T, active: () => o.active !== false, cap: (c) => (c === 'fight' ? !!o.fight : !(o.nocap === c)), me: () => ({ c: 1, k: 'me' }),
     send: vi.fn((m, opt) => { out.push({ m, opt }); return true; }),
     peers: { onFigure: (fn) => { figListeners.add(fn); return () => figListeners.delete(fn); }, get: (c) => (c === 7 ? peerInfo : null) },
   };
@@ -58,6 +58,13 @@ describe('push: Fremdfiguren als Personen (Schlag-Priorität 20 über npc.regist
 });
 
 describe('push: Senden (Schlag auf eine Fremdfigur)', () => {
+  it('mit ausgehandelter Fähigkeit fight sendet push kein pu (das Modul fight sendet fh), die lokale Reaktion bleibt', () => {
+    const t = setup({ fight: true });
+    t.emitFig('add');
+    hit(t);
+    expect(t.fig.hitReact).toHaveBeenCalledTimes(1);
+    expect(t.out).toHaveLength(0);
+  });
   it('lokale Reaktion + pu {c, d (Einheitsvektor x100), s 100}; Nachricht besteht normalizeOut', () => {
     const t = setup();
     t.emitFig('add');

@@ -441,6 +441,8 @@ export default {
       richard: () => richard,
       event(name) {
         if (name === 'couchSit' || name === 'couchStand') speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
+        // 1.18.0: Spieler wurde K.O. geschlagen und sitzt vor dem Laden: Richard ruft aus der Tür; Laser aufs Gesicht (Kategorie laserHit)
+        else if (name === 'playerKO' || name === 'laserHit') speak(name, {}, { force: true, outside: true, brawl: true, maxDist: Infinity, overOverlay: true });
       },
       /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
       /** Sprecher-Regie für Personen: speaker({ id, voiceSeed, pitch, rate, prio, pos }) → { say(text, { volume }) → 'spoken'|'bubble'|'muted', cancel() } (modules/voice.js). */

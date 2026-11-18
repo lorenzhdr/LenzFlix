@@ -1,13 +1,15 @@
 // VIDEOTHEK LENZ · Mehrspieler (lfx-mp.1, Welle a): Fremdfiguren. Je Verbindung `c` ein Peer mit Remote-Körper (controls/body.js, netDelay 250 ms),
 // Pose-Zeitleiste (Animationscodes), Figur über den npc-Provider (npc/figure.js, Aussehen deterministisch aus k), Namensschild (net/tags.js),
 // Hülle in der Hand (net/heldcover.js, Rechte-Filter) und im Palast-Saal sitzend (palast/seatnet.js). Reine Teile: net/peers-logic.js.
-//   createPeers(core) → { welcome(wl), ev(e), tick(dt), list(), name(c), get(c), count(), onFigure(fn) → off, setActive(on), onQuality(),
+//   createPeers(core) → { welcome(wl), ev(e), tick(dt), list(), name(c), get(c), pos(c), count(), onFigure(fn) → off, setActive(on), onQuality(),
+//                         setWeapon(c, w) /* 1.18.0 fight: Handgegenstand */, setLaser(c, on, point) /* Laserpunkt, net/peerlaser.js */,
 //                         clear(), dispose(), stats() }
 // 1.17.0 (Fähigkeit look): wl.lk {c: l} / wl.mc {c: m} und Ereignisse lk {c,l} / mc {c,m} je Peer; Figur mit eigenem Look (look2), sonst Seed-Look; Interaktion
 //   „Ausweis ansehen“ (noClick, Box läuft mit) für Peers mit mc; list() trägt card, dazu card(c) und showCard(c). core.cap?(name) → bool (Wartezeit nur mit look).
 //   core = { ctx, frame, serverNow() → ms|null, me() → { c, k }|null, cap?(name) }   frame = net/frame.js createFrame(layout): dec(cx, cy, cz, r) → [x, y, z] Meter
 //   ev(e) versteht { t:'b', s, p:[[c,x,y,z,yaw,pitch,a,r,d,se?]], ev:[…] } sowie einzeln j (Peer), l {c}, pf {c,f,n,h}, e {c,e} (Emote, Welle b); fremde Typen werden ignoriert.
 // Emote (net/emotes.js): läuft bis zur Dauer oder bis eine Pose nach dem Empfang mit a ∈ {1,2,3,4,6,8} eintrifft; überstimmt nur die Gehanimation, nie den Kinosessel.
+// 1.18.0: Posen 9..15 (ko, cover, whip, belt, aim, threat, away) über NET_A_ANIM; away zeigt idle und „⏸“ am Namensschild (auch ohne Namens-Flag).
 // Keine Timer: Takt kommt von tick(dt). Der Provider-Zugriff (npc, areas, city, palast, cinema2d) ist überall mit Guard.
 import { Body } from '../controls/body.js';
 import { makeLook } from '../npc/looks.js';
@@ -20,10 +22,15 @@ import { startRemote, stepRemote, endedByPose } from './emotes.js';
 import { F } from './proto.js';
 import { decode as decodeLook, toRender as lookToRender, defaultCode } from '../char/look2.js';
 import { fromWire } from '../char/card.js';
+import { createPeerLasers } from './peerlaser.js';
 
 /** Höchstens so lange (s) wartet eine neue Fremdfigur auf ihren lk, bevor die Seed-Figur gebaut wird (kein Flackern Seed → eigene Figur). */
 export const LOOK_WAIT_S = 0.6;
 const IA_HALF = 0.45; // halbe Breite der Ausweis-Box (m)
+/** Waffenwahl `wp` (0 Hand … 3 Laser) → Handgegenstand der Figur (npc/figure-parts.js HAND_ITEMS). */
+const WEAPON_ITEM = [null, 'belt', 'whip', 'laser'];
+const AWAY = 15; // Posen-Code „weg“ (Menü offen): Anzeige idle plus ⏸ am Schild
+const LASER_HAND_Y = 1.25;
 
 const warn = (what, err) => { try { console.warn('[LenzFlix Store3D] mp peers', what, err && err.message ? err.message : ''); } catch { /* egal */ } };
 
@@ -33,6 +40,8 @@ export function createPeers(core) {
   const figListeners = new Set();
   const tags = createTags(ctx);
   const held = createHeldCover(ctx);
+  const lasers = createPeerLasers(ctx);
+  const weapons = new Map(); // c → Waffenwahl 1..3 (auch für Peers, deren Meldung vor dem Beitritt kommt)
   let seatnet = null;
   let myC = 0;
   let active = true;
@@ -64,7 +73,7 @@ export function createPeers(core) {
     return {
       c: d.c, k: String(d.k || ''), n: typeof d.n === 'string' ? d.n : '', f: d.f | 0, j: d.j, ad: !!d.ad, h: d.h || null,
       r: 0, a: 0, se: null, body: new Body({ src: [], netDelay: L.PEER_DELAY_MS }), last: null, tl: [],
-      fig: null, emote: null, lk: null, lkSig: '', mc: null, wait: 0, ia: null, speed: 0, lastA: -1, pos: null, prev: null, seatKey: '', vis: false, dist: 1e9,
+      w: weapons.get(d.c) || 0, wShown: -1, away: false, fig: null, emote: null, lk: null, lkSig: '', mc: null, wait: 0, ia: null, speed: 0, lastA: -1, pos: null, prev: null, seatKey: '', vis: false, dist: 1e9,
     };
   }
 
@@ -104,6 +113,8 @@ export function createPeers(core) {
     if (!p) return;
     destroyFig(p);
     if (seatnet) seatnet.stand(c);
+    weapons.delete(c);
+    lasers.drop(c);
     peers.delete(c);
     dirty = true;
   }
@@ -186,6 +197,7 @@ export function createPeers(core) {
       const fig = n.figure({ look, parent: ctx.scene });
       p.fig = fig;
       p.lastA = -1;
+      p.wShown = -1;
       if (p.emote) p.emote.shown = false;
       if (p.pos) { fig.root.position.set(p.pos.x, p.pos.y, p.pos.z); fig.root.rotation.y = p.pos.yaw; }
       emitFig('add', p, fig);
@@ -231,6 +243,10 @@ export function createPeers(core) {
   function applyFig(p) {
     const fig = p.fig;
     if (!fig || fig.disposed || !p.pos) return;
+    if (p.wShown !== p.w && typeof fig.setHandItem === 'function') {
+      try { fig.setHandItem(WEAPON_ITEM[p.w] || null); } catch (err) { warn('setHandItem', err); }
+      p.wShown = p.w;
+    }
     // Steht eine Fremdfigur (fast) in der eigenen Kamera, wird sie ausgeblendet statt ins Bild zu ragen
     const cam = ctx.camera && ctx.camera.position;
     const near = !!cam && Math.hypot(cam.x - p.pos.x, cam.z - p.pos.z) < NEAR_HIDE && cam.y > p.pos.y - 0.2 && cam.y < p.pos.y + 2.2;
@@ -288,7 +304,9 @@ export function createPeers(core) {
       const id = L.cleanItemId(p.h);
       const mode = lod.hand === 'none' ? 'none' : (lod.hand === 'neutral' || p.dist > lod.coverDist ? 'neutral' : 'cover');
       held.set(p.c, p.fig, id && (p.f & F.FILM) ? id : null, mode);
-      if ((p.f & F.NAME) && p.n) tagItems.push({ c: p.c, fig: p.fig, text: p.n, dist: p.dist });
+      const named = (p.f & F.NAME) && p.n ? p.n : '';
+      const tagText = p.away ? (named ? named + ' ⏸' : '⏸') : named; // „weg“: Menü offen, Treffer wirken nicht
+      if (tagText) tagItems.push({ c: p.c, fig: p.fig, text: tagText, dist: p.dist });
       applyFig(p);
     }
     tags.sync(tagItems, lod);
@@ -298,6 +316,11 @@ export function createPeers(core) {
       const n = npc();
       if (n && typeof n.reserve === 'function') { try { n.reserve(want); lastReserve = want; } catch (err) { warn('reserve', err); } }
     }
+  }
+
+  function laserOrigin(c) {
+    const p = peers.get(c);
+    return p && p.pos && p.vis ? { x: p.pos.x, y: p.pos.y + LASER_HAND_Y, z: p.pos.z } : null;
   }
 
   // ------------------------------------------------------------------ API
@@ -376,12 +399,15 @@ export function createPeers(core) {
         if (now !== null) p.body.syncNetClock(now - dt * 1000);
         p.body.step(dt);
         resolve(p, dt);
+        const aw = p.a === AWAY;
+        if (aw !== p.away) { p.away = aw; dirty = true; }
         if (p.emote && (!stepRemote(p.emote, dt) || endedByPose(p.emote, p.tl))) { p.emote = null; p.lastA = -1; }
         if (p.fig) applyFig(p);
       }
       acc += dt;
       if (acc >= L.EVAL_S || (dirty && acc >= 0.1)) { acc = 0; evaluate(); }
       tags.update();
+      lasers.update(dt, laserOrigin);
     },
     list() {
       const me = myInfo();
@@ -390,6 +416,17 @@ export function createPeers(core) {
     },
     /** Anzeigename mit Namens-Regel (leer oder ohne Namens-Flag → „Jemand“). */
     name(c) { const p = peers.get(c); return p ? L.displayName(p.n, p.f) : 'Jemand'; },
+    /** Anzeigeort { x, y, z } eines Peers (auch ohne Figur) oder null. */
+    pos(c) { const p = peers.get(c); return p && p.pos ? { x: p.pos.x, y: p.pos.y, z: p.pos.z } : null; },
+    /** Waffenwahl eines Peers (Fähigkeit fight; 0 = Hand/leer): zeigt den Gegenstand in der Hand der Figur. */
+    setWeapon(c, w) {
+      const v = Number.isInteger(w) && w >= 1 && w <= 3 ? w : 0;
+      if (v) weapons.set(c, v); else weapons.delete(c);
+      const p = peers.get(c);
+      if (p) p.w = v;
+    },
+    /** Laserpunkt eines Peers (Meter, lokal) ein/aus. */
+    setLaser(c, on, point) { if (!isMe(c)) lasers.set(c, !!on, point); },
     get: (c) => { const p = peers.get(c); return p ? { ...pub(p), figure: p.fig, devs: 1 } : null; },
     count: () => peers.size,
     /** Ausweis (CardData) des Peers c oder null. */
@@ -408,6 +445,8 @@ export function createPeers(core) {
     clear() {
       for (const c of [...peers.keys()]) removePeer(c);
       tags.clear();
+      lasers.clear();
+      weapons.clear();
       if (seatnet) seatnet.clear();
       const n = npc();
       if (n && typeof n.reserve === 'function') { try { n.reserve(0); } catch { /* egal */ } }
@@ -420,6 +459,7 @@ export function createPeers(core) {
       disposed = true;
       tags.dispose();
       held.dispose();
+      lasers.dispose();
       figListeners.clear();
     },
   };

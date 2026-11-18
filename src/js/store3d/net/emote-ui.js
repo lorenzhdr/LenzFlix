@@ -7,6 +7,10 @@
 // Alle Texte per textContent.
 //   createEmoteUi({ ctx, onPick(emote) → bool /* true = Rad schließen */ }) → { open() → bool, close(), isOpen(), dispose() }
 //   createEmotes(core) → { open(), emote(x) → bool, stop(), dispose(), cooldown }   x = Code 1..8, id oder Beschriftung
+// 1.18.0: Das Rad gibt es auch OHNE Mehrspieler (createLocalEmotes, vom Modul net aus gestartet): lokal an der eigenen Figur (selfview.playAnim) und als Hook
+//   für NPC-Reaktionen. Der Mehrspieler-Teil meldet jedes gesendete Emote ebenfalls über core.localEmote(em) (Animation + Hook), die Taste T geht zuerst an ihn
+//   (prio 10), sonst an den lokalen Zweig (prio 0).
+//   createLocalEmotes(ctx) → { open() → bool, emote(x) → bool, notify(em), usable() → bool, onPlayerEmote(fn) → off, isOpen(), stop(), dispose() }   fn({ name, code, anim })
 import { EMOTES, findEmote, createCooldown } from './emotes.js';
 import { build } from './proto.js';
 
@@ -118,6 +122,60 @@ export function createEmoteUi({ ctx, onPick }) {
   return api;
 }
 
+/**
+ * Lokaler Zweig (ohne Mehrspieler): T/Knopf öffnet das Rad, die Wahl spielt die Animation an der eigenen Figur und meldet das Emote an die Hörer
+ * (onPlayerEmote). Nie in VR und nur im Laufmodus (ctx.playing).
+ */
+export function createLocalEmotes(ctx) {
+  const cd = createCooldown();
+  const hooks = new Set();
+  let disposed = false;
+  const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+  const usable = () => !disposed && !xrOn() && !!ctx.overlay && (typeof ctx.playing !== 'function' || !!ctx.playing());
+  function toast(text) { try { ctx.xr.toast(text, TOAST_MS); } catch { /* egal */ } }
+
+  /** Emote ist ausgelöst (lokal oder gesendet): Animation an der eigenen Figur, dann die Hörer. */
+  function notify(em) {
+    if (disposed || !em) return;
+    try { const sv = ctx.use && ctx.use('selfview'); if (sv && typeof sv.playAnim === 'function' && em.anim) sv.playAnim(em.anim); } catch (err) { warn('selfview', err); }
+    for (const fn of [...hooks]) { try { fn({ name: em.id, code: em.code, anim: em.anim }); } catch (err) { warn('Hörer', err); } }
+  }
+  function emote(x) {
+    const em = findEmote(x);
+    if (!em || !usable()) return false;
+    if (!cd.ready()) { toast('Einen Moment …'); return false; }
+    cd.mark();
+    toast(em.verb);
+    notify(em);
+    return true;
+  }
+  const ui = createEmoteUi({ ctx, onPick: (em) => { emote(em.code); return true; } });
+  let off = null;
+  try {
+    if (ctx.input && typeof ctx.input.onAction === 'function') off = ctx.input.onAction('emote', () => (usable() ? ui.open() : false), { prio: 0 });
+  } catch (err) { warn('Aktion', err); }
+  return {
+    open: () => (usable() ? ui.open() : false),
+    emote,
+    notify,
+    usable,
+    isOpen: ui.isOpen,
+    onPlayerEmote(fn) {
+      if (typeof fn !== 'function') return () => {};
+      hooks.add(fn);
+      return () => hooks.delete(fn);
+    },
+    stop() { ui.close(); },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      if (off) { try { off(); } catch { /* egal */ } off = null; }
+      hooks.clear();
+      ui.dispose();
+    },
+  };
+}
+
 /** Teil „emotes“: Aktion T, Senden mit Cooldown, Rückmeldung. core siehe net/parts.js. */
 export function createEmotes(core) {
   const ctx = core.ctx;
@@ -138,6 +196,7 @@ export function createEmotes(core) {
     if (!core.send(build.e(em.code))) return false;
     cd.mark();
     toast(em.verb);
+    if (typeof core.localEmote === 'function') { try { core.localEmote(em); } catch (err) { warn('localEmote', err); } } // eigene Figur + NPC-Hook (1.18.0)
     return true;
   }
 
@@ -146,7 +205,7 @@ export function createEmotes(core) {
   let off = null;
   try {
     if (ctx.input && typeof ctx.input.onAction === 'function') {
-      off = ctx.input.onAction('emote', () => { if (!usable()) return false; return ui.open(); });
+      off = ctx.input.onAction('emote', () => { if (!usable()) return false; return ui.open(); }, { prio: 10 });
     }
   } catch (err) { warn('Aktion', err); }
 

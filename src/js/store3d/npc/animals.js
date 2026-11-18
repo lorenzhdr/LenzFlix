@@ -45,7 +45,7 @@ export function createCat(fur = [0.9, 0.55, 0.2]) {
       root.position.set(cat.x, cat.y, cat.z);
       root.rotation.y = cat.yaw;
       const sit = cat.state === 'sit' || cat.state === 'groom' || cat.state === 'purr';
-      const run = cat.state === 'flee';
+      const run = cat.state === 'flee' || cat.state === 'chase' || cat.state === 'pounce'; // 1.18.0: Laserjagd und Sprung
       posture.rotation.x = sit ? 0.75 : run ? -0.1 : 0;
       posture.position.y = (sit ? 0 : Math.abs(Math.sin(cat.tail * 1.2)) * (run ? 0.05 : 0.012));
       if (cat.state === 'groom') posture.rotation.x += Math.sin(cat.tail * 3) * 0.12;

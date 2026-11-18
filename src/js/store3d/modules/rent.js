@@ -72,6 +72,11 @@ export default {
       blink = BLINK_SEC;
       const c = ctx.items.carried();
       say('theftShout', { title: c && c.item && c.item.Name });
+      try {
+        const n = ctx.use('npc');
+        const p = ctx.player.getPose();
+        if (n && typeof n.react === 'function' && p) n.react('alarm', { x: p.x, z: p.z });
+      } catch { /* egal */ }
     }
 
     if (ctx.opts.debug) window.__lfxRent = { ledger, guard, tryRent, alarm };

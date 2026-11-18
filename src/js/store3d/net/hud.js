@@ -2,7 +2,8 @@
 // Touch: oben rechts (Host-Klasse lfx-store-has-social schiebt das FPS-Feld nach unten), Desktop: oben links.
 // Touch: zusätzlich Chat- und Emote-Knopf (44 px, rechts neben „N hier“, nur wenn der jeweilige Teil verfügbar ist). Desktop: nur die Anzeige.
 // Die Anzeige „N hier“ fängt keine Eingaben ab (pointer-events:none), nur die Knöpfe sind klickbar.
-// hud = createHud(ctx, { onChat(), onEmote() }?) → { set(text | null, { chat, emote }?), dispose() }; ctx.renderer.domElement.parentNode ist der Host.
+// hud = createHud(ctx, { onChat(), onEmote() }?) → { set(text | null, { chat, emote, solo }?), dispose() }; ctx.renderer.domElement.parentNode ist der Host.
+// 1.18.0: solo = Knöpfe auch ohne Text (Emote-Rad ohne Mehrspieler, Touch): set('', { emote: true, solo: true }) zeigt nur die Knöpfe, ohne „N hier“.
 export function createHud(ctx, acts = {}) {
   let root = null;
   let label = null;
@@ -61,11 +62,12 @@ export function createHud(ctx, acts = {}) {
   return {
     /** Text zeigen; null/leer = ausblenden (und Platz im Host freigeben). */
     set(text, o) {
+      const show = !!(text || (o && o.solo));
       const btns = () => {
-        if (btnChat) btnChat.hidden = !(text && o && o.chat);
-        if (btnEmote) btnEmote.hidden = !(text && o && o.emote);
+        if (btnChat) btnChat.hidden = !(show && o && o.chat);
+        if (btnEmote) btnEmote.hidden = !(show && o && o.emote);
       };
-      if (!text) {
+      if (!show) {
         btns();
         if (root) root.hidden = true;
         if (host && host.classList) host.classList.remove('lfx-store-has-social');
@@ -76,7 +78,8 @@ export function createHud(ctx, acts = {}) {
       btns();
       root.hidden = false;
       if (ctx.isTouch && host.classList) host.classList.add('lfx-store-has-social');
-      if (text !== shown) { label.textContent = text; shown = text; }
+      const want = text || '';
+      if (want !== shown) { label.textContent = want; shown = want; }
     },
     dispose() {
       leaveHost();

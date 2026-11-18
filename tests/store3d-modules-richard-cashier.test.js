@@ -65,6 +65,22 @@ describe('Richard und Kassen-PC', () => {
     expect(bubble.hidden).toBe(false);
   });
 
+  it('1.18.0 event(playerKO) und event(laserHit): Richard ruft aus der Tür, auch wenn der Spieler draußen steht', async () => {
+    const app = await build();
+    app.player.state.z = app.layout.d + 4; app.player.z = app.layout.d + 4;
+    const bubble = dom.querySelector('.lfx-store-bubble');
+    host.hook('update', 0.1, 0.1);
+    expect(bubble.hidden).toBe(true);
+    host.providers.get('cashier').event('playerKO');
+    expect(bubble.hidden).toBe(false);
+    const { LINES } = await import('../src/js/store3d/modules/cashier-lines.js');
+    const t1 = bubble.textContent;
+    expect(LINES.playerKO.some((l) => t1.includes(l.replace('{name}', 'Max')))).toBe(true);
+    host.providers.get('cashier').event('laserHit');
+    const t2 = bubble.textContent;
+    expect(LINES.laserHit.some((l) => t2.includes(l.replace('{name}', 'Max')))).toBe(true);
+  });
+
   it('Richard-Dialog hat role=dialog und behält per Tastatur den Fokus', async () => {
     await build();
     window.__lfxM4.tip();

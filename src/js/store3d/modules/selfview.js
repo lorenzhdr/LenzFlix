@@ -19,7 +19,7 @@ import { debugHook } from './m3-debug.js';
 /** Ego-Beine sichtbar, wenn der Blick unter diese Neigung geht (rad; Hysterese zum Ausblenden). */
 export const LEGS_ON = -0.5;
 export const LEGS_OFF = -0.4;
-const DAUER = new Set(['sit']);
+const DAUER = new Set(['sit', 'aim']); // 'aim' (1.18.0): Laser zielt, bis fight playAnim(null) ruft
 
 const setLayer = (h, n) => { if (h && h.root) h.root.traverse((o) => { o.layers.set(n); }); };
 

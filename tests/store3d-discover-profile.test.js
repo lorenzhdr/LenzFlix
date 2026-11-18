@@ -18,12 +18,12 @@ function fakeProfile(init) {
   };
 }
 
-function boot(profile, user = { id: 'u1', name: 'Max' }) {
+function boot(profile, user = { id: 'u1', name: 'Max' }, uses = {}) {
   const providers = new Map();
   const ctx = {
     layout: {}, deps: { user, ...(profile ? { profile } : {}) }, opts: {},
     provide: (n, p) => { providers.set(n, p); return () => providers.delete(n); },
-    use: () => null, track() {}, scene: { add() {} },
+    use: (n) => uses[n] || null, track() {}, scene: { add() {} },
     xr: { toast: vi.fn(), presenting: () => false },
     player: { getPose: () => ({ x: 0, y: 0, z: 0 }), getY: () => 0 },
     camera: { getWorldDirection() {}, position: { x: 0, y: 0, z: 0 } },
@@ -90,5 +90,34 @@ describe('discover und Profil', () => {
     api.reset();
     expect(api.has('roof')).toBe(false);
     expect(p.get().disc).toEqual({});
+  });
+});
+
+describe('salon-first (1.18.0)', () => {
+  it('wird leise nachgetragen, wenn profile.evt.salonChair schon gesetzt ist', () => {
+    const { api, ctx } = boot(fakeProfile({ evt: { salonChair: 5000 } }));
+    expect(api.has('salon-first')).toBe(true);
+    expect(ctx.xr.toast).not.toHaveBeenCalled();
+  });
+  it('wird beim ersten Sitzen im Friseurstuhl vergeben (Toast n/19), danach nicht mehr', () => {
+    const salon = { sitting: () => false };
+    const { api, inst, ctx } = boot(fakeProfile(), { id: 'u1' }, { salon });
+    inst.update(0.2, 1);
+    expect(api.has('salon-first')).toBe(false);
+    salon.sitting = () => true;
+    inst.update(0.2, 2);
+    expect(api.has('salon-first')).toBe(true);
+    expect(ctx.xr.toast).toHaveBeenCalledWith(expect.stringMatching(/^Entdeckung 1\/19: /), expect.anything());
+    inst.update(0.2, 3);
+    expect(ctx.xr.toast).toHaveBeenCalledTimes(1);
+  });
+  it('wird bei gesetztem evt.salonChair im laufenden Betrieb erkannt (Salon-Modul schreibt es beim Start des Stuhl-Ablaufs)', () => {
+    const p = fakeProfile();
+    const { api, inst } = boot(p);
+    inst.update(0.2, 1);
+    expect(api.has('salon-first')).toBe(false);
+    p.update((d) => { d.evt = { ...(d.evt || {}), salonChair: Date.now() }; });
+    inst.update(0.2, 2);
+    expect(api.has('salon-first')).toBe(true);
   });
 });

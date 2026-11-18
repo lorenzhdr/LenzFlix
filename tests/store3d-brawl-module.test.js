@@ -110,6 +110,39 @@ describe('Richard wehrt sich', () => {
     expect(host.providers.get('brawl').state()).toBe('calm');
   });
 
+  it('1.18.0 Peitsche: Reichweite aus ev.range (3 m weg: Hand verfehlt, Peitsche trifft) mit Peitschen-Spruch', async () => {
+    const { layout } = await build();
+    const bw = host.providers.get('brawl');
+    const far = (o) => { const e = hitEv(layout); e.origin.z -= 1.5; e.dir.set(0, -0.1, 1).normalize(); return { ...e, ...o }; };
+    host.hook('update', 0.016, 1);
+    expect(host.action('hit', far({ weapon: 'hand', range: 1.6, max: 1 }))).toBe(false);
+    expect(bw.state()).toBe('calm');
+    expect(host.action('hit', far({ weapon: 'whip', range: 3.5, max: 2 }))).toBe(true);
+    expect(bw.state()).toBe('annoyed');
+    const text = dom.querySelector('.lfx-store-bubble').textContent;
+    const { LINES } = await import('../src/js/store3d/modules/cashier-lines.js');
+    expect(LINES.whipHit.some((l) => text.includes(l.replace('{name}', 'Max')))).toBe(true);
+  });
+
+  it('1.18.0 Laser zählt wie ein Schlag (Zähler, Augen zuhalten, Laser-Spruch), in banned/chase gleiche Regeln', async () => {
+    await build();
+    const bw = host.providers.get('brawl');
+    let t = 1;
+    host.hook('update', 0.016, t);
+    bw.hitBy('laser', { x: 0, z: 1 });
+    expect(bw.state()).toBe('annoyed');
+    expect(bw.getNetState().a).toBe(1); // 'cover' ist nur lokal, auf der Leitung 'stagger' (Worker begrenzt rs.a auf 0..9)
+    const { LINES } = await import('../src/js/store3d/modules/cashier-lines.js');
+    const bt = dom.querySelector('.lfx-store-bubble').textContent;
+    expect(LINES.laserHit.some((l) => bt.includes(l.replace('{name}', 'Max')))).toBe(true);
+    for (let i = 0; i < 20; i++) { t += 0.1; host.hook('update', 0.1, t); }
+    bw.hitBy('laser', { x: 0, z: 1 });
+    expect(bw.state()).toBe('shove');
+    window.__lfxBrawl.force('chase');
+    bw.hitBy('laser', null); // im Verfolgen: nicht angenommen, kein Absturz
+    expect(bw.state()).toBe('chase');
+  });
+
   it('Objekt-Treffer zählt, Hausverbot sperrt die Tür und Netzzustand rundet', async () => {
     const { door, state, layout } = await build();
     const bw = host.providers.get('brawl');
@@ -143,12 +176,16 @@ describe('Richard wehrt sich', () => {
   it('Diebstahl: nicht ausgeliehene Hülle durch die Tür löst Alarm aus, ausgeliehene nicht', async () => {
     const { state, layout } = await build({ carried: { id: 'c1', item: { Name: 'Titel' } } });
     const play = vi.fn();
+    const react = vi.fn();
     host.providers.set('sound', { play });
+    host.providers.set('npc', { react });
     state.x = layout.w / 2; state.z = layout.d - 1.5;
     host.hook('update', 0.016, 1);
     state.z = layout.d + 0.5;
     host.hook('update', 0.016, 2);
     expect(play).toHaveBeenCalledWith('alarm');
+    expect(react).toHaveBeenCalledTimes(1); // nahe Passanten schütteln den Kopf
+    expect(react).toHaveBeenCalledWith('alarm', { x: layout.w / 2, z: layout.d + 0.5 });
     play.mockClear();
     state.z = layout.d - 1.5; host.hook('update', 0.016, 3);
     state.z = layout.d + 0.5; host.hook('update', 0.016, 4); // Minute noch nicht um

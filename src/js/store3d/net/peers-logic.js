@@ -21,7 +21,7 @@ export const TIMELINE = 12;
 export const EVAL_S = 0.3;
 
 /** Animationsnamen, die einmal laufen (nur bei Codewechsel auslösen, sonst spielt die Figur sie in Dauerschleife). */
-export const ONE_SHOT = new Set(['hit', 'throw', 'stagger']);
+export const ONE_SHOT = new Set(['hit', 'throw', 'stagger', 'whip', 'belt']); // 1.18.0: Peitsche/Gürtel schlagen einmal je Codewechsel
 
 /** FNV-1a 32 Bit über einen String. */
 export function fnv1a32(str) {

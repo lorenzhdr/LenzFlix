@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Richards Posen (rein): Gliedwinkel je Animation und Zeit, in rad.
 // arm*x: nach vorn (+ schwingt die Hand nach vorn, -z); arm*z: seitlich (L: + einwärts, R: - einwärts; 2,5 = oben).
 // tiltX: Rumpf nach hinten (+) bzw. vorn (-); bob: Höhe (m); headX: Kopfnicken.
-export const ANIMS = ['idle', 'stagger', 'armsup', 'shove', 'wind', 'throw', 'run', 'hop', 'cross', 'point'];
+export const ANIMS = ['idle', 'stagger', 'armsup', 'shove', 'wind', 'throw', 'run', 'hop', 'cross', 'point', 'cover']; // nur anhängen (Index = Netzleitung)
 
 export const NEUTRAL = Object.freeze({ armLx: 0, armLz: 0, armRx: 0, armRz: 0, legL: 0, legR: 0, tiltX: 0, tiltZ: 0, bob: 0, headX: 0 });
 
@@ -50,6 +50,10 @@ export function poseFor(name, t, speed = 1) {
       break;
     case 'point': // zeigt zur Tür
       p.armRx = 1.5; p.armRz = -0.1; p.armLx = 0.3; p.tiltX = -0.05; p.headX = Math.sin(t * 8) * 0.05;
+      break;
+    case 'cover': // geblendet: Arme vor das Gesicht, Kopf gesenkt, taumelt leicht
+      p.armLx = 2.0; p.armRx = 2.0; p.armLz = 0.55; p.armRz = -0.55; p.headX = 0.3; p.tiltX = -0.1;
+      p.tiltZ = Math.sin(t * 5) * 0.06; p.legL = Math.sin(t * 5) * 0.15; p.legR = -Math.sin(t * 5) * 0.15;
       break;
     default: break;
   }

@@ -14997,6 +14997,133 @@
       return new _PolyhedronGeometry(data.vertices, data.indices, data.radius, data.detail);
     }
   };
+  var IcosahedronGeometry = class _IcosahedronGeometry extends PolyhedronGeometry {
+    /**
+     * Constructs a new icosahedron geometry.
+     *
+     * @param {number} [radius=1] - Radius of the icosahedron.
+     * @param {number} [detail=0] - Setting this to a value greater than `0` adds vertices making it no longer a icosahedron.
+     */
+    constructor(radius = 1, detail = 0) {
+      const t = (1 + Math.sqrt(5)) / 2;
+      const vertices = [
+        -1,
+        t,
+        0,
+        1,
+        t,
+        0,
+        -1,
+        -t,
+        0,
+        1,
+        -t,
+        0,
+        0,
+        -1,
+        t,
+        0,
+        1,
+        t,
+        0,
+        -1,
+        -t,
+        0,
+        1,
+        -t,
+        t,
+        0,
+        -1,
+        t,
+        0,
+        1,
+        -t,
+        0,
+        -1,
+        -t,
+        0,
+        1
+      ];
+      const indices = [
+        0,
+        11,
+        5,
+        0,
+        5,
+        1,
+        0,
+        1,
+        7,
+        0,
+        7,
+        10,
+        0,
+        10,
+        11,
+        1,
+        5,
+        9,
+        5,
+        11,
+        4,
+        11,
+        10,
+        2,
+        10,
+        7,
+        6,
+        7,
+        1,
+        8,
+        3,
+        9,
+        4,
+        3,
+        4,
+        2,
+        3,
+        2,
+        6,
+        3,
+        6,
+        8,
+        3,
+        8,
+        9,
+        4,
+        9,
+        5,
+        2,
+        4,
+        11,
+        6,
+        2,
+        10,
+        8,
+        6,
+        7,
+        9,
+        8,
+        1
+      ];
+      super(vertices, indices, radius, detail);
+      this.type = "IcosahedronGeometry";
+      this.parameters = {
+        radius,
+        detail
+      };
+    }
+    /**
+     * Factory method for creating an instance of this class from the given
+     * JSON object.
+     *
+     * @param {Object} data - A JSON object representing the serialized geometry.
+     * @return {IcosahedronGeometry} A new instance.
+     */
+    static fromJSON(data) {
+      return new _IcosahedronGeometry(data.radius, data.detail);
+    }
+  };
   var OctahedronGeometry = class _OctahedronGeometry extends PolyhedronGeometry {
     /**
      * Constructs a new octahedron geometry.
@@ -29965,7 +30092,7 @@ void main() {
     return y0Of(q) < STEP_H && y1Of(q) > STEP_H;
   }
   var cellKey = (cx, cz) => (cx + 32768) * 65536 + (cz + 32768);
-  function createColliderIndex(rects = [], cell = 4) {
+  function createColliderIndex(rects2 = [], cell = 4) {
     const map = /* @__PURE__ */ new Map();
     const keysOf = /* @__PURE__ */ new Map();
     const seen = /* @__PURE__ */ new Set();
@@ -30041,7 +30168,7 @@ void main() {
         }
       }
     };
-    for (const q of rects) idx2.add(q);
+    for (const q of rects2) idx2.add(q);
     return idx2;
   }
   function gather(src, x0, z0, x1, z1, out) {
@@ -30159,7 +30286,7 @@ void main() {
   }
 
   // src/js/store3d/nav/path.js
-  function makeNavGrid(bounds, rects, radius = 0.32, cell = 0.25) {
+  function makeNavGrid(bounds, rects2, radius = 0.32, cell = 0.25) {
     const ox = bounds.x0;
     const oz = bounds.z0;
     const cols = Math.max(1, Math.ceil((bounds.x1 - bounds.x0) / cell));
@@ -30174,7 +30301,7 @@ void main() {
         }
       }
     }
-    for (const q of rects) {
+    for (const q of rects2) {
       if (!navBlocks(q)) continue;
       const c0 = Math.max(0, Math.floor((q.x0 - radius - ox) / cell));
       const c1 = Math.min(cols - 1, Math.ceil((q.x1 + radius - ox) / cell));
@@ -33406,12 +33533,12 @@ void main() {
       if (this.finished || this.disposed) return Promise.resolve();
       return new Promise((resolve) => {
         let timer = null;
-        const fin2 = () => {
+        const fin3 = () => {
           if (timer) clearTimeout(timer);
           resolve();
         };
-        timer = setTimeout(fin2, ms);
-        this.waiters.push(fin2);
+        timer = setTimeout(fin3, ms);
+        this.waiters.push(fin3);
       });
     }
     stats() {
@@ -34772,6 +34899,8 @@ void main() {
       this.eaten = /* @__PURE__ */ new Set();
       this.actHeld = /* @__PURE__ */ new Map();
       this.clickHeld = false;
+      this.wheelHeld = false;
+      this.wheelAt = -Infinity;
       this.h = {
         key: (e) => this.onKey(e, true),
         keyUp: (e) => this.onKey(e, false),
@@ -34790,10 +34919,12 @@ void main() {
             if (typeof this.ctx.onTakeUp === "function") this.ctx.onTakeUp();
           }
         },
+        wheel: (e) => this.onWheelEvent(e),
         blur: () => {
           this.down.clear();
           this.eaten.clear();
           this.releaseHeld();
+          this.releaseWheel();
           this.zoomKey = false;
           this.zoomBtn = false;
           this.syncZoom();
@@ -34803,6 +34934,22 @@ void main() {
     }
     get locked() {
       return document.pointerLockElement === this.ctx.canvas;
+    }
+    /** R losgelassen (oder abgebrochen): Waffenrad wählt das markierte Segment und schließt. */
+    releaseWheel() {
+      if (!this.wheelHeld) return;
+      this.wheelHeld = false;
+      if (typeof this.ctx.onWheelUp === "function") this.ctx.onWheelUp();
+    }
+    /** Mausrad im Laufmodus: nächste/vorige Waffe (gedrosselt, nur mit Pointer-Lock oder Zieh-Modus). */
+    onWheelEvent(e) {
+      if (typeof this.ctx.onWeaponCycle !== "function" || this.ctx.getMode() !== "play" || !(this.locked || this.dragLook)) return;
+      if (e && typeof e.preventDefault === "function") e.preventDefault();
+      const dy = e ? Number(e.deltaY) || 0 : 0;
+      const now = performance.now();
+      if (Math.abs(dy) < 1 || now - this.wheelAt < 140) return;
+      this.wheelAt = now;
+      this.ctx.onWeaponCycle(dy > 0 ? 1 : -1);
     }
     /** Alle gehaltenen Aktionen loslassen (Loslass-Rückrufe, falls vorhanden). */
     releaseHeld() {
@@ -34837,6 +34984,7 @@ void main() {
       document.addEventListener("pointerlockerror", this.h.lockErr);
       c.addEventListener("mousedown", this.h.down);
       c.addEventListener("contextmenu", this.h.noCtx);
+      c.addEventListener("wheel", this.h.wheel, { passive: false });
       window.addEventListener("mouseup", this.h.up);
     }
     detach() {
@@ -34852,7 +35000,9 @@ void main() {
       document.removeEventListener("pointerlockerror", this.h.lockErr);
       c.removeEventListener("mousedown", this.h.down);
       c.removeEventListener("contextmenu", this.h.noCtx);
+      c.removeEventListener("wheel", this.h.wheel);
       window.removeEventListener("mouseup", this.h.up);
+      this.releaseWheel();
       this.down.clear();
       this.releaseHeld();
       this.clearLockTimer();
@@ -35029,6 +35179,12 @@ void main() {
         const up = this.ctx[ACTION_UP(name)];
         if (typeof up === "function") up.call(this.ctx);
       }
+      if (!isDown && e.code === "KeyR" && this.wheelHeld) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.releaseWheel();
+        return;
+      }
       if (esc ? typingText(e.target) : typing(e.target)) return;
       if (esc && document.documentElement.classList.contains("lfx-themepicker-open") || esc && document.documentElement.classList.contains("lfx-popover-open")) return;
       if (esc) {
@@ -35044,6 +35200,28 @@ void main() {
         return;
       }
       if (isDown && !e.repeat && mode === "play" && this.relockArmed && !this.locked && !this.dragLook && !this.inflight && e.code !== "Escape") this.requestLock();
+      if (e.code === "KeyR" && this.ctx.onWheel) {
+        if (this.wheelHeld) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        if (isDown && !e.repeat && mode === "play" && (this.locked || this.dragLook) && this.ctx.onWheel() === true) {
+          this.wheelHeld = true;
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
+      if (this.ctx.onWeaponPick && mode === "play" && (this.locked || this.dragLook)) {
+        const m = /^(?:Digit|Numpad)([1-4])$/.exec(e.code);
+        if (m) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isDown && !e.repeat) this.ctx.onWeaponPick(Number(m[1]));
+          return;
+        }
+      }
       const k = KEYS[e.code];
       if (k) {
         if (isDown && mode !== "play" && e.code.startsWith("Arrow")) return;
@@ -35950,6 +36128,15 @@ void main() {
         onHit: () => {
           if (c.onHit) c.onHit();
         },
+        onHitUp: () => {
+          if (c.onHitUp) c.onHitUp();
+        },
+        onAux: () => {
+          if (c.onAux) c.onAux();
+        },
+        onAuxUp: () => {
+          if (c.onAuxUp) c.onAuxUp();
+        },
         onThrow: () => {
           if (c.onThrow) c.onThrow();
         },
@@ -36090,6 +36277,7 @@ void main() {
           this.pad.setAimed(this.aimed);
           this.pad.setCarrying(this.carrying);
           if (this.pad.setViewShown) this.pad.setViewShown(!!c.onView);
+          if (this.pad.setAux && c.onAux) this.pad.setAux(true, "WAFFE");
           this.padKind = "game";
           this.game.attach(this.pad);
         }
@@ -36296,9 +36484,9 @@ void main() {
     root.className = "lfx-store-rotate";
     root.setAttribute("role", "status");
     root.hidden = true;
-    const icon = document.createElement("span");
-    icon.className = "lfx-store-rotate-icon";
-    icon.innerHTML = ICON;
+    const icon2 = document.createElement("span");
+    icon2.className = "lfx-store-rotate-icon";
+    icon2.innerHTML = ICON;
     const text = document.createElement("span");
     text.className = "lfx-store-rotate-text";
     text.textContent = ROTATE_TEXT;
@@ -36307,7 +36495,7 @@ void main() {
     close.className = "lfx-store-rotate-close";
     close.setAttribute("aria-label", "Hinweis schlie\xDFen");
     close.textContent = "\u2715";
-    root.append(icon, text, close);
+    root.append(icon2, text, close);
     host.appendChild(root);
     let dismissed = false;
     let destroyed = false;
@@ -38139,7 +38327,7 @@ void main() {
       const group = new Group();
       group.name = "m3-showcase";
       const removers = [];
-      const rects = [];
+      const rects2 = [];
       const entries = flat.map((it) => {
         const ref = backdropRef(it);
         return {
@@ -38184,7 +38372,7 @@ void main() {
           outer.position.set(x, baseY, pz + 0.155);
           group.add(outer);
           posters.push({ m, baseY, phase: idx2 * 1.7 });
-          rects.push(ctx.addCollider({ x0: x - 0.62, z0: pz - 0.28, x1: x + 0.62, z1: pz + 0.28, kind: "prop" }));
+          rects2.push(ctx.addCollider({ x0: x - 0.62, z0: pz - 0.28, x1: x + 0.62, z1: pz + 0.28, kind: "prop" }));
           removers.push(ctx.addInteractable({
             box: { min: { x: x - 0.65, y: 0.3, z: pz - 0.3 }, max: { x: x + 0.65, y: 1.95, z: pz + 0.3 } },
             label: it.Name,
@@ -38220,7 +38408,7 @@ void main() {
         dispose() {
           offDbg();
           removers.forEach((r) => r());
-          rects.forEach((r) => ctx.removeCollider(r));
+          rects2.forEach((r) => ctx.removeCollider(r));
           group.removeFromParent();
         }
       };
@@ -38735,9 +38923,9 @@ void main() {
       function zoneFilterTarget() {
         const p = ctx.player.getPose();
         const L2 = ctx.layout;
-        const inR = (r) => r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1;
-        if (inR(L2.adultRoom)) return 700;
-        if (inR(L2.kidsRoom)) return 5200;
+        const inR2 = (r) => r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1;
+        if (inR2(L2.adultRoom)) return 700;
+        if (inR2(L2.kidsRoom)) return 5200;
         return 2600;
       }
       const offs = [
@@ -42166,7 +42354,7 @@ void main() {
       const offHit = ctx.input.onAction("hit", (ev) => {
         const p = ctx.player.getPose();
         const yaw = p.yaw;
-        const hit = pickInCone(world.bodies, { x: p.x, z: p.z, dx: -Math.sin(yaw), dz: -Math.cos(yaw), y: p.y || 0, range: HIT_RANGE, deg: HIT_CONE_DEG });
+        const hit = pickInCone(world.bodies, { x: p.x, z: p.z, dx: -Math.sin(yaw), dz: -Math.cos(yaw), y: p.y || 0, range: Number.isFinite(ev.range) && ev.range > 0 ? ev.range : HIT_RANGE, deg: HIT_CONE_DEG });
         if (!hit) return false;
         const b = hit.body;
         const hx = Math.hypot(ev.dir.x, ev.dir.z) || 1;
@@ -44237,6 +44425,7 @@ void main() {
         richard: () => richard,
         event(name) {
           if (name === "couchSit" || name === "couchStand") speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
+          else if (name === "playerKO" || name === "laserHit") speak(name, {}, { force: true, outside: true, brawl: true, maxDist: Infinity, overOverlay: true });
         },
         /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
         /** Sprecher-Regie für Personen: speaker({ id, voiceSeed, pitch, rate, prio, pos }) → { say(text, { volume }) → 'spoken'|'bubble'|'muted', cancel() } (modules/voice.js). */
@@ -44273,7 +44462,7 @@ void main() {
           voice: () => ({ speaking: voice.speaking, voiceName: voice.voiceName })
         };
       }
-      const inR = (r, p) => r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1;
+      const inR2 = (r, p) => r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1;
       let poll = 0;
       let lastX = 0;
       let lastZ = 0;
@@ -44358,14 +44547,14 @@ void main() {
                 if (speak("resume", { title: r.Name })) resumeSaid = true;
               } else speak("idle", {});
             }
-            if (inR(L2.adultRoom, p)) {
+            if (inR2(L2.adultRoom, p)) {
               adultSecs += step;
               if (adultSecs >= 30 && !adultSaid && speak("adultLong", {}, { maxDist: Infinity })) adultSaid = true;
             } else {
               adultSecs = 0;
               adultSaid = false;
             }
-            const k = !!inR(L2.kidsRoom, p);
+            const k = !!inR2(L2.kidsRoom, p);
             if (k && !inKids && now - lastKids > 120 && speak("kidsEnter", {}, { maxDist: Infinity })) lastKids = now;
             inKids = k;
           }
@@ -44631,7 +44820,7 @@ void main() {
   }
 
   // src/js/store3d/modules/brawl-pose.js
-  var ANIMS = ["idle", "stagger", "armsup", "shove", "wind", "throw", "run", "hop", "cross", "point"];
+  var ANIMS = ["idle", "stagger", "armsup", "shove", "wind", "throw", "run", "hop", "cross", "point", "cover"];
   var NEUTRAL = Object.freeze({ armLx: 0, armLz: 0, armRx: 0, armRz: 0, legL: 0, legR: 0, tiltX: 0, tiltZ: 0, bob: 0, headX: 0 });
   var env = (u) => Math.sin(Math.min(1, Math.max(0, u)) * Math.PI);
   function poseFor(name, t, speed = 1) {
@@ -44713,6 +44902,17 @@ void main() {
         p.armLx = 0.3;
         p.tiltX = -0.05;
         p.headX = Math.sin(t * 8) * 0.05;
+        break;
+      case "cover":
+        p.armLx = 2;
+        p.armRx = 2;
+        p.armLz = 0.55;
+        p.armRz = -0.55;
+        p.headX = 0.3;
+        p.tiltX = -0.1;
+        p.tiltZ = Math.sin(t * 5) * 0.06;
+        p.legL = Math.sin(t * 5) * 0.15;
+        p.legR = -Math.sin(t * 5) * 0.15;
         break;
       default:
         break;
@@ -44892,14 +45092,14 @@ void main() {
       };
       const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
       const inPen = () => R2.pos.x >= counter.x0 - 0.1 && R2.pos.z >= counter.z1 - 0.05 && R2.pos.y < 0.3;
-      const clamp15 = (v, a, b) => Math.min(b, Math.max(a, v));
+      const clamp18 = (v, a, b) => Math.min(b, Math.max(a, v));
       const onCounter = (q) => q.x >= counter.x0 - 0.05 && q.x <= counter.x1 + 0.05 && q.z > counter.z0 + 0.02 && q.z < counter.z1 - 0.02;
       function landingPoint(p) {
         const nav = ctx.layout.nav;
-        const bx3 = clamp15(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
+        const bx3 = clamp18(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
         for (const dz of [0.6, 1, 1.4, 1.8]) {
           for (const dx of [0, 0.9, -0.9, 1.8, -1.8, 2.7, -2.7]) {
-            const x = clamp15(bx3 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
+            const x = clamp18(bx3 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
             const z = counter.z0 - dz;
             if (nav && !isFree(nav, x, z)) continue;
             if (p && Math.hypot(p.x - x, p.z - z) < 1.1) continue;
@@ -44913,7 +45113,7 @@ void main() {
         let path = null;
         if (nav) {
           path = findPath(nav, { x: p.x, z: p.z }, goal);
-          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp15(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
+          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp18(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
         }
         let w = null;
         if (path) {
@@ -45024,8 +45224,8 @@ void main() {
         const to = tr.to;
         R2.setBusy(to === "shove" || to === "throw" || to === "chase" || to === "banned");
         if (to === "annoyed") {
-          play("stagger", 0.8);
-          say(tr.reason === "objectHit" ? "hitObject" : "hit1", {}, { always: true });
+          play(hitCat === "laserHit" ? "cover" : "stagger", hitCat === "laserHit" ? 1.6 : 0.8);
+          say(hitCat || (tr.reason === "objectHit" ? "hitObject" : "hit1"), {}, { always: true });
         }
         if (to === "shove") {
           play("armsup", 0.6);
@@ -45110,17 +45310,19 @@ void main() {
           veilTo(false);
         });
       }
-      function reactHit(dir) {
+      function reactHit(dir, kind) {
         if (dir) {
           recoil.x = dir.x * 0.28;
           recoil.z = dir.z * 0.28;
         }
-        if (!hostile() || fsm.state === "throw") play("stagger", 0.8);
+        if (!hostile() || fsm.state === "throw") play(kind === "laser" ? "cover" : "stagger", kind === "laser" ? 1.6 : 0.8);
       }
-      function doHit(source, dir) {
+      const KIND_CAT = { laser: "laserHit", whip: "whipHit", belt: "beltHit" };
+      let hitCat = null;
+      function doHit(source, dir, kind) {
         if (netRole === "mirror") {
           if (hostile() || !(netHook && netHook.claim())) {
-            reactHit(dir);
+            reactHit(kind === "laser" ? null : dir, kind);
             return;
           }
           setNetRole("owner");
@@ -45129,19 +45331,22 @@ void main() {
         const res = fsm.hit(source, T5);
         if (res.accepted) {
           if (wasLocal && netHook && netHook.claim()) netRole = "owner";
+          hitCat = KIND_CAT[kind] || null;
           onTransition(res.transition);
+          hitCat = null;
           if (source === "object" && res.transition.to !== "annoyed" && res.transition.to !== "throw") say("hitObject", {}, { always: true });
-          reactHit(dir);
+          reactHit(kind === "laser" ? null : dir, kind);
         } else if (fsm.state !== "banned") {
-          reactHit(dir);
+          reactHit(kind === "laser" ? null : dir, kind);
         }
       }
       offs.push(ctx.input.onAction("hit", (ev) => {
         if (xrOn() || !ev || !ev.origin || !ev.dir) return false;
         if (fsm.state === "banned") return false;
-        const c = inCone(ev.origin, ev.dir, { x: R2.pos.x, y: R2.pos.y + 1, z: R2.pos.z });
+        const range3 = Number.isFinite(ev.range) && ev.range > 0 ? ev.range : 1.6;
+        const c = inCone(ev.origin, ev.dir, { x: R2.pos.x, y: R2.pos.y + 1, z: R2.pos.z }, { range: range3 });
         if (!c.hit) return false;
-        doHit("player", { x: ev.dir.x, z: ev.dir.z });
+        doHit("player", { x: ev.dir.x, z: ev.dir.z }, ev.weapon === "belt" || ev.weapon === "whip" ? ev.weapon : null);
         return true;
       }, { prio: 30 }));
       function hitPlayer(tp) {
@@ -45231,11 +45436,12 @@ void main() {
         /** Treffer durch ein geworfenes Objekt (Paket „physics“ ruft das auf). dir = { x, z } vom Objekt weg oder null. */
         hitBy(source, dir) {
           if (xrOn()) return;
-          doHit(source === "player" ? "player" : "object", dir || null);
+          const kind = source === "laser" || source === "whip" || source === "belt" ? source : null;
+          doHit(kind || source === "player" || source === "hand" ? "player" : "object", dir || null, kind);
         },
         /** Netzformat (1.16.0): Zustand + Ort + Animation. */
         getNetState() {
-          return { v: 1, f: fsm.getNetState(T5), x: Math.round(R2.pos.x * 100) / 100, z: Math.round(R2.pos.z * 100) / 100, y: Math.round(R2.pos.y * 100) / 100, yaw: Math.round(R2.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name)) };
+          return { v: 1, f: fsm.getNetState(T5), x: Math.round(R2.pos.x * 100) / 100, z: Math.round(R2.pos.z * 100) / 100, y: Math.round(R2.pos.y * 100) / 100, yaw: Math.round(R2.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name === "cover" ? "stagger" : anim.name)) };
         },
         /** Zustand + Ort übernehmen. Rolle 'mirror': glättet auf das Ziel, Hausverbot nur mit o.self; sonst wie 1.15 (hart). */
         applyRemote(net, o) {
@@ -45769,6 +45975,12 @@ void main() {
         blink = BLINK_SEC;
         const c = ctx.items.carried();
         say("theftShout", { title: c && c.item && c.item.Name });
+        try {
+          const n = ctx.use("npc");
+          const p = ctx.player.getPose();
+          if (n && typeof n.react === "function" && p) n.react("alarm", { x: p.x, z: p.z });
+        } catch {
+        }
       }
       if (ctx.opts.debug) window.__lfxRent = { ledger, guard, tryRent, alarm };
       return {
@@ -49446,24 +49658,6 @@ void main() {
     if (mode === "hot") return { type: "say", cat: "threat", action: w.hitCount > 1 ? "attack" : "threat" };
     return { type: "say", cat: rand() < 0.35 && w.hitCount > 1 ? "flee" : "bumped" };
   }
-  function pickInCone2(people, origin, dir, range3 = 1.6, coneDeg = 25) {
-    const l = Math.hypot(dir.x, dir.z);
-    if (l < 1e-4) return null;
-    const dx = dir.x / l;
-    const dz = dir.z / l;
-    const cos = Math.cos(coneDeg * Math.PI / 180);
-    let best = null;
-    for (let i = 0; i < people.length; i++) {
-      const p = people[i];
-      const rx = p.x - origin.x;
-      const rz = p.z - origin.z;
-      const dist = Math.hypot(rx, rz);
-      if (dist > range3) continue;
-      if (dist > 0.25 && (rx * dx + rz * dz) / dist < cos) continue;
-      if (!best || dist < best.dist) best = { index: i, dist };
-    }
-    return best;
-  }
   function walkerCount(npcMax, tod, raining) {
     let n = npcMax;
     if (tod === "night") n = Math.ceil(n * 0.5);
@@ -49679,7 +49873,7 @@ void main() {
   var TAU2 = Math.PI * 2;
   var clamp7 = (v, a, b) => Math.min(b, Math.max(a, v));
   var yawTo = (dx, dz) => Math.atan2(-dx, -dz);
-  var CAT = { sitMin: 4, sitMax: 11, groomT: 2.8, walkSpeed: 0.8, fleeSpeed: 5.2, purrT: 3.6, startleDist: 3.2, closeDist: 1.1, petDist: 2.4, petSpeed: 1.3 };
+  var CAT = { sitMin: 4, sitMax: 11, groomT: 2.8, walkSpeed: 0.8, fleeSpeed: 5.2, purrT: 3.6, startleDist: 3.2, closeDist: 1.1, petDist: 2.4, petSpeed: 1.3, laserRange: 8, laserSpeed: 4.2, laserFound: 3, pounceT: 0.5, pounceMin: 1 };
   function lineFree(colliders, a, b, pad = 0.15) {
     const len = Math.hypot(b.x - a.x, b.z - a.z);
     const n = Math.max(1, Math.ceil(len / 0.2));
@@ -49758,6 +49952,30 @@ void main() {
     const pl = env2.player;
     const dist = pl ? Math.hypot(pl.x - cat.x, pl.z - cat.z) : Infinity;
     const sp = pl ? pl.speed || 0 : 0;
+    const lz = env2.laser || null;
+    if (cat.state === "chase") return stepChase(cat, dt, env2, lz, ev);
+    if (cat.state === "pounce") {
+      cat.timer -= dt;
+      const p = 1 - Math.max(0, cat.timer) / CAT.pounceT;
+      cat.y = Math.sin(Math.min(1, p) * Math.PI) * 0.4;
+      cat.x += -Math.sin(cat.yaw) * 1.2 * dt;
+      cat.z += -Math.cos(cat.yaw) * 1.2 * dt;
+      if (cat.timer <= 0) {
+        cat.state = "sit";
+        cat.y = 0;
+        cat.timer = 3 + env2.rand() * 4;
+        cat.moveSpeed = 0;
+      }
+      return ev;
+    }
+    if (lz && cat.state !== "flee" && Math.hypot(lz.x - cat.x, lz.z - cat.z) < CAT.laserRange && (!env2.free || env2.free({ x: cat.x, z: cat.z }, lz))) {
+      cat.state = "chase";
+      cat.chaseT = 0;
+      cat.chk = 0.25;
+      cat.laserDone = false;
+      cat.moveSpeed = CAT.laserSpeed;
+      return stepChase(cat, dt, env2, lz, ev);
+    }
     if (cat.state === "walk" || cat.state === "flee") {
       const speed = cat.state === "flee" ? CAT.fleeSpeed : CAT.walkSpeed;
       const total = Math.hypot(cat.to.x - cat.from.x, cat.to.z - cat.from.z) || 1;
@@ -49823,7 +50041,48 @@ void main() {
     }
     return ev;
   }
-  var PIGEON = { flushDist: 3.4, flushRunDist: 7, runSpeed: 3.4, flySpeed: 5.2, altitude: 4.2, flyMin: 6, flyMax: 14 };
+  function stepChase(cat, dt, env2, lz, ev) {
+    if (!lz || Math.hypot(lz.x - cat.x, lz.z - cat.z) > CAT.laserRange + 2) {
+      cat.moveSpeed = 0;
+      if (cat.chaseT >= CAT.pounceMin && !lz) {
+        cat.state = "pounce";
+        cat.timer = CAT.pounceT;
+      } else {
+        cat.state = "sit";
+        cat.timer = 3 + env2.rand() * 3;
+        cat.y = 0;
+      }
+      return ev;
+    }
+    cat.chaseT += dt;
+    cat.chk -= dt;
+    if (cat.chk <= 0) {
+      cat.chk = 0.25;
+      if (env2.free && !env2.free({ x: cat.x, z: cat.z }, lz)) {
+        cat.state = "sit";
+        cat.timer = 2;
+        cat.moveSpeed = 0;
+        return ev;
+      }
+    }
+    const dx = lz.x - cat.x;
+    const dz = lz.z - cat.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 0.25) {
+      const step = Math.min(d, CAT.laserSpeed * dt);
+      cat.x += dx / d * step;
+      cat.z += dz / d * step;
+      cat.yaw = yawTo(dx, dz);
+      cat.moveSpeed = CAT.laserSpeed;
+    } else cat.moveSpeed = 0;
+    cat.y += (0 - cat.y) * Math.min(1, dt * 6);
+    if (!cat.laserDone && cat.chaseT >= CAT.laserFound) {
+      cat.laserDone = true;
+      ev.push({ type: "catlaser" });
+    }
+    return ev;
+  }
+  var PIGEON = { laserDist: 2.5, flushDist: 3.4, flushRunDist: 7, runSpeed: 3.4, flySpeed: 5.2, altitude: 4.2, flyMin: 6, flyMax: 14 };
   function createFlock(homes, n, rand) {
     const out = [];
     for (let i = 0; i < n; i++) {
@@ -49865,6 +50124,16 @@ void main() {
   function stepFlock(flock, dt, env2) {
     const ev = [];
     const pl = env2.player;
+    const lz = env2.laser || null;
+    if (lz) {
+      for (const p of flock) {
+        if ((p.state === "peck" || p.state === "walk") && Math.hypot(lz.x - p.x, lz.z - p.z) < PIGEON.laserDist) {
+          flush(flock, lz, env2.rand);
+          ev.push({ type: "flush" });
+          break;
+        }
+      }
+    }
     if (pl) {
       let trig = false;
       for (const p of flock) {
@@ -49996,7 +50265,7 @@ void main() {
         root.position.set(cat.x, cat.y, cat.z);
         root.rotation.y = cat.yaw;
         const sit = cat.state === "sit" || cat.state === "groom" || cat.state === "purr";
-        const run = cat.state === "flee";
+        const run = cat.state === "flee" || cat.state === "chase" || cat.state === "pounce";
         posture.rotation.x = sit ? 0.75 : run ? -0.1 : 0;
         posture.position.y = sit ? 0 : Math.abs(Math.sin(cat.tail * 1.2)) * (run ? 0.05 : 0.012);
         if (cat.state === "groom") posture.rotation.x += Math.sin(cat.tail * 3) * 0.12;
@@ -50559,6 +50828,449 @@ void main() {
     return { text: l[i], index: i };
   }
 
+  // src/js/store3d/npc/temper-logic.js
+  var CHASE_MAX = 8;
+  var MAX_ATTACKERS = 3;
+  function fnv(s) {
+    let h3 = 2166136261;
+    s = String(s);
+    for (let i = 0; i < s.length; i++) {
+      h3 ^= s.charCodeAt(i);
+      h3 = Math.imul(h3, 16777619);
+    }
+    h3 ^= h3 >>> 15;
+    h3 = Math.imul(h3, 2246822507);
+    h3 ^= h3 >>> 13;
+    return (h3 >>> 0) / 4294967296;
+  }
+  function temperOf(seed) {
+    const u = fnv(`temper:${seed}`);
+    return u < 0.35 ? "shy" : u < 0.8 ? "normal" : "hot";
+  }
+  function reactToProvocation(state, kind, t) {
+    if (state.temper === "shy") return { action: "flee" };
+    if (state.temper === "hot") {
+      if (kind === "hit" || state.threatened) {
+        state.chaseUntil = t + CHASE_MAX;
+        state.threatened = true;
+        return { action: "attack", until: state.chaseUntil };
+      }
+      state.threatened = true;
+      return { action: "threat" };
+    }
+    return { action: "scold" };
+  }
+  function chaseStep(state, t) {
+    return state.chaseUntil != null && t < state.chaseUntil ? "chase" : "done";
+  }
+  function bystanderJoin(n, temper = "hot") {
+    return temper === "hot" && n < MAX_ATTACKERS;
+  }
+
+  // src/js/store3d/npc/attack-logic.js
+  var ATK = {
+    sleevesS: 0.7,
+    threatS: 1.5,
+    speed: 3.2,
+    reach: 1.3,
+    swingGap: 1.3,
+    swingS: 0.5,
+    strikeAt: 0.22,
+    dmgFist: 8,
+    dmgItem: 11,
+    blindS: 2,
+    blockedGiveUp: 1.2,
+    maxRange: 18,
+    stunS: 0.5
+  };
+  function attackItem(look) {
+    if (!look) return null;
+    if (look.umbrella) return "umbrella";
+    if (look.bag === "bag" || look.bag === "backpack") return "bag";
+    if (look.bag === "shopping") return "shopping";
+    return null;
+  }
+  function createAttack(o) {
+    return {
+      phase: "threat",
+      t: 0,
+      x: o.x,
+      z: o.z,
+      yaw: o.yaw || 0,
+      item: o.item || null,
+      until: o.until,
+      attack: !!o.attack,
+      cool: 0,
+      struck: false,
+      runAnim: false,
+      blocked: 0,
+      stun: 0,
+      started: false,
+      threatAnim: false,
+      then: "walk",
+      blindThen: "flee"
+    };
+  }
+  function createBlind(o) {
+    const a = createAttack({ ...o, attack: false });
+    a.phase = "blind";
+    a.blindThen = o.then === "attack" ? "attack" : "flee";
+    return a;
+  }
+  function stunAttack(a, s = ATK.stunS) {
+    if (!a || a.phase === "blind") return;
+    a.stun = s;
+    a.runAnim = false;
+    if (a.phase === "swing") {
+      a.phase = "chase";
+      a.t = 0;
+      a.cool = ATK.swingGap;
+    }
+  }
+  function stepAttack(a, dt, env2) {
+    const ev = [];
+    const tg = env2.target;
+    a.t += dt;
+    a.cool = Math.max(0, a.cool - dt);
+    if (a.phase === "blind") {
+      if (!a.started) {
+        a.started = true;
+        ev.push({ type: "anim", name: "cover", restart: true }, { type: "say", cat: "blinded" });
+      }
+      if (a.t >= ATK.blindS) {
+        if (a.blindThen === "attack" && tg && !env2.stop) {
+          a.phase = "chase";
+          a.t = 0;
+          a.attack = true;
+          a.until = env2.clock + CHASE_MAX;
+          a.runAnim = false;
+          ev.push({ type: "say", cat: "attackHot" });
+        } else ev.push({ type: "end", reason: "blind", then: a.blindThen === "attack" ? "walk" : "flee" });
+      }
+      return ev;
+    }
+    if (env2.stop || !tg) {
+      ev.push({ type: "end", reason: "stop", then: "walk" });
+      return ev;
+    }
+    const dx = tg.x - a.x;
+    const dz = tg.z - a.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 0.05) a.yaw += angTo(a.yaw, yawOf(dx, dz)) * Math.min(1, dt * 10);
+    if (a.stun > 0) {
+      a.stun -= dt;
+      return ev;
+    }
+    if (a.phase === "threat") {
+      if (!a.started) {
+        a.started = true;
+        ev.push({ type: "anim", name: "sleeves", restart: true });
+      }
+      if (!a.threatAnim && a.t >= ATK.sleevesS) {
+        a.threatAnim = true;
+        ev.push({ type: "anim", name: "threat", restart: true });
+      }
+      if (a.t >= ATK.threatS) {
+        if (a.attack) {
+          a.phase = "chase";
+          a.t = 0;
+          a.runAnim = false;
+          ev.push({ type: "say", cat: "attackHot" });
+        } else ev.push({ type: "end", reason: "threatDone", then: "walk" });
+      }
+      return ev;
+    }
+    if (a.phase === "chase") {
+      if (chaseStep({ chaseUntil: a.until }, env2.clock) === "done") {
+        ev.push({ type: "end", reason: "timeout", then: "walk" });
+        return ev;
+      }
+      if (d > ATK.maxRange) {
+        ev.push({ type: "end", reason: "far", then: "walk" });
+        return ev;
+      }
+      if (d <= ATK.reach) {
+        if (a.cool <= 0) {
+          a.phase = "swing";
+          a.t = 0;
+          a.struck = false;
+          ev.push({ type: "anim", name: a.item ? "swing" : "hit", restart: true });
+        } else if (a.runAnim) {
+          a.runAnim = false;
+          ev.push({ type: "anim", name: "idle", restart: false });
+        }
+        return ev;
+      }
+      if (env2.free && !env2.free({ x: a.x, z: a.z }, tg)) {
+        a.blocked += dt;
+        if (a.blocked > ATK.blockedGiveUp) ev.push({ type: "end", reason: "blocked", then: "walk" });
+        return ev;
+      }
+      a.blocked = 0;
+      if (!a.runAnim) {
+        a.runAnim = true;
+        ev.push({ type: "anim", name: "run", speed: ATK.speed, restart: false });
+      }
+      const step = Math.min(d - ATK.reach * 0.8, ATK.speed * dt);
+      if (step > 0) {
+        a.x += dx / d * step;
+        a.z += dz / d * step;
+      }
+      return ev;
+    }
+    if (!a.struck && a.t >= ATK.strikeAt) {
+      a.struck = true;
+      if (d <= ATK.reach + 0.5) ev.push({ type: "strike", dir: { x: dx / (d || 1), z: dz / (d || 1) }, dmg: a.item ? ATK.dmgItem : ATK.dmgFist, item: a.item, from: { x: a.x, z: a.z } });
+    }
+    if (a.t >= ATK.swingS) {
+      a.phase = "chase";
+      a.t = 0;
+      a.cool = ATK.swingGap;
+      a.runAnim = false;
+    }
+    return ev;
+  }
+  function angTo(a, b) {
+    let d = (b - a) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  }
+  function nearestOnGraph(g, x, z, skip) {
+    let best = null;
+    for (const e of g.edges) {
+      if (e.wait || skip && skip(e)) continue;
+      const ex = e.bx - e.ax;
+      const ez = e.bz - e.az;
+      const l2 = ex * ex + ez * ez;
+      if (l2 < 1e-9) continue;
+      const t = Math.max(0, Math.min(1, ((x - e.ax) * ex + (z - e.az) * ez) / l2));
+      const d = Math.hypot(x - (e.ax + ex * t), z - (e.az + ez * t));
+      if (!best || d < best.dist) best = { edge: e.id, t, dist: d };
+    }
+    return best;
+  }
+
+  // src/js/store3d/npc/throw-logic.js
+  var THROW = { speed: 8, minDur: 0.25, maxDur: 1.4, hitR: 0.9, hitDy: 1.3, max: 6 };
+  var THROW_DMG = { candy: 4, popcorn: 4 };
+  var THROW_SOUND = { candy: "candy", popcorn: "pop" };
+  var THROW_COLORS = { candy: [[1, 0.2, 0.55], [0.25, 0.8, 1], [1, 0.85, 0.2]], popcorn: [[1, 0.95, 0.75], [1, 0.9, 0.55]] };
+  var clamp8 = (v, a, b) => Math.min(b, Math.max(a, v));
+  function createThrow(kind, from, to) {
+    const d = Math.hypot(to.x - from.x, to.z - from.z);
+    return {
+      kind: THROW_DMG[kind] !== void 0 ? kind : "popcorn",
+      from: { x: from.x, y: from.y, z: from.z },
+      to: { x: to.x, y: to.y, z: to.z },
+      t: 0,
+      dur: clamp8(d / THROW.speed, THROW.minDur, THROW.maxDur),
+      arc: 0.15 + 0.35 * Math.min(1, d / 6),
+      x: from.x,
+      y: from.y,
+      z: from.z,
+      done: false,
+      color: 0,
+      spin: 0
+    };
+  }
+  function stepThrow(p, dt, player) {
+    if (p.done) return { arrived: true, hit: false };
+    p.t += dt;
+    p.spin += dt * 14;
+    const s = clamp8(p.t / p.dur, 0, 1);
+    p.x = p.from.x + (p.to.x - p.from.x) * s;
+    p.z = p.from.z + (p.to.z - p.from.z) * s;
+    p.y = p.from.y + (p.to.y - p.from.y) * s + 4 * p.arc * s * (1 - s);
+    if (s < 1) return { arrived: false, hit: false };
+    p.done = true;
+    const hit = !!player && Math.hypot(player.x - p.to.x, player.z - p.to.z) <= THROW.hitR && Math.abs((player.y || 0) + THROW.hitDy - p.to.y) < 1.2;
+    return { arrived: true, hit };
+  }
+
+  // src/js/store3d/npc/throwpool.js
+  var _m7 = new Matrix4();
+  var _q5 = new Quaternion();
+  var _p5 = new Vector3();
+  var _s5 = new Vector3(1, 1, 1);
+  var _e5 = new Euler();
+  var _c = new Color();
+  function createThrowPool(scene, rand = Math.random) {
+    const geo = new IcosahedronGeometry(0.05, 0);
+    const mat2 = new MeshLambertMaterial({ color: 16777215 });
+    const mesh = new InstancedMesh(geo, mat2, THROW.max);
+    mesh.name = "npc-throwpool";
+    mesh.count = 0;
+    mesh.visible = false;
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    let list = [];
+    let disposed = false;
+    function write() {
+      mesh.count = list.length;
+      mesh.visible = list.length > 0;
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        _e5.set(p.spin, p.spin * 0.7, 0);
+        _q5.setFromEuler(_e5);
+        _p5.set(p.x, p.y, p.z);
+        _m7.compose(_p5, _q5, _s5);
+        mesh.setMatrixAt(i, _m7);
+        const cols = THROW_COLORS[p.kind] || THROW_COLORS.popcorn;
+        const c = cols[p.color % cols.length];
+        _c.setRGB(c[0], c[1], c[2]);
+        mesh.setColorAt(i, _c);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+    return {
+      mesh,
+      active: () => list.length,
+      launch(kind, from, to) {
+        if (disposed || list.length >= THROW.max) return false;
+        const p = createThrow(kind, from, to);
+        p.color = Math.floor(rand() * 3);
+        list.push(p);
+        write();
+        return true;
+      },
+      /** onArrive(p, hit) je angekommenem Geschoss. */
+      update(dt, player, onArrive) {
+        if (disposed || !list.length) return;
+        const keep2 = [];
+        for (const p of list) {
+          const r = stepThrow(p, dt, player);
+          if (r.arrived) {
+            try {
+              if (onArrive) onArrive(p, r.hit);
+            } catch {
+            }
+          } else keep2.push(p);
+        }
+        list = keep2;
+        write();
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        list = [];
+        if (mesh.parent) mesh.parent.remove(mesh);
+        geo.dispose();
+        mat2.dispose();
+        mesh.dispose();
+      }
+    };
+  }
+
+  // src/js/store3d/npc/aggro-logic.js
+  var AGGRO = {
+    gabi: { item: "dryer", melee: true, attackOn: 2, threatS: 1.2, memory: 8, cool: 5, dmg: 8, reach: 2.6 },
+    ronny: { item: "hanger", melee: true, attackOn: 1, threatS: 1, memory: 8, cool: 5, dmg: 10, reach: 2.6 },
+    kiosk: { item: "candy", melee: false, cool: 3.5, dmg: 4, hold: 1.4 },
+    popcorn: { item: "popcorn", melee: false, cool: 4, dmg: 4, hold: 1.4 }
+  };
+  function createAggro(role) {
+    return { role, cfg: AGGRO[role] || AGGRO.kiosk, hits: 0, last: -1e9, readyAt: 0, strikeAt: null, calmAt: null };
+  }
+  function provoke(a, t) {
+    const c = a.cfg;
+    if (t - a.last > (c.memory || 0)) a.hits = 0;
+    a.last = t;
+    a.hits++;
+    if (!c.melee) {
+      if (t < a.readyAt) return null;
+      a.readyAt = t + c.cool;
+      a.calmAt = t + c.hold;
+      return "throw";
+    }
+    a.calmAt = t + c.memory;
+    if (a.hits >= c.attackOn && t >= a.readyAt) {
+      a.strikeAt = t + c.threatS;
+      a.readyAt = t + c.cool;
+      return "attack";
+    }
+    return "threat";
+  }
+  function stepAggro(a, t) {
+    if (a.strikeAt !== null && t >= a.strikeAt) {
+      a.strikeAt = null;
+      return "swing";
+    }
+    if (a.calmAt !== null && t >= a.calmAt && a.strikeAt === null) {
+      a.calmAt = null;
+      return "calm";
+    }
+    return null;
+  }
+
+  // src/js/store3d/npc/social-logic.js
+  var EMOTE_REACT = {
+    dance: { anim: "dance", cat: "emoteDance", secs: 4 },
+    wave: { anim: "wave", cat: "emoteWave", secs: 2.4 },
+    bow: { anim: "clap", cat: "emoteBow", secs: 2.4 }
+  };
+  var EVENT_REACT = {
+    basket: { anim: "cheer", cat: "cheerBasket", secs: 2.6 },
+    cans: { anim: "cheer", cat: "cheerCans", secs: 2.6 },
+    discover: { anim: "clap", cat: "cheerDiscover", secs: 2.4 },
+    alarm: { anim: "shake", cat: "headAlarm", secs: 1.6 },
+    ban: { anim: "shake", cat: "headBan", secs: 1.6 }
+  };
+  var AMBIENT = { dance: 0.012, wave: 0.03, danceCool: 60, radius: 16 };
+  function emoteReaction(name) {
+    if (typeof name !== "string") return null;
+    const s = name.trim().toLowerCase();
+    const id = s === "tanzen" ? "dance" : s === "winken" ? "wave" : s === "verbeugen" ? "bow" : s;
+    return EMOTE_REACT[id] || null;
+  }
+  function eventForDiscover(id) {
+    if (!id) return null;
+    if (id === "hoop-3") return "basket";
+    if (id === "can-pyramid") return "cans";
+    if (id === "richard-ban") return "ban";
+    if (id === "knockout" || id === "gang-flee") return null;
+    return "discover";
+  }
+  function pickReactors(cands2, origin, o = {}) {
+    const r = o.r || 8;
+    const n = o.n || 2;
+    return cands2.map((c) => ({ c, d: Math.hypot(c.x - origin.x, c.z - origin.z) })).filter((e) => e.d <= r).sort((a, b) => a.d - b.d).slice(0, n).map((e) => e.c);
+  }
+
+  // src/js/store3d/fight/weapons.js
+  var WEAPON_IDS = ["hand", "belt", "whip", "laser"];
+  var CONE_DEG = 25;
+  var TABLE = {
+    hand: { id: "hand", range: 1.6, cone: CONE_DEG, max: 1, dmg: 12, knock: 1, cooldown: 0.35, sfx: "slap" },
+    belt: { id: "belt", range: 2.2, cone: CONE_DEG, max: 1, dmg: 20, knock: 1.6, cooldown: 0.6, sfx: "belt" },
+    whip: { id: "whip", range: 3.5, cone: CONE_DEG, max: 2, dmg: 26, knock: 1.4, cooldown: 1, sfx: "whip" },
+    laser: { id: "laser", range: 15, cone: 0, max: 0, dmg: 0, knock: 0, cooldown: 0, sfx: "laser" }
+  };
+  function weaponInfo(id) {
+    return { ...TABLE[WEAPON_IDS.includes(id) ? id : "hand"] };
+  }
+  function selectTargets(origin, dir, candidates2, weapon) {
+    const w = typeof weapon === "string" ? weaponInfo(weapon) : weapon || weaponInfo("hand");
+    const l = Math.hypot(dir.x, dir.z);
+    if (!(w.max > 0) || l < 1e-4 || !candidates2) return [];
+    const dx = dir.x / l;
+    const dz = dir.z / l;
+    const cos = Math.cos((w.cone || CONE_DEG) * Math.PI / 180);
+    const out = [];
+    for (let i = 0; i < candidates2.length; i++) {
+      const c = candidates2[i];
+      const rx = c.x - origin.x;
+      const rz = c.z - origin.z;
+      const dist = Math.hypot(rx, rz);
+      if (dist > w.range) continue;
+      if (dist > 0.25 && (rx * dx + rz * dz) / dist < cos) continue;
+      out.push({ index: i, dist, cand: c });
+    }
+    out.sort((a, b) => a.dist - b.dist);
+    return out.slice(0, w.max);
+  }
+
   // src/js/store3d/char/react-logic.js
   var OUTFIT_NEW = "outfitNew";
   var HAIR_NEW = "hairNew";
@@ -50635,17 +51347,17 @@ void main() {
   };
   var OUTFIT_FIELDS = [5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25];
   var DEFAULT = [2, 3, 10, 10, 0, 0, 1, 0, 1, 0, 0, 1, 0, 6, 0, 13, 0, 11, 0, 1, 1, 0, 0, 0, 0, 0];
-  var clamp8 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var clamp9 = (v, a, b) => v < a ? a : v > b ? b : v;
   var isInt = (v) => typeof v === "number" && Number.isInteger(v);
   function defaultCode() {
     return DEFAULT.slice();
   }
   function encodeColor(c) {
     if (Array.isArray(c)) {
-      const b = (v) => Math.round(clamp8(Number(v) || 0, 0, 1) * 255);
+      const b = (v) => Math.round(clamp9(Number(v) || 0, 0, 1) * 255);
       return CUSTOM_COLOR | b(c[0]) << 16 | b(c[1]) << 8 | b(c[2]);
     }
-    return isInt(c) ? clamp8(c, 0, 63) : 0;
+    return isInt(c) ? clamp9(c, 0, 63) : 0;
   }
   function decodeColor(code, palette) {
     if (isInt(code) && code >= CUSTOM_COLOR && code <= MAX_CODE) {
@@ -50790,11 +51502,11 @@ void main() {
 
   // src/js/store3d/modules/npc.js
   var FAR = 52;
-  var HIT_RANGE2 = 1.6;
   var PARK = -9990;
   var COL_NEAR = 8;
   var COL_R = 0.3;
   var REACT_R = 4;
+  var THREAT_MEMORY = 20;
   var REACT_EVERY = 0.4;
   function hairOnly(prev, cur) {
     if (!Array.isArray(prev) || !Array.isArray(cur)) return false;
@@ -50847,12 +51559,70 @@ void main() {
         lastLine[cat2] = r.index;
         return r.text;
       }
+      const speakerOf = /* @__PURE__ */ new WeakMap();
+      const speakerSet = /* @__PURE__ */ new Set();
+      const voiceIds = /* @__PURE__ */ new WeakMap();
+      let speakSeq = 0;
+      const hasRegie = () => {
+        const c = ctx.use("cashier");
+        return !!(c && typeof c.speaker === "function");
+      };
+      function releaseSpeaker(handle) {
+        const rec = speakerOf.get(handle);
+        if (!rec) return;
+        speakerOf.delete(handle);
+        speakerSet.delete(rec);
+        try {
+          if (rec.sp && typeof rec.sp.release === "function") rec.sp.release();
+        } catch {
+        }
+      }
+      function speak(handle, text, o = {}) {
+        const ms = o.ms || 3600;
+        const bubble = () => {
+          try {
+            if (handle && !handle.disposed) bubbles.show(handle, text, ms);
+          } catch {
+          }
+        };
+        const c = ctx.use("cashier");
+        if (!handle || !c || typeof c.speaker !== "function") {
+          bubble();
+          return Promise.resolve("bubble");
+        }
+        try {
+          let rec = speakerOf.get(handle);
+          if (!rec || rec.c !== c) {
+            if (rec) speakerSet.delete(rec);
+            const id = o.id !== void 0 ? o.id : `p${++speakSeq}`;
+            rec = { c, sp: c.speaker({ id, voiceSeed: o.voiceSeed !== void 0 ? o.voiceSeed : id, prio: Number.isFinite(o.prio) ? o.prio : 0, pos: () => ({ x: handle.root.position.x, y: 1.6, z: handle.root.position.z }) }) };
+            speakerOf.set(handle, rec);
+            speakerSet.add(rec);
+          }
+          if (!rec.sp || typeof rec.sp.say !== "function") {
+            bubble();
+            return Promise.resolve("bubble");
+          }
+          return Promise.resolve(rec.sp.say(text)).then((r) => {
+            if (r !== "spoken") bubble();
+            return r;
+          }, () => {
+            bubble();
+            return "bubble";
+          });
+        } catch {
+          bubble();
+          return Promise.resolve("bubble");
+        }
+      }
       function sayCat(handle, cat2, force) {
         if (!force && speakGap > 0) return false;
         const t = line(cat2);
         if (!t) return false;
         speakGap = 1.6;
-        return bubbles.show(handle, t, 3600);
+        if (!hasRegie()) return bubbles.show(handle, t, 3600);
+        speak(handle, t, voiceIds.get(handle) || {});
+        return true;
       }
       const provider = {
         figure(o = {}) {
@@ -50867,6 +51637,7 @@ void main() {
           h3.dispose = () => {
             externals.delete(h3);
             bubbles.hideFor(h3);
+            releaseSpeaker(h3);
             dispose();
           };
           return h3;
@@ -50891,7 +51662,12 @@ void main() {
           registered.add(e);
           return () => registered.delete(e);
         },
-        say: (h3, text, ms) => bubbles.show(h3, text, ms),
+        /** Sprechen: über die Sprecher-Regie (Stimme je Person aus dem Seed), 'bubble'/'muted' → Blase; ohne Regie direkt Blase. Rückgabe wie bubbles.show bzw. true. */
+        say: (h3, text, ms) => {
+          if (!hasRegie()) return bubbles.show(h3, text, ms);
+          speak(h3, text, { ...voiceIds.get(h3) || {}, ms });
+          return true;
+        },
         scare(x, z) {
           if (cat && Math.hypot(cat.logic.x - x, cat.logic.z - z) < 3) scareCat(cat.logic, catEnv());
         },
@@ -50907,9 +51683,37 @@ void main() {
         /** Wie viele reservierte Slots die aktuelle Passanten-Höchstzahl übersteigen (max(0, Summe − Höchstzahl)); 1.17.0. */
         overflow() {
           return Math.max(0, reservedSum() - walkerCount(preset.npcMax, tod(), raining()));
-        }
+        },
+        /** 1.18.0: Sprecher-Regie; o = { id, voiceSeed, prio, ms }. */
+        speak,
+        /** Temperament einer Person: Passanten aus dem Seed, alle anderen 'normal'. */
+        temperOf(handle) {
+          const e = walkers.find((x) => x.handle === handle);
+          return e ? e.temper : "normal";
+        },
+        /** Laserblick traf die Person: Hände vor die Augen (2 s), Hitzköpfe greifen danach an, die übrigen fliehen. */
+        laserHit(handle) {
+          return laserHit(handle);
+        },
+        /** Gesten naher Passanten: 'emote' { name }, 'basket' | 'cans' | 'discover' | 'alarm' | 'ban'. */
+        react(event, data) {
+          return reactEvent(event, data);
+        },
+        /** Wurf-Pool (Bonbon/Popcorn), ein InstancedMesh; Treffer am Spieler → fight.hitPlayer. */
+        throwProp(kind, from, to) {
+          return throwProp(kind, from, to);
+        },
+        attackers: () => countAttackers()
       };
       const offProvider = ctx.provide("npc", provider);
+      let lz = null;
+      const laserPoint = () => lz && clock - lz.t < 0.35 ? lz : null;
+      const offAnimals = ctx.provide("animals", {
+        /** Laserpunkt am Boden ({x,z}) oder null; der Aufrufer meldet ihn jeden Frame, solange der Laser leuchtet. */
+        laser(pt) {
+          lz = pt && Number.isFinite(pt.x) && Number.isFinite(pt.z) ? { x: pt.x, z: pt.z, t: clock } : null;
+        }
+      });
       const walkers = [];
       const staffMap = /* @__PURE__ */ new Map();
       let cat = null;
@@ -50928,6 +51732,14 @@ void main() {
       let py = 0;
       let pSpeed = 0;
       let havePose = false;
+      let clock = 0;
+      let stopNow = false;
+      const timers = [];
+      const later = (sec, fn) => {
+        timers.push({ t: clock + sec, fn });
+      };
+      let pool = null;
+      const statics = (city2 && city2.colliders ? city2.colliders : []).filter((c) => !c.dynamic);
       let preset = presetFor(ctx.quality(), ctx.isPhone);
       const raining = () => !!weather().raining;
       const tod = () => weather().tod || "day";
@@ -50946,13 +51758,13 @@ void main() {
         handle.setUmbrella(look.umbrella && rain);
         walkerGroup().add(handle.root);
         const w = createWalker(graph, rand, { edge: e.id, id: walkers.length, rush: rain ? 1.25 : 1 });
+        const seed = Math.floor(rand() * 1e9);
+        const temper = temperOf(seed);
+        w.temper = temper;
         const rawReact = handle.hitReact.bind(handle);
-        const entry = { w, handle, acc: 0, rawReact, col: null };
-        handle.hitReact = (dir) => {
-          const ev = hitWalker(w, dir, rand);
-          rawReact(dir);
-          if (ev && ev.cat) sayCat(handle, ev.cat, true);
-        };
+        const entry = { w, handle, acc: 0, rawReact, col: null, look, seed, temper, tst: { temper }, act: null, pend: null, pose: null, known: rand() < 0.25, waved: false, danceCool: 0 };
+        voiceIds.set(handle, { id: `w${seed}`, voiceSeed: seed });
+        handle.hitReact = (dir) => walkerProvoked(entry, "hit", dir);
         entry.col = ctx.addCollider({ x0: PARK, z0: PARK, x1: PARK + 0.5, z1: PARK + 0.5, y1: 1.8, top: false, kind: "walker" }, { dynamic: true });
         walkers.push(entry);
         return entry;
@@ -50961,8 +51773,354 @@ void main() {
         const i = walkers.indexOf(entry);
         if (i >= 0) walkers.splice(i, 1);
         bubbles.hideFor(entry.handle);
+        releaseSpeaker(entry.handle);
         if (entry.col) ctx.removeCollider(entry.col);
         entry.handle.dispose();
+      }
+      const fightP = () => ctx.use("fight");
+      const protectedNow = () => {
+        const f = fightP();
+        return !!(f && typeof f.protected === "function" && f.protected());
+      };
+      const countAttackers = () => {
+        let n = 0;
+        for (const e of walkers) if (e.act && e.act.attack) n++;
+        return n;
+      };
+      const canAttack = () => !xrOn() && countAttackers() < MAX_ATTACKERS && !protectedNow();
+      function restoreItem(e) {
+        const h3 = e.handle;
+        try {
+          if (h3.getHandItem && h3.getHandItem()) h3.setHandItem(null);
+          if (e.look && e.look.umbrella && raining()) h3.setUmbrella(true);
+        } catch {
+        }
+      }
+      function provokeCat(e, kind, action, ev) {
+        if (e.temper === "hot") return action === "attack" ? "attackHot" : "provokeHot";
+        if (e.temper === "normal") return kind === "hit" && e.w.hitCount <= 1 && ev && ev.cat ? ev.cat : "provokeNormal";
+        return kind === "hit" && ev && ev.cat ? ev.cat : "provokeShy";
+      }
+      function walkerProvoked(e, kind, dir) {
+        const w = e.w;
+        e.pose = null;
+        if (e.act && e.act.phase !== "blind") {
+          stunAttack(e.act);
+          e.rawReact(dir);
+          sayCat(e.handle, "struck", true);
+          return;
+        }
+        if (e.act) {
+          e.act = null;
+          restoreItem(e);
+        }
+        const r = reactToProvocation(e.tst, kind, clock);
+        const attackOk = r.action === "attack" && canAttack();
+        const ev = hitWalker(w, dir, rand, e.temper);
+        e.rawReact(dir);
+        if (e.temper === "hot") e.pend = { attack: attackOk, until: r.until !== void 0 ? r.until : clock + CHASE_MAX };
+        sayCat(e.handle, provokeCat(e, kind, attackOk ? "attack" : "threat", ev), true);
+      }
+      function walkerBumped(e) {
+        const w = e.w;
+        e.pose = null;
+        if (e.tst.threatened && clock - (e.threatAt || 0) > THREAT_MEMORY) e.tst.threatened = false;
+        const r = reactToProvocation(e.tst, "shove", clock);
+        if (r.action === "threat") e.threatAt = clock;
+        w.after = e.temper === "shy" ? null : e.temper === "normal" ? "walk" : "hold";
+        if (e.temper === "hot") {
+          const attackOk = r.action === "attack" && canAttack();
+          e.pend = { attack: attackOk, until: r.until !== void 0 ? r.until : clock + CHASE_MAX };
+          sayCat(e.handle, attackOk ? "attackHot" : "provokeHot", true);
+        }
+      }
+      function beginAct(e, o) {
+        const w = e.w;
+        const h3 = e.handle;
+        const item = attackItem(e.look);
+        e.pose = null;
+        e.pend = null;
+        e.act = createAttack({ x: w.x, z: w.z, yaw: w.yaw, item, until: o.until, attack: o.attack });
+        w.state = "hold";
+        w.timer = 99;
+        w.v = 0;
+        w.recoil.x = 0;
+        w.recoil.z = 0;
+        try {
+          if (item) {
+            if (item === "umbrella") h3.setUmbrella(false);
+            h3.setHandItem(item);
+          }
+        } catch {
+        }
+        if (o.attack) joinBystanders(e);
+      }
+      function joinBystanders(src) {
+        let n = countAttackers();
+        for (const o of walkers) {
+          if (o === src || o.act || o.temper !== "hot" || !o.handle.root.visible || !havePose) continue;
+          if (Math.hypot(o.w.x - px, o.w.z - pz) > 9 || !bystanderJoin(n, o.temper)) continue;
+          o.tst.threatened = true;
+          o.tst.chaseUntil = clock + CHASE_MAX;
+          beginAct(o, { attack: true, until: o.tst.chaseUntil });
+          n++;
+        }
+      }
+      function endAct(e, then) {
+        const w = e.w;
+        if (e.act && e.act.attack) e.tst.threatened = false;
+        e.act = null;
+        restoreItem(e);
+        const g = graph ? nearestOnGraph(graph, w.x, w.z, (ed) => SPUR_PATHS.has(ed.path)) : null;
+        if (g) {
+          const ed = graph.edges[g.edge];
+          w.edge = g.edge;
+          w.dir = rand() < 0.5 ? 1 : -1;
+          w.s = (w.dir === 1 ? g.t : 1 - g.t) * ed.len;
+        }
+        w.pending = null;
+        w.after = null;
+        w.timer = 0;
+        w.recoil.x = 0;
+        w.recoil.z = 0;
+        if (then === "flee") {
+          w.state = "flee";
+          w.fleeT = 6;
+          w.rush = 1.9;
+          w.anim = "run";
+        } else {
+          w.state = "walk";
+          w.fleeT = 0;
+          w.rush = 1;
+          w.anim = "walk";
+        }
+      }
+      function stopCond() {
+        if (xrOn() || !havePose || py >= 1.2) return true;
+        const g = groups();
+        if (!visible(g && g.street)) return true;
+        return protectedNow();
+      }
+      function strike(e, ev) {
+        const f = fightP();
+        if (!f || typeof f.hitPlayer !== "function" || xrOn()) return;
+        let ok;
+        try {
+          ok = f.hitPlayer({ dmg: ev.dmg, knock: { x: ev.dir.x, z: ev.dir.z }, src: "npc", from: { x: ev.from.x, z: ev.from.z } });
+        } catch {
+          ok = false;
+        }
+        if (ok) sound("slap");
+      }
+      function stepAct(e, step) {
+        const a = e.act;
+        const w = e.w;
+        const h3 = e.handle;
+        const evs = stepAttack(a, step, { clock, target: havePose ? { x: px, z: pz } : null, free: (p, q) => lineFree(statics, p, q), stop: stopNow, rand });
+        w.x = a.x;
+        w.z = a.z;
+        w.yaw = a.yaw;
+        w.v = a.phase === "chase" && a.runAnim ? ATK.speed : 0;
+        w.anim = a.phase === "chase" && a.runAnim ? "run" : "idle";
+        for (const ev of evs) {
+          if (ev.type === "anim") h3.setAnim(ev.name, { restart: !!ev.restart, speed: ev.speed });
+          else if (ev.type === "say") sayCat(h3, ev.cat, true);
+          else if (ev.type === "strike") strike(e, ev);
+          else if (ev.type === "end") {
+            endAct(e, ev.then);
+            return;
+          }
+        }
+      }
+      function laserHit(handle) {
+        if (!enabled || !handle || xrOn()) return false;
+        const e = walkers.find((x) => x.handle === handle);
+        if (e) {
+          if (e.act && e.act.phase === "blind") return false;
+          if (e.act) restoreItem(e);
+          const w = e.w;
+          const then = e.temper === "hot" && canAttack() ? "attack" : "flee";
+          const item = attackItem(e.look);
+          e.pose = null;
+          e.pend = null;
+          e.act = createBlind({ x: w.x, z: w.z, yaw: w.yaw, then, item, until: clock });
+          w.state = "hold";
+          w.timer = 99;
+          w.v = 0;
+          w.recoil.x = 0;
+          w.recoil.z = 0;
+          if (then === "attack" && item) {
+            try {
+              if (item === "umbrella") handle.setUmbrella(false);
+              handle.setHandItem(item);
+            } catch {
+            }
+          }
+          return true;
+        }
+        for (const p of collectPeople(false)) {
+          if (p.handle !== handle) continue;
+          if (typeof p.onLaser === "function") {
+            try {
+              p.onLaser();
+            } catch {
+            }
+            return true;
+          }
+          handle.setAnim("cover", { restart: true });
+          sayCat(handle, "blinded", true);
+          later(2, () => {
+            if (!handle.disposed && handle.anim.anim === "cover") handle.setAnim("idle", { restart: true });
+          });
+          return true;
+        }
+        return false;
+      }
+      function holdWalker(e, anim, secs) {
+        const w = e.w;
+        if (e.act || w.state === "stagger" || w.state === "flee") return false;
+        w.state = "hold";
+        w.timer = secs;
+        w.v = 0;
+        w.anim = "idle";
+        if (havePose) w.yaw = yawOf(px - w.x, pz - w.z);
+        e.pose = { t: secs };
+        e.handle.setAnim(anim, { restart: true });
+        return true;
+      }
+      function reactPeople(anim, cat2, secs, n) {
+        if (!enabled || xrOn() || !havePose) return 0;
+        const g = groups();
+        if (!visible(g && g.street)) return 0;
+        const cands2 = [];
+        for (const e of walkers) {
+          if (!e.handle.root.visible || !e.handle.root.parent || e.act || e.w.state === "stagger" || e.w.state === "flee") continue;
+          cands2.push({ x: e.w.x, z: e.w.z, e });
+        }
+        const picks = pickReactors(cands2, { x: px, z: pz }, { r: 9, n });
+        let done = 0;
+        picks.forEach((c, i) => {
+          if (i > 0 && rand() > 0.7) return;
+          if (holdWalker(c.e, anim, secs)) {
+            done++;
+            if (i === 0) sayCat(c.e.handle, cat2, true);
+          }
+        });
+        return done;
+      }
+      const evLast = {};
+      let pendingEv = null;
+      function reactEvent(event, data) {
+        if (!enabled) return false;
+        if (event === "emote") {
+          const r4 = emoteReaction(data && typeof data === "object" ? data.name || data.id || data.anim : data);
+          return !!r4 && reactPeople(r4.anim, r4.cat, r4.secs, 2) > 0;
+        }
+        const r = EVENT_REACT[event];
+        if (!r) return false;
+        if (evLast[event] !== void 0 && clock - evLast[event] < 3) return false;
+        evLast[event] = clock;
+        const n = reactPeople(r.anim, r.cat, r.secs, 2);
+        if (!n && (event === "alarm" || event === "ban")) pendingEv = { kind: event, until: clock + 8 };
+        return n > 0;
+      }
+      function throwProp(kind, from, to) {
+        if (!enabled || xrOn() || !from || !to) return false;
+        if (!pool) pool = createThrowPool(ctx.scene, rand);
+        const ok = pool.launch(kind, from, to);
+        if (ok) sound(THROW_SOUND[kind] || "pop");
+        return ok;
+      }
+      function onPropArrive(p, hit) {
+        if (!hit) return;
+        const f = fightP();
+        if (!f || typeof f.hitPlayer !== "function" || xrOn()) return;
+        const dx = p.to.x - p.from.x;
+        const dz = p.to.z - p.from.z;
+        const l = Math.hypot(dx, dz) || 1;
+        try {
+          f.hitPlayer({ dmg: THROW_DMG[p.kind] || 4, knock: { x: dx / l, z: dz / l }, src: "npc", from: { x: p.from.x, z: p.from.z } });
+        } catch {
+        }
+      }
+      function popcornProvoked(e) {
+        if (!e.aggro || !havePose || xrOn()) return;
+        if (provoke(e.aggro, clock) !== "throw") return;
+        const h3 = e.handle;
+        try {
+          h3.setHandItem("popcorn");
+          h3.setAnim("toss", { restart: true });
+        } catch {
+        }
+        later(0.4, () => {
+          if (!h3.disposed) throwProp("popcorn", { x: h3.root.position.x, y: 1.3, z: h3.root.position.z }, { x: px, y: py + 1.2, z: pz });
+        });
+        later(1.4, () => {
+          if (!h3.disposed) h3.setHandItem(null);
+        });
+      }
+      function ambientTick(e, step, dd) {
+        const w = e.w;
+        e.danceCool = Math.max(0, e.danceCool - step);
+        if (w.state === "wait" && e.danceCool <= 0 && dd < AMBIENT.radius && rand() < step * AMBIENT.dance) {
+          e.danceCool = AMBIENT.danceCool;
+          if (holdWalker(e, "dance", 3.5)) sayCat(e.handle, "trafficLight", false);
+          return;
+        }
+        if (e.known && !e.waved && w.state === "walk" && dd < 4 && dd > 1.4 && pSpeed < 2 && rand() < step * AMBIENT.wave) {
+          e.waved = true;
+          if (holdWalker(e, "wave", 2.4)) sayCat(e.handle, "greetKnown", false);
+        }
+      }
+      const disc = { ref: void 0, off: null };
+      function watchDiscover() {
+        const d = ctx.use("discover");
+        if (d === disc.ref) return;
+        if (disc.off) {
+          try {
+            disc.off();
+          } catch {
+          }
+          disc.off = null;
+        }
+        disc.ref = d;
+        if (!d || typeof d.onChange !== "function") return;
+        disc.off = d.onChange((id) => {
+          const k = eventForDiscover(id);
+          if (k) reactEvent(k, { id });
+        });
+      }
+      const emo = { ref: void 0, off: null };
+      let emoteAt = -9;
+      function onEmote(ev) {
+        if (clock - emoteAt < 0.3) return;
+        emoteAt = clock;
+        reactEvent("emote", ev);
+      }
+      function watchEmotes() {
+        const e = ctx.use("emotes");
+        if (e === emo.ref) return;
+        if (emo.off) {
+          try {
+            emo.off();
+          } catch {
+          }
+          emo.off = null;
+        }
+        emo.ref = e;
+        if (!e || typeof e.onPlayerEmote !== "function") return;
+        emo.off = e.onPlayerEmote((ev) => onEmote(ev));
+      }
+      let brawlLast;
+      function brawlWatch() {
+        const b = ctx.use("brawl");
+        const st = b && typeof b.state === "function" ? b.state() : null;
+        if (st === brawlLast) return;
+        const prev = brawlLast;
+        brawlLast = st;
+        if (prev === void 0 || prev === null) return;
+        if (st === "chase" && prev !== "throw") reactEvent("alarm");
+        else if (st === "banned") reactEvent("ban");
       }
       function adjustWalkers() {
         const want = enabled && graph ? Math.max(0, walkerCount(preset.npcMax, tod(), raining()) - reservedSum()) : 0;
@@ -50978,7 +52136,8 @@ void main() {
           handle.root.position.set(a.x, 0, a.z);
           handle.root.rotation.y = a.yaw || 0;
           (g && g.palastInterior || ctx.scene).add(handle.root);
-          const entry = { role, handle, baseYaw: a.yaw || 0, x: a.x, z: a.z, chatCool: 10 + rand() * 20, waveCool: 0 };
+          voiceIds.set(handle, { id: `staff-${role}`, voiceSeed: `staff-${role}` });
+          const entry = { role, handle, baseYaw: a.yaw || 0, x: a.x, z: a.z, chatCool: 10 + rand() * 20, waveCool: 0, aggro: role === "popcorn" ? createAggro("popcorn") : null };
           staffMap.set(role, entry);
         }
       }
@@ -50987,17 +52146,18 @@ void main() {
           rand,
           spots: cat.spots,
           player: havePose ? { x: px, z: pz, speed: pSpeed, y: py } : null,
-          free: (a, b) => lineFree(cat.statics, a, b)
+          free: (a, b) => lineFree(cat.statics, a, b),
+          laser: laserPoint()
         };
       }
       function buildCat() {
         const g = groups();
         const spots = catSpots(city2);
-        const statics = (city2.colliders || []).filter((c) => !c.dynamic);
+        const statics2 = (city2.colliders || []).filter((c) => !c.dynamic);
         const logic = createCat(spots, rand);
         const mesh = createCat2();
         (g && g.yard || ctx.scene).add(mesh.root);
-        cat = { logic, mesh, spots, statics, group: g && g.yard };
+        cat = { logic, mesh, spots, statics: statics2, group: g && g.yard };
         mesh.setPose(logic);
         const box3 = { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } };
         const place2 = () => {
@@ -51076,13 +52236,14 @@ void main() {
               sayCat(e.handle, e.role === "ticket" ? "ticketHit" : "popcornHit", true);
               sound("oof");
               e.flinch = 1.2;
+              popcornProvoked(e);
             }
           });
         }
         for (const r of registered) {
           if (!r.handle || !r.handle.root.visible || !r.handle.root.parent) continue;
           const pos = r.pos ? r.pos() : { x: r.handle.root.position.x, z: r.handle.root.position.z };
-          out.push({ kind: r.kind, handle: r.handle, x: pos.x, z: pos.z, hit: (dir) => r.onHit && r.onHit(dir) });
+          out.push({ kind: r.kind, handle: r.handle, x: pos.x, z: pos.z, hit: (dir, info) => r.onHit && r.onHit(dir, info), onLaser: r.onLaser });
         }
         void forHit;
         return out;
@@ -51090,16 +52251,19 @@ void main() {
       if (enabled) {
         offs.push(ctx.input.onAction("hit", (ev) => {
           if (xrOn() || !ev || !ev.origin || !ev.dir) return false;
+          const f = fightP();
+          const wid = ev.weapon || (f && typeof f.weapon === "function" ? f.weapon() : "hand");
+          if (wid === "laser") return false;
+          const info = weaponInfo(wid);
           const people = collectPeople(true);
           if (!people.length) return false;
           const eyeY = ev.origin.y;
           const y = ctx.player.getY();
-          const c = pickInCone2(people.filter((p) => Math.abs((p.handle.root.position.y || 0) - y) < 1.2 && eyeY - (p.handle.root.position.y || 0) < 3), ev.origin, ev.dir, HIT_RANGE2, 25);
-          if (!c) return false;
-          const pool = people.filter((p) => Math.abs((p.handle.root.position.y || 0) - y) < 1.2 && eyeY - (p.handle.root.position.y || 0) < 3);
-          const target = pool[c.index];
+          const cands2 = people.filter((p) => Math.abs((p.handle.root.position.y || 0) - y) < 1.2 && eyeY - (p.handle.root.position.y || 0) < 3);
+          const picks = selectTargets(ev.origin, ev.dir, cands2, info);
+          if (!picks.length) return false;
           const l = Math.hypot(ev.dir.x, ev.dir.z) || 1;
-          target.hit({ x: ev.dir.x / l, z: ev.dir.z / l });
+          for (const c of picks) c.cand.hit({ x: ev.dir.x / l, z: ev.dir.z / l }, { weapon: info.id });
           sound("oof");
           return true;
         }, { prio: 20 }));
@@ -51107,6 +52271,7 @@ void main() {
           if (!cat || !ev || !ev.origin) return;
           if (Math.hypot(cat.logic.x - ev.origin.x, cat.logic.z - ev.origin.z) < 2.2) scareCat(cat.logic, catEnv());
         }));
+        offs.push(ctx.on("player-emote", (ev) => onEmote(ev)));
       }
       function watchAvatar() {
         const av = ctx.use("avatar");
@@ -51198,13 +52363,26 @@ void main() {
           if ((frame + i) % every !== 0) continue;
           const step = Math.min(e.acc, 0.25);
           e.acc = 0;
-          const evs = stepWalker(w, step, env2);
-          for (const ev of evs) {
-            if (ev.type === "say" && lod === 0) sayCat(e.handle, ev.cat, false);
-            else if (ev.type === "bump") {
-              sound("oof");
-              e.rawReact({ x: w.recoil.x, z: w.recoil.z });
+          if (e.act) stepAct(e, step);
+          else {
+            const evs = stepWalker(w, step, env2);
+            const bumped = evs.some((ev) => ev.type === "bump");
+            for (const ev of evs) {
+              if (ev.type === "say" && lod === 0) {
+                if (bumped && e.temper === "hot") continue;
+                sayCat(e.handle, ev.cat, false);
+                if (ev.cat === "poster" && w.state === "browse" && !e.pose) {
+                  e.pose = { t: 2.2 };
+                  e.handle.setAnim("point", { restart: true });
+                }
+              } else if (ev.type === "bump") {
+                sound("oof");
+                e.rawReact({ x: w.recoil.x, z: w.recoil.z });
+                walkerBumped(e);
+              }
             }
+            if (e.pend && w.state === "hold") beginAct(e, e.pend.attack && !canAttack() ? { ...e.pend, attack: false } : e.pend);
+            else if (lod === 0 && !e.pose && havePose && w.state !== "stagger") ambientTick(e, step, dd);
           }
           const h3 = e.handle;
           h3.root.position.set(w.x + w.recoil.x * 0.1, 0, w.z + w.recoil.z * 0.1);
@@ -51214,7 +52392,11 @@ void main() {
             if (dd < COL_NEAR && h3.root.visible) ctx.moveCollider(e.col, h3.root.position.x - COL_R, h3.root.position.z - COL_R, h3.root.position.x + COL_R, h3.root.position.z + COL_R);
             else if (e.col.x0 > PARK + 1) ctx.moveCollider(e.col, PARK, PARK, PARK + 0.5, PARK + 0.5);
           }
-          if (w.state !== "stagger") h3.setAnim(w.anim, { speed: w.v });
+          if (e.pose) {
+            e.pose.t -= step;
+            if (e.pose.t <= 0) e.pose = null;
+          } else if (e.act) {
+          } else if (w.state !== "stagger") h3.setAnim(w.anim, { speed: w.v });
           else if (!h3.anim.busy()) h3.setAnim("stagger", { restart: true, then: "idle" });
           if (lod <= 1 && h3.root.visible) h3.update(step, ctx.camera);
         }
@@ -51226,6 +52408,7 @@ void main() {
         for (const ev of evs) {
           if (ev.type === "meow") sound("meow");
           else if (ev.type === "startle") sound("meow");
+          else if (ev.type === "catlaser") found("cat-laser");
         }
         cat.mesh.setPose(cat.logic);
         cat.place();
@@ -51234,7 +52417,7 @@ void main() {
         if (!flock || !pigeons) return;
         const g = groups();
         if (g && g.street && !visible(g.street)) return;
-        const evs = stepFlock(flock.list, dt, { rand, homes: flock.homes, player: havePose ? { x: px, z: pz, speed: pSpeed } : null, bounds: city2.bounds });
+        const evs = stepFlock(flock.list, dt, { rand, homes: flock.homes, player: havePose ? { x: px, z: pz, speed: pSpeed } : null, bounds: city2.bounds, laser: laserPoint() });
         if (evs.length) sound("flap");
         pigeons.set(flock.list);
       }
@@ -51243,12 +52426,14 @@ void main() {
         cat: () => cat && { ...cat.logic },
         flock: () => flock && flock.list.map((p) => ({ state: p.state, x: p.x, z: p.z, y: p.y })),
         staff: () => [...staffMap.keys()],
-        counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size, reserved: reservedSum() })
+        counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size, reserved: reservedSum(), attackers: countAttackers() }),
+        tempers: () => walkers.map((e) => e.temper)
       });
       return {
         update(dt) {
           react.ms += Math.max(0, dt) * 1e3;
           dt = Math.min(dt, 0.1);
+          clock += dt;
           frame++;
           speakGap = Math.max(0, speakGap - dt);
           const pose = ctx.player.getPose();
@@ -51261,17 +52446,34 @@ void main() {
             if (h3.root.visible && h3.root.parent) h3.update(dt, ctx.camera);
           }
           bubbles.update(dt);
+          for (let i = timers.length - 1; i >= 0; i--) {
+            if (clock < timers[i].t) continue;
+            const t = timers.splice(i, 1)[0];
+            try {
+              t.fn();
+            } catch {
+            }
+          }
+          if (pool) pool.update(dt, { x: px, z: pz, y: py }, onPropArrive);
           if (!enabled || !city2) return;
           const g = groups();
+          stopNow = stopCond();
           if (graph && walkers.length && visible(g && g.street)) updateWalkers(dt);
           updateStaff(dt);
           updateCat(dt);
           updateFlock(dt);
           watchAvatar();
+          watchDiscover();
+          watchEmotes();
           react.acc += dt;
           if (react.acc >= REACT_EVERY) {
             react.acc = 0;
             reactTick();
+            brawlWatch();
+            if (pendingEv) {
+              if (clock > pendingEv.until) pendingEv = null;
+              else if (visible(g && g.street) && reactPeople(EVENT_REACT[pendingEv.kind].anim, EVENT_REACT[pendingEv.kind].cat, EVENT_REACT[pendingEv.kind].secs, 2) > 0) pendingEv = null;
+            }
           }
         },
         onQuality() {
@@ -51281,7 +52483,10 @@ void main() {
           if (enabled && city2) buildPigeons();
         },
         onSuspend() {
-          for (const s of [...walkers]) bubbles.hideFor(s.handle);
+          for (const s of [...walkers]) {
+            bubbles.hideFor(s.handle);
+            if (s.act) endAct(s, "walk");
+          }
         },
         dispose() {
           for (const off of offs) {
@@ -51297,7 +52502,34 @@ void main() {
             }
             react.off = null;
           }
+          if (disc.off) {
+            try {
+              disc.off();
+            } catch {
+            }
+            disc.off = null;
+          }
+          if (emo.off) {
+            try {
+              emo.off();
+            } catch {
+            }
+            emo.off = null;
+          }
           offProvider();
+          offAnimals();
+          if (pool) {
+            pool.dispose();
+            pool = null;
+          }
+          timers.length = 0;
+          for (const rec of [...speakerSet]) {
+            try {
+              if (rec.sp && typeof rec.sp.release === "function") rec.sp.release();
+            } catch {
+            }
+          }
+          speakerSet.clear();
           for (const e of walkers) {
             if (e.col) ctx.removeCollider(e.col);
             e.handle.dispose();
@@ -51415,8 +52647,11 @@ void main() {
   var HORN_COOL = 7;
   var HORN_AFTER = 1;
   var NUDGE_AFTER = 3.8;
+  var BLIND_DEC = 9;
+  var BLIND_STAND = 2.5;
+  var BLIND_HONK_EVERY = 0.8;
   var UPSTREAM_WINDOW = 6;
-  var clamp9 = (v, a, b) => Math.min(b, Math.max(a, v));
+  var clamp10 = (v, a, b) => Math.min(b, Math.max(a, v));
   function laneSign(lane) {
     return (lane.dir.x || lane.dir.z) > 0 ? 1 : -1;
   }
@@ -51468,8 +52703,19 @@ void main() {
       away: false,
       sign: s,
       stopped: false,
-      blockKind: null
+      blockKind: null,
+      blindT: 0,
+      blindHonk: 0
     };
+  }
+  function blindCar(car, o = {}) {
+    if (!car || car.state === "away") return false;
+    car.state = "blind";
+    car.blindT = o.stand > 0 ? o.stand : BLIND_STAND;
+    car.blindDec = o.decel > 0 ? o.decel : BLIND_DEC;
+    car.blindHonk = 0;
+    car.blockedT = 0;
+    return true;
   }
   function stepCar(car, dt, env2) {
     const ev = [];
@@ -51489,6 +52735,28 @@ void main() {
           car.v = lane.speed * 0.6 * car.speedMul;
           car.blockedT = 0;
         } else car.timer = 0.6;
+      }
+      return ev;
+    }
+    if (car.state === "blind") {
+      car.v = Math.max(0, car.v - (car.blindDec || BLIND_DEC) * dt);
+      car.p += s * car.v * dt;
+      car.stopped = car.v < 0.25;
+      car.blindHonk -= dt;
+      if (car.blindHonk <= 0 && car.blindT > 0) {
+        car.blindHonk = BLIND_HONK_EVERY;
+        ev.push({ type: "honk", toPlayer: false, long: true });
+      }
+      if (car.v <= 0) car.blindT -= dt;
+      if (car.blindT <= 0) {
+        car.state = "drive";
+        car.blindT = 0;
+        car.hornCool = HORN_COOL;
+      }
+      if ((car.p - lane.to) * s >= 0) {
+        car.state = "away";
+        car.timer = 3 + (env2.rand ? env2.rand() : 0.5) * 8;
+        car.v = 0;
       }
       return ev;
     }
@@ -51520,7 +52788,7 @@ void main() {
       if (d >= -0.1) consider(Math.max(0, d), "zebra");
     }
     for (const c of env2.cars || []) {
-      if (c === car || c.lane !== car.lane || c.state !== "drive") continue;
+      if (c === car || c.lane !== car.lane || c.state !== "drive" && c.state !== "blind") continue;
       const rear = c.p - s * (CAR_LEN / 2);
       const d = (rear - front) * s - GAP;
       if ((c.p - car.p) * s > 0) consider(Math.max(0, d), "car");
@@ -51563,7 +52831,7 @@ void main() {
       vMax = Math.min(lane.speed, 1);
     }
     const dv = vMax - car.v;
-    car.v = clamp9(car.v + clamp9(dv, -DEC * dt * 1.4, ACC * dt), 0, lane.speed * 1.2);
+    car.v = clamp10(car.v + clamp10(dv, -DEC * dt * 1.4, ACC * dt), 0, lane.speed * 1.2);
     car.p += s * car.v * dt;
     if ((car.p - lane.to) * s >= 0) {
       car.state = "away";
@@ -51608,6 +52876,9 @@ void main() {
   var NEAR_COLLIDER = 36;
   var FAR2 = 58;
   var HORN_HEAR = 38;
+  var CAB_HALF = 1.6;
+  var CAB_Y0 = 0.65;
+  var CAB_Y1 = 1.75;
   var SIGNAL_ZEBRAS = { zebraW: "walkMain", zebraE: "walkMain", zebraArmN: "walkSide", zebraArmS: "walkSide" };
   var traffic_default = {
     name: "traffic",
@@ -51647,7 +52918,9 @@ void main() {
       const api = {
         zebraClear: () => true,
         cars: () => cars.map((c) => ({ lane: c.car.lane, ...posOf(c.lane, c.car.p), v: c.car.v, state: c.car.state })),
-        parked: () => parkedCols.map((q) => ({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1 }))
+        parked: () => parkedCols.map((q) => ({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1 })),
+        laserHit: () => null,
+        blindDriver: () => false
       };
       const offProvider = ctx.provide("traffic", api);
       if (flags.cars === false || !city2 || !city2.lanes) return { dispose() {
@@ -51739,6 +53012,26 @@ void main() {
           if (d > -CAR_LEN && d < 10 && e.car.v > 0.9) return false;
         }
         return true;
+      };
+      api.laserHit = (pt) => {
+        if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.z)) return null;
+        const y = Number.isFinite(pt.y) ? pt.y : 1;
+        if (y < CAB_Y0 || y > CAB_Y1) return null;
+        for (const e of cars) {
+          if (e.car.state === "away") continue;
+          const p = posOf(e.lane, e.car.p);
+          const alongX = !!e.lane.dir.x;
+          const hx = alongX ? CAB_HALF : CAR_W / 2 + 0.1;
+          const hz = alongX ? CAR_W / 2 + 0.1 : CAB_HALF;
+          if (Math.abs(pt.x - p.x) <= hx && Math.abs(pt.z - p.z) <= hz) return { id: e.car.id, lane: e.car.lane, x: p.x, z: p.z };
+        }
+        return null;
+      };
+      api.blindDriver = (ref, o) => {
+        if (xrOn()) return false;
+        const id = ref && typeof ref === "object" ? ref.id : ref;
+        const e = cars.find((c) => c.car.id === id);
+        return !!e && blindCar(e.car, o);
       };
       function zebraOccupiedSet(people) {
         const occ = /* @__PURE__ */ new Set();
@@ -51898,6 +53191,46 @@ void main() {
       let chat = 8 + rand() * 12;
       let lastLine = -1;
       let waveCool = 0;
+      const aggro = createAggro("kiosk");
+      let clockK = 0;
+      const timers = [];
+      const later = (sec, fn) => {
+        timers.push({ t: clockK + sec, fn });
+      };
+      function talk(text, ms) {
+        const n = npc();
+        if (n && typeof n.speak === "function") n.speak(handle, text, { id: "kiosk", voiceSeed: "kiosk", ms });
+        else if (handle) handle.say(text, ms);
+      }
+      function provoked() {
+        if (!handle || ctx.xr.presenting() || provoke(aggro, clockK) !== "throw") return;
+        const h3 = handle;
+        try {
+          h3.setHandItem("candy");
+          h3.setAnim("toss", { restart: true });
+        } catch {
+        }
+        later(0.4, () => {
+          const n = npc();
+          const p = ctx.player.getPose();
+          if (n && typeof n.throwProp === "function") n.throwProp("candy", { x: anchor.x, y: 1.3, z: anchor.z }, { x: p.x, y: (Number.isFinite(p.y) ? p.y : 0) + 1.2, z: p.z });
+        });
+        later(1.4, () => {
+          try {
+            h3.setHandItem(null);
+          } catch {
+          }
+        });
+      }
+      function blinded() {
+        if (!handle) return;
+        handle.setAnim("cover", { restart: true });
+        const r = pickLine2("blinded", rand, -1);
+        if (r) talk(r.text, 3200);
+        later(2, () => {
+          if (handle && handle.anim.anim === "cover") handle.setAnim("idle", { restart: true });
+        });
+      }
       const mat2 = new MeshLambertMaterial({ vertexColors: true });
       const geos3 = /* @__PURE__ */ new Map();
       const camPos = new Vector3();
@@ -51915,9 +53248,11 @@ void main() {
           onHit: (dir) => {
             handle.hitReact(dir);
             const r = pickLine2("kioskHit", rand, -1);
-            if (r) handle.say(r.text, 3600);
+            if (r) talk(r.text, 3600);
             sound("oof");
-          }
+            provoked();
+          },
+          onLaser: blinded
         });
         const k = city2.kiosk.counter;
         removeIa = ctx.addInteractable({
@@ -51933,7 +53268,7 @@ void main() {
         if (handle) {
           handle.setAnim("wave", { restart: true });
           const r = pickLine2("kioskBuy", rand, -1);
-          if (r) handle.say(`${s.name}! ${r.text}`, 4200);
+          if (r) talk(`${s.name}! ${r.text}`, 4200);
         }
         sound("buy");
         found("kiosk-snack");
@@ -51952,7 +53287,7 @@ void main() {
       function openMenu() {
         if (ctx.overlay.isOpen()) return;
         if (handle) {
-          handle.say(pickLine2("kiosk", rand, lastLine).text, 3e3);
+          talk(pickLine2("kiosk", rand, lastLine).text, 3e3);
         }
         if (ctx.xr.presenting()) {
           const spec = {
@@ -52022,6 +53357,15 @@ void main() {
       return {
         update(dt) {
           dt = Math.min(dt, 0.1);
+          clockK += dt;
+          for (let i = timers.length - 1; i >= 0; i--) {
+            if (clockK < timers[i].t) continue;
+            const t = timers.splice(i, 1)[0];
+            try {
+              t.fn();
+            } catch {
+            }
+          }
           if (handle) {
             const p = ctx.player.getPose();
             const d = Math.hypot(p.x - anchor.x, p.z - anchor.z);
@@ -52033,7 +53377,7 @@ void main() {
               const r = pickLine2("kiosk", rand, lastLine);
               if (r) {
                 lastLine = r.index;
-                handle.say(r.text, 3800);
+                talk(r.text, 3800);
               }
               chat = 30 + rand() * 25;
             }
@@ -52063,6 +53407,7 @@ void main() {
           }
         },
         dispose() {
+          timers.length = 0;
           endHand();
           removeIa();
           offPerson();
@@ -52887,9 +54232,9 @@ void main() {
       const parent = groups ? groups.palastInterior : null;
       if (!parent) return {};
       const removers = [];
-      const rects = [];
+      const rects2 = [];
       const cleanup = [];
-      for (const c of plan.colliders) rects.push(ctx.addCollider({ ...c }));
+      for (const c of plan.colliders) rects2.push(ctx.addCollider({ ...c }));
       const catItems = () => {
         const it = ctx.catalog && ctx.catalog.items;
         return it instanceof Map ? it : new Map(Object.entries(it || {}));
@@ -53326,7 +54671,7 @@ void main() {
           }
           dropSeats();
           for (const r of removers) r();
-          for (const r of rects) ctx.removeCollider(r);
+          for (const r of rects2) ctx.removeCollider(r);
           for (const f of cleanup) f();
           offDbg();
           if (prov) prov();
@@ -53903,6 +55248,26 @@ void main() {
           }
         };
       }
+      const salonSeen = () => {
+        try {
+          const sa = ctx.use("salon");
+          if (sa && typeof sa.sitting === "function" && sa.sitting()) return true;
+        } catch {
+        }
+        try {
+          const e = prof && prof.get() && prof.get().evt;
+          return !!(e && e.salonChair);
+        } catch {
+          return false;
+        }
+      };
+      if (!api.has("salon-first") && prof) {
+        try {
+          const e = prof.get() && prof.get().evt;
+          if (e && e.salonChair) api.found("salon-first", { silent: true });
+        } catch {
+        }
+      }
       const gaze = createGaze({ range: 4, dwell: 1.5 });
       const dir = new Vector3();
       const eye = { x: 0, y: 0, z: 0 };
@@ -53921,6 +55286,7 @@ void main() {
           if (acc < 0.1) return;
           const step = acc;
           acc = 0;
+          if (!api.has("salon-first") && salonSeen()) api.found("salon-first");
           const pose = ctx.player.getPose();
           const area = areaAt(L2, pose.x, pose.z, pose.y || 0);
           if (area === "roof") {
@@ -55334,15 +56700,15 @@ void main() {
           }
           let off2 = () => {
           };
-          const fin2 = () => {
+          const fin3 = () => {
             off2();
-            xrWaiters.delete(fin2);
+            xrWaiters.delete(fin3);
             res();
           };
           off2 = ctx.on("xr", (on) => {
-            if (!on) fin2();
+            if (!on) fin3();
           });
-          xrWaiters.add(fin2);
+          xrWaiters.add(fin3);
         });
       }
       function gate() {
@@ -55515,7 +56881,7 @@ void main() {
         dispose() {
           disposed = true;
           if (session) endSession(session, false);
-          for (const fin2 of [...xrWaiters]) fin2();
+          for (const fin3 of [...xrWaiters]) fin3();
           for (const t of timers) clearTimeout(t);
           timers.clear();
           offRemote();
@@ -56537,7 +57903,7 @@ void main() {
   var FAR3 = 52;
   var TIMELINE = 12;
   var EVAL_S = 0.3;
-  var ONE_SHOT2 = /* @__PURE__ */ new Set(["hit", "throw", "stagger"]);
+  var ONE_SHOT2 = /* @__PURE__ */ new Set(["hit", "throw", "stagger", "whip", "belt"]);
   function fnv1a32(str) {
     let h3 = 2166136261;
     const s = String(str);
@@ -56549,7 +57915,7 @@ void main() {
   }
   var lookSeed = (k) => fnv1a32("lfx-mp-look|" + String(k));
   var num3 = (v, d = 0) => Number.isFinite(v) ? v : d;
-  var clamp10 = (v, a, b) => Math.min(b, Math.max(a, v));
+  var clamp11 = (v, a, b) => Math.min(b, Math.max(a, v));
   function decodePose(frame, e) {
     if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) return null;
     const y = num3(e.y);
@@ -56573,9 +57939,9 @@ void main() {
     let vz = 0;
     if (prev && t > prev.t) {
       const dt = (t - prev.t) / 1e3;
-      vx = clamp10((cur.x - prev.s.x) / dt, -V_MAX, V_MAX);
-      vy = clamp10((cur.y - prev.s.y) / dt, -V_MAX, V_MAX);
-      vz = clamp10((cur.z - prev.s.z) / dt, -V_MAX, V_MAX);
+      vx = clamp11((cur.x - prev.s.x) / dt, -V_MAX, V_MAX);
+      vy = clamp11((cur.y - prev.s.y) / dt, -V_MAX, V_MAX);
+      vz = clamp11((cur.z - prev.s.z) / dt, -V_MAX, V_MAX);
     }
     return { x: cur.x, y: cur.y, z: cur.z, yaw: cur.yaw, pitch: cur.pitch, vx, vy, vz, a: cur.a <= 6 ? cur.a : 0, h: null };
   }
@@ -56646,7 +58012,7 @@ void main() {
   // src/js/store3d/modules/selfview.js
   var LEGS_ON = -0.5;
   var LEGS_OFF = -0.4;
-  var DAUER = /* @__PURE__ */ new Set(["sit"]);
+  var DAUER = /* @__PURE__ */ new Set(["sit", "aim"]);
   var setLayer = (h3, n) => {
     if (h3 && h3.root) h3.root.traverse((o) => {
       o.layers.set(n);
@@ -57098,7 +58464,7 @@ void main() {
   var _view = new Vector3();
   var _target2 = new Vector3();
   var _look = new Vector3();
-  var _q5 = new Vector4();
+  var _q6 = new Vector4();
   var _clip = new Vector4();
   var _plane = new Plane();
   var _rot = new Matrix4();
@@ -57162,11 +58528,11 @@ void main() {
       _plane.setFromNormalAndCoplanarPoint(_normal, _a).applyMatrix4(vcam.matrixWorldInverse);
       _clip.set(_plane.normal.x, _plane.normal.y, _plane.normal.z, _plane.constant);
       const p = vcam.projectionMatrix.elements;
-      _q5.x = (Math.sign(_clip.x) + p[8]) / p[0];
-      _q5.y = (Math.sign(_clip.y) + p[9]) / p[5];
-      _q5.z = -1;
-      _q5.w = (1 + p[10]) / p[14];
-      _clip.multiplyScalar(2 / _clip.dot(_q5));
+      _q6.x = (Math.sign(_clip.x) + p[8]) / p[0];
+      _q6.y = (Math.sign(_clip.y) + p[9]) / p[5];
+      _q6.z = -1;
+      _q6.w = (1 + p[10]) / p[14];
+      _clip.multiplyScalar(2 / _clip.dot(_q6));
       p[2] = _clip.x;
       p[6] = _clip.y;
       p[10] = _clip.z + 1 - 3e-3;
@@ -58067,8 +59433,8 @@ void main() {
       }
       const interior = buildSalon(sa, { posterMap });
       parent.add(interior.group);
-      const rects = interior.colliders.map((c) => ctx.addCollider({ ...c }));
-      const chairRect = rects[interior.colliders.indexOf(interior.chairCollider)];
+      const rects2 = interior.colliders.map((c) => ctx.addCollider({ ...c }));
+      const chairRect = rects2[interior.colliders.indexOf(interior.chairCollider)];
       let chairParked = false;
       const mirrors = {
         chair: createMirror(ctx, { ...interior.mirrors.chair, parent, id: "salon-chair" }),
@@ -58093,10 +59459,12 @@ void main() {
               handle.say(l.text, 3600);
             }
             sfx("oof");
-          }
+            provoked(who);
+          },
+          onLaser: () => blinded(who)
         }) : () => {
         };
-        people[who] = { handle, rect: rect2, off, speaker: null, speakerOf: null, lastIdx: {}, wave: 6 + rand() * 8, chat: 14 + rand() * 12, anchor };
+        people[who] = { handle, rect: rect2, off, speaker: null, speakerOf: null, lastIdx: {}, wave: 6 + rand() * 8, chat: 14 + rand() * 12, anchor, aggro: createAggro(who), strikeAt: null, coverAt: null };
         return true;
       }
       const mountAll = () => {
@@ -58104,6 +59472,81 @@ void main() {
         if (!people.ronny) mountPerson("ronny", sa.ronny);
       };
       mountAll();
+      let clockS = 0;
+      const tooFar = (who, p) => Math.hypot(p.x - people[who].handle.root.position.x, p.z - people[who].handle.root.position.z) > AGGRO[who].reach;
+      function provoked(who) {
+        const p = people[who];
+        if (!p || !p.handle || p.handle.disposed || busy || disposed || xr()) return;
+        const act = provoke(p.aggro, clockS);
+        if (!act) return;
+        try {
+          p.handle.setHandItem(AGGRO[who].item);
+          p.handle.setAnim("threat", { restart: true });
+        } catch {
+        }
+        say(who, "threat");
+      }
+      function strike(who) {
+        const p = people[who];
+        if (!p || !p.handle || p.handle.disposed) return;
+        try {
+          p.handle.setAnim("swing", { restart: true });
+        } catch {
+        }
+        say(who, "attack");
+        p.strikeAt = clockS + 0.22;
+      }
+      function landStrike(who) {
+        const p = people[who];
+        const f = ctx.use("fight");
+        if (!p || !p.handle || p.handle.disposed || busy || xr() || !f || typeof f.hitPlayer !== "function") return;
+        const pl = ctx.player.getPose();
+        if (tooFar(who, pl)) return;
+        const dx = pl.x - p.handle.root.position.x;
+        const dz = pl.z - p.handle.root.position.z;
+        const l = Math.hypot(dx, dz) || 1;
+        let ok;
+        try {
+          ok = f.hitPlayer({ dmg: AGGRO[who].dmg, knock: { x: dx / l, z: dz / l }, src: "npc", from: { x: p.handle.root.position.x, z: p.handle.root.position.z } });
+        } catch {
+          ok = false;
+        }
+        if (ok) sfx("slap");
+      }
+      function blinded(who) {
+        const p = people[who];
+        if (!p || !p.handle || p.handle.disposed || busy) return;
+        try {
+          p.handle.setAnim("cover", { restart: true });
+        } catch {
+        }
+        say(who, "blinded");
+        p.coverAt = clockS + 2;
+      }
+      function stepAggroAll(dt) {
+        clockS += dt;
+        for (const who of Object.keys(people)) {
+          const p = people[who];
+          if (!p || !p.handle || p.handle.disposed) continue;
+          const a = stepAggro(p.aggro, clockS);
+          if (a === "swing") {
+            if (!busy && !xr() && !tooFar(who, ctx.player.getPose())) strike(who);
+          } else if (a === "calm") {
+            try {
+              p.handle.setHandItem(null);
+            } catch {
+            }
+          }
+          if (p.strikeAt !== null && clockS >= p.strikeAt) {
+            p.strikeAt = null;
+            landStrike(who);
+          }
+          if (p.coverAt !== null && clockS >= p.coverAt) {
+            p.coverAt = null;
+            if (p.handle.anim.anim === "cover") p.handle.setAnim("idle", { restart: true });
+          }
+        }
+      }
       const GABI_SIDE = 0.45;
       function gabiAside(on) {
         const p = people.gabi;
@@ -58212,7 +59655,7 @@ void main() {
         };
         busy = true;
         abort = abortAll;
-        let ok = false;
+        let ok;
         try {
           ctx.player.freeze(true);
           other.setSuppressed(true);
@@ -58439,6 +59882,7 @@ void main() {
         update(dt) {
           dt = Math.min(dt, 0.1);
           mountAll();
+          stepAggroAll(dt);
           if (curtainK !== curtainTo) {
             const step = dt / CURTAIN_S;
             curtainK = curtainTo > curtainK ? Math.min(curtainTo, curtainK + step) : Math.max(curtainTo, curtainK - step);
@@ -58506,7 +59950,7 @@ void main() {
             }
             if (!pp.handle.disposed) pp.handle.dispose();
           }
-          for (const r of rects) ctx.removeCollider(r);
+          for (const r of rects2) ctx.removeCollider(r);
           mirrors.chair.dispose();
           mirrors.booth.dispose();
           interior.dispose();
@@ -58644,37 +60088,2336 @@ void main() {
     }
   };
 
+  // src/js/store3d/fight/energy.js
+  var ENERGY_MAX = 100;
+  var REGEN_DELAY = 6;
+  var REGEN_RATE = 3.3;
+  var KO_PROTECT = 10;
+  var MENU_TAIL = 2;
+  var MENU_LOCK = 3;
+  function createEnergy() {
+    let e = ENERGY_MAX;
+    let from = 0;
+    let last = 0;
+    let ko = false;
+    let protUntil = -Infinity;
+    let menuOpen = false;
+    let menuFrom = Infinity;
+    let tailUntil = -Infinity;
+    function advance(t) {
+      if (ko) {
+        last = t;
+        return;
+      }
+      const a = Math.max(from, last);
+      if (t > a && e < ENERGY_MAX) e = Math.min(ENERGY_MAX, e + (t - a) * REGEN_RATE);
+      last = Math.max(last, t);
+    }
+    const menuProt = (t) => menuOpen ? t >= menuFrom : t < tailUntil;
+    const isProtected = (t) => t < protUntil || menuProt(t);
+    return {
+      value(t) {
+        advance(t);
+        return e;
+      },
+      isKO() {
+        return ko;
+      },
+      protected: isProtected,
+      /** Treffer: → { ko, ignored, energy }. Ignoriert bei Schutz oder wenn schon K.O. */
+      hit(dmg, t) {
+        advance(t);
+        if (ko || isProtected(t) || !(dmg > 0)) return { ko: false, ignored: true, energy: e };
+        e = Math.max(0, e - dmg);
+        from = t + REGEN_DELAY;
+        if (e <= 0) {
+          ko = true;
+          return { ko: true, ignored: false, energy: 0 };
+        }
+        return { ko: false, ignored: false, energy: e };
+      },
+      /** Aufwachen nach K.O.: volle Energie, 10 s Schutz. */
+      wake(t) {
+        ko = false;
+        e = ENERGY_MAX;
+        from = t;
+        last = t;
+        protUntil = t + KO_PROTECT;
+      },
+      setMenu(open, t) {
+        open = !!open;
+        if (open === menuOpen) return;
+        if (open) {
+          menuOpen = true;
+          menuFrom = t < tailUntil ? t : t + MENU_LOCK;
+        } else {
+          const wasProt = t >= menuFrom;
+          menuOpen = false;
+          menuFrom = Infinity;
+          tailUntil = wasProt ? t + MENU_TAIL : -Infinity;
+        }
+      },
+      reset() {
+        e = ENERGY_MAX;
+        from = 0;
+        last = 0;
+        ko = false;
+        protUntil = -Infinity;
+        menuOpen = false;
+        menuFrom = Infinity;
+        tailUntil = -Infinity;
+      }
+    };
+  }
+
+  // src/js/store3d/fight/safezones.js
+  function isSafe(s) {
+    if (!s) return null;
+    if (s.xr) return "xr";
+    if (s.menu) return "menu";
+    if (s.cinemaPlaying) return "cinema";
+    if (s.inKids) return "kids";
+    if (s.couchSeated) return "couch";
+    if (s.salonBusy) return "salon";
+    return null;
+  }
+
+  // src/js/store3d/fight/ray.js
+  function rayBoxT(o, d, b) {
+    let t0 = 0;
+    let t1 = Infinity;
+    const y0 = b.y0 === void 0 ? 0 : b.y0;
+    const y1 = b.y1 === void 0 ? 2.6 : b.y1;
+    const axes = [[o.x, d.x, b.x0, b.x1], [o.y, d.y, y0, y1], [o.z, d.z, b.z0, b.z1]];
+    for (const [p, v, lo, hi] of axes) {
+      if (Math.abs(v) < 1e-9) {
+        if (p < lo || p > hi) return Infinity;
+        continue;
+      }
+      let a = (lo - p) / v;
+      let c = (hi - p) / v;
+      if (a > c) {
+        const s = a;
+        a = c;
+        c = s;
+      }
+      if (a > t0) t0 = a;
+      if (c < t1) t1 = c;
+      if (t0 > t1) return Infinity;
+    }
+    return t0;
+  }
+  function castRay(o, d, colliders, maxT) {
+    const l = Math.hypot(d.x, d.y, d.z) || 1;
+    const n = { x: d.x / l, y: d.y / l, z: d.z / l };
+    let t = maxT;
+    let hit = null;
+    if (colliders) {
+      for (const b of colliders) {
+        if (!b || b.dynamic) continue;
+        const s = rayBoxT(o, n, b);
+        if (s < t) {
+          t = s;
+          hit = "wall";
+        }
+      }
+    }
+    if (n.y < -1e-6 && o.y > 0) {
+      const s = -o.y / n.y;
+      if (s < t) {
+        t = s;
+        hit = "floor";
+      }
+    }
+    return { t, hit, point: { x: o.x + n.x * t, y: o.y + n.y * t, z: o.z + n.z * t }, dir: n };
+  }
+
+  // src/js/store3d/npc/laser-logic.js
+  var LASER_RANGE = 15;
+  var DWELL = 0.5;
+  var BLIND_MS = 2e3;
+  var BRAKE_DECEL = 9;
+  var HONK_S = 2.5;
+  function rayHitsHead(origin, dir, center, r = 0.16, range3 = LASER_RANGE) {
+    const l = Math.hypot(dir.x, dir.y, dir.z) || 1;
+    const dx = dir.x / l;
+    const dy = dir.y / l;
+    const dz = dir.z / l;
+    const cx = center.x - origin.x;
+    const cy = center.y - origin.y;
+    const cz = center.z - origin.z;
+    const tca = cx * dx + cy * dy + cz * dz;
+    if (tca < 0 || tca > range3 + r) return false;
+    return cx * cx + cy * cy + cz * cz - tca * tca <= r * r;
+  }
+  function createLaserDwell() {
+    return { t: 0, fired: false };
+  }
+  function stepLaser(st, dt, kind, onTarget, point) {
+    const ev = [];
+    if (!onTarget) {
+      st.t = 0;
+      st.fired = false;
+      return ev;
+    }
+    st.t += dt;
+    if (kind === "cat") {
+      ev.push({ type: "chase", x: point ? point.x : 0, z: point ? point.z : 0 });
+      return ev;
+    }
+    if (kind === "pigeon") {
+      if (!st.fired) {
+        st.fired = true;
+        ev.push({ type: "flush" });
+      }
+      return ev;
+    }
+    if (st.t < DWELL || st.fired) return ev;
+    st.fired = true;
+    if (kind === "richard") ev.push({ type: "hit", kind: "richard" });
+    else if (kind === "driver") ev.push({ type: "brake", decel: BRAKE_DECEL, honk: HONK_S });
+    else ev.push({ type: "blind", ms: BLIND_MS });
+    return ev;
+  }
+
+  // src/js/store3d/ui/energy.js
+  var REGEN_HIDE_MS = 1400;
+  var SHIELD_MS = 1e4;
+  var KO_FADE_MS = 700;
+  var KO_HOLD_MS = 1600;
+  function energyColor(v) {
+    const k = Math.max(0, Math.min(100, Number(v) || 0)) / 100;
+    return "hsl(" + Math.round(k * 120) + ", 72%, " + Math.round(46 + (1 - k) * 4) + "%)";
+  }
+  var reducedDefault = () => {
+    try {
+      return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  };
+  var div = (cls, parent) => {
+    const d = document.createElement("div");
+    d.className = cls;
+    if (parent) parent.appendChild(d);
+    return d;
+  };
+  var STAR = ["\u2605", "\u2726", "\u2736"];
+  function createEnergyHud(host, opts = {}) {
+    const reduced2 = typeof opts.reduced === "function" ? opts.reduced : reducedDefault;
+    const root = div("lfx-store-fight-energy" + (opts.touch ? " is-touch" : " is-desk"));
+    root.setAttribute("role", "progressbar");
+    root.setAttribute("aria-label", "Energie");
+    root.setAttribute("aria-valuemin", "0");
+    root.setAttribute("aria-valuemax", "100");
+    root.hidden = true;
+    const label = div("lfx-store-fight-energy-label", root);
+    label.textContent = "Energie";
+    const track = div("lfx-store-fight-energy-track", root);
+    const fill = div("lfx-store-fight-energy-fill", track);
+    const shieldEl = div("lfx-store-fight-shield", null);
+    shieldEl.hidden = true;
+    shieldEl.textContent = "Schutz";
+    const stars = div("lfx-store-fight-stars", null);
+    stars.setAttribute("aria-hidden", "true");
+    const ko = div("lfx-store-fight-ko", null);
+    ko.setAttribute("aria-hidden", "true");
+    ko.hidden = true;
+    const koStars = div("lfx-store-fight-ko-stars", ko);
+    for (let i = 0; i < 6; i++) {
+      const s = div("lfx-store-fight-ko-star", koStars);
+      s.textContent = STAR[i % 3];
+      s.style.setProperty("--i", String(i));
+    }
+    const koText = div("lfx-store-fight-ko-text", ko);
+    koText.textContent = "K.O.";
+    if (host) for (const e of [root, shieldEl, stars, ko]) host.appendChild(e);
+    let value = 100;
+    let visible = false;
+    let forced = false;
+    let disposed = false;
+    let hideTimer = 0;
+    let shieldTimer = 0;
+    let koTimers = [];
+    let koBusy = false;
+    const clear = (t) => {
+      if (t) clearTimeout(t);
+      return 0;
+    };
+    function paint4() {
+      fill.style.width = value.toFixed(1) + "%";
+      fill.style.background = energyColor(value);
+      root.setAttribute("aria-valuenow", String(Math.round(value)));
+    }
+    function setVisible(on) {
+      visible = !!on;
+      root.hidden = !visible;
+      root.classList.toggle("is-low", visible && value <= 30);
+    }
+    function set(v) {
+      if (disposed) return;
+      const n = Math.max(0, Math.min(100, Number(v)));
+      if (!Number.isFinite(n)) return;
+      const was = value;
+      value = n;
+      paint4();
+      if (n < 100) {
+        hideTimer = clear(hideTimer);
+        setVisible(true);
+      } else if (was < 100 && visible && !forced) {
+        hideTimer = clear(hideTimer);
+        root.classList.remove("is-low");
+        hideTimer = setTimeout(() => {
+          hideTimer = 0;
+          if (value >= 100 && !forced) setVisible(false);
+        }, REGEN_HIDE_MS);
+      } else root.classList.toggle("is-low", visible && n <= 30);
+    }
+    function show(on) {
+      if (disposed) return;
+      forced = !!on;
+      hideTimer = clear(hideTimer);
+      if (forced) setVisible(true);
+      else setVisible(value < 100);
+    }
+    function hit(strength = 0.5) {
+      if (disposed) return;
+      const k = Math.max(0, Math.min(1, Number(strength) || 0));
+      const calm = reduced2();
+      const n = calm ? 2 : 3 + Math.round(k * 3);
+      for (let i = 0; i < n; i++) {
+        const s = div("lfx-store-fight-star" + (calm ? " is-calm" : ""), stars);
+        s.textContent = STAR[i % 3];
+        const a = i / n * Math.PI * 2 + k;
+        s.style.setProperty("--dx", (Math.cos(a) * 54).toFixed(0) + "px");
+        s.style.setProperty("--dy", (Math.sin(a) * 36 - 10).toFixed(0) + "px");
+        s.style.left = 42 + i * 37 % 16 + "%";
+        s.style.top = 40 + i * 23 % 14 + "%";
+        setTimeout(() => {
+          if (s.parentNode) s.parentNode.removeChild(s);
+        }, 900);
+      }
+      if (!calm && typeof opts.onShake === "function") {
+        try {
+          opts.onShake(0.3 + k * 0.7, 260);
+        } catch {
+        }
+      }
+    }
+    function knockout(o = {}) {
+      if (disposed || koBusy) return false;
+      koBusy = true;
+      const hold = o.hold > 0 ? o.hold : KO_HOLD_MS;
+      const fade = reduced2() ? 0 : KO_FADE_MS;
+      ko.hidden = false;
+      ko.style.setProperty("--lfx-fight-ko-fade", fade + "ms");
+      ko.classList.remove("is-out");
+      void ko.offsetWidth;
+      ko.classList.add("is-in");
+      const later = (fn, ms) => {
+        koTimers.push(setTimeout(fn, ms));
+      };
+      later(() => {
+        if (typeof o.onBlack === "function") {
+          try {
+            o.onBlack();
+          } catch {
+          }
+        }
+      }, fade);
+      later(() => {
+        ko.classList.remove("is-in");
+        ko.classList.add("is-out");
+      }, fade + hold);
+      later(() => {
+        ko.classList.remove("is-out");
+        ko.hidden = true;
+        koTimers = [];
+        koBusy = false;
+        if (typeof o.onDone === "function") {
+          try {
+            o.onDone();
+          } catch {
+          }
+        }
+      }, fade * 2 + hold);
+      return true;
+    }
+    function shield(ms = SHIELD_MS) {
+      if (disposed) return;
+      shieldTimer = clear(shieldTimer);
+      if (!(ms > 0)) {
+        shieldEl.hidden = true;
+        return;
+      }
+      shieldEl.hidden = false;
+      shieldTimer = setTimeout(() => {
+        shieldTimer = 0;
+        shieldEl.hidden = true;
+      }, ms);
+    }
+    paint4();
+    return {
+      el: root,
+      set,
+      show,
+      hit,
+      knockout,
+      shield,
+      isVisible: () => visible,
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        hideTimer = clear(hideTimer);
+        shieldTimer = clear(shieldTimer);
+        koTimers.forEach(clearTimeout);
+        koTimers = [];
+        for (const e of [root, shieldEl, stars, ko]) if (e.parentNode) e.parentNode.removeChild(e);
+      }
+    };
+  }
+
+  // src/js/store3d/ui/weaponwheel.js
+  var WEAPONS = [
+    { id: "hand", label: "Hand", key: "1" },
+    { id: "belt", label: "G\xFCrtel", key: "2" },
+    { id: "whip", label: "Peitsche", key: "3" },
+    { id: "laser", label: "Laserpointer", key: "4" }
+  ];
+  var weaponIndex = (id) => WEAPONS.findIndex((w) => w.id === id);
+  function cycleWeapon(id, dir) {
+    const n = WEAPONS.length;
+    const i = Math.max(0, weaponIndex(id));
+    return WEAPONS[((i + (dir < 0 ? -1 : 1)) % n + n) % n].id;
+  }
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var ICONS = {
+    hand: ["M7 12V6.5a1.5 1.5 0 0 1 3 0V11", "M10 11V4.5a1.5 1.5 0 0 1 3 0V11", "M13 11V5.5a1.5 1.5 0 0 1 3 0V12", "M16 12V8.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a5 5 0 0 1-4-2L4.5 15a1.5 1.5 0 0 1 2.3-1.9L7 13.5"],
+    belt: ["M3 9h18v6H3z", "M16 9v6", "M16 12h2", "M6 12h.01", "M9 12h.01", "M12 12h.01"],
+    whip: ["M4 20c3-1 4-5 6-8s5-4 8-3", "M18 9c1.5-.5 2.5-1.8 2.5-3.5", "M4 20l2.5-2.5"],
+    laser: ["M5 19l8-8", "M13 11l2-2 3 3-2 2z", "M19 5l.01 0", "M17 3v2", "M21 7h-2", "M20.5 3.5l-1.4 1.4"]
+  };
+  function icon(id) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("class", "lfx-store-fight-wicon");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.8");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    for (const d of ICONS[id] || []) {
+      const p = document.createElementNS(SVG_NS, "path");
+      p.setAttribute("d", d);
+      svg.appendChild(p);
+    }
+    return svg;
+  }
+  var warn7 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] weaponwheel", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  function createWeaponWheel(host, opts = {}) {
+    const ctx = opts.ctx || null;
+    const touch = opts.touch != null ? !!opts.touch : !!(ctx && ctx.isTouch);
+    let el5 = null;
+    let buttons = [];
+    let current = null;
+    let sel = 0;
+    let viaOverlay = false;
+    let closing = false;
+    let disposed = false;
+    const xrOn = () => !!(ctx && ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    function mark(i) {
+      const n = WEAPONS.length;
+      sel = (i % n + n) % n;
+      buttons.forEach((b, k) => {
+        b.classList.toggle("is-sel", k === sel);
+        b.setAttribute("aria-pressed", WEAPONS[k].id === current ? "true" : "false");
+      });
+      try {
+        buttons[sel].focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    function pick3(id) {
+      let done = true;
+      try {
+        done = opts.onPick ? opts.onPick(id) !== false : true;
+      } catch (err) {
+        warn7("onPick", err);
+      }
+      if (done) api.close();
+      return done;
+    }
+    function onKey(e) {
+      if (!el5 || e.ctrlKey || e.altKey || e.metaKey) return;
+      const c = e.code;
+      if (/^(Digit|Numpad)[1-4]$/.test(c)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat) pick3(WEAPONS[Number(c.slice(-1)) - 1].id);
+        return;
+      }
+      if (c === "ArrowRight" || c === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        mark(sel + 1);
+        return;
+      }
+      if (c === "ArrowLeft" || c === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        mark(sel - 1);
+        return;
+      }
+      if (c === "Enter" || c === "NumpadEnter" || c === "Space") {
+        e.preventDefault();
+        e.stopPropagation();
+        pick3(WEAPONS[sel].id);
+        return;
+      }
+      if (c === "KeyR" || c === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        api.close();
+      }
+    }
+    function buildRoot() {
+      const root = document.createElement("div");
+      root.className = "lfx-store-fight-wheel" + (touch ? " is-touch" : " is-desk");
+      root.setAttribute("role", "dialog");
+      root.setAttribute("aria-label", "Waffenrad");
+      const ring = document.createElement("div");
+      ring.className = "lfx-store-fight-wheel-ring";
+      WEAPONS.forEach((w, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "lfx-store-fight-wslot";
+        b.dataset.weapon = w.id;
+        const a = i / WEAPONS.length * Math.PI * 2;
+        b.style.left = (50 + 34 * Math.sin(a)).toFixed(2) + "%";
+        b.style.top = (50 - 34 * Math.cos(a)).toFixed(2) + "%";
+        b.appendChild(icon(w.id));
+        const label = document.createElement("span");
+        label.className = "lfx-store-fight-wlabel";
+        label.textContent = w.label;
+        b.appendChild(label);
+        if (!touch) {
+          const key2 = document.createElement("span");
+          key2.className = "lfx-store-fight-wkey";
+          key2.textContent = w.key;
+          b.appendChild(key2);
+        }
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          pick3(w.id);
+        });
+        b.addEventListener("pointerenter", () => {
+          if (!touch) mark(i);
+        });
+        ring.appendChild(b);
+        buttons.push(b);
+      });
+      const hub = document.createElement("button");
+      hub.type = "button";
+      hub.className = "lfx-store-fight-whub";
+      hub.textContent = touch ? "Schlie\xDFen" : "R / Esc";
+      hub.setAttribute("aria-label", "Waffenrad schlie\xDFen");
+      hub.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        api.close();
+      });
+      ring.appendChild(hub);
+      root.appendChild(ring);
+      root.addEventListener("click", (e) => {
+        if (e.target === root) api.close();
+      });
+      return root;
+    }
+    function cleanup() {
+      if (el5) document.removeEventListener("keydown", onKey, true);
+      el5 = null;
+      buttons = [];
+      viaOverlay = false;
+    }
+    const api = {
+      get el() {
+        return el5;
+      },
+      /** Öffnet das Rad; current = aktuelle Waffe (wird markiert). false = nicht möglich (VR, schon offen, entsorgt). */
+      open(cur) {
+        if (disposed || el5 || xrOn()) return false;
+        current = WEAPONS.some((w) => w.id === cur) ? cur : null;
+        el5 = buildRoot();
+        const useOverlay = !!(ctx && ctx.overlay && typeof ctx.overlay.open === "function");
+        if (useOverlay) {
+          try {
+            ctx.overlay.open(el5, { onClose: () => {
+              cleanup();
+            } });
+          } catch (err) {
+            warn7("overlay", err);
+            cleanup();
+            return false;
+          }
+          if (!el5) return false;
+          viaOverlay = true;
+        } else if (host) host.appendChild(el5);
+        else {
+          cleanup();
+          return false;
+        }
+        document.addEventListener("keydown", onKey, true);
+        mark(Math.max(0, weaponIndex(current)));
+        return true;
+      },
+      close() {
+        if (!el5 || closing) return;
+        closing = true;
+        try {
+          if (viaOverlay && ctx.overlay.isOpen && ctx.overlay.isOpen()) ctx.overlay.close();
+        } catch (err) {
+          warn7("close", err);
+        }
+        if (el5 && el5.parentNode) el5.parentNode.removeChild(el5);
+        cleanup();
+        closing = false;
+      },
+      isOpen: () => !!el5,
+      focused: () => el5 ? WEAPONS[sel].id : null,
+      /** Markiertes Segment wählen und schließen (Loslassen von R). */
+      commit() {
+        if (!el5) return null;
+        const id = WEAPONS[sel].id;
+        pick3(id);
+        return id;
+      },
+      /** Segment direkt wählen (ohne Öffnen nutzbar: ruft onPick). */
+      select(id) {
+        if (weaponIndex(id) < 0 || disposed) return false;
+        return pick3(id) !== false;
+      },
+      dispose() {
+        if (disposed) return;
+        api.close();
+        disposed = true;
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/ui/blindveil.js
+  var VEIL_MS = 2500;
+  var VEIL_REDUCED_MS = 1500;
+  var VEIL_GAP_MS = 4e3;
+  var reducedDefault2 = () => {
+    try {
+      return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  };
+  function createBlindVeil(host, opts = {}) {
+    const reduced2 = typeof opts.reduced === "function" ? opts.reduced : reducedDefault2;
+    const now = typeof opts.now === "function" ? opts.now : () => typeof performance !== "undefined" ? performance.now() : Date.now();
+    const el5 = document.createElement("div");
+    el5.className = "lfx-store-fight-veil";
+    el5.setAttribute("aria-hidden", "true");
+    el5.hidden = true;
+    const spot = document.createElement("div");
+    spot.className = "lfx-store-fight-veil-spot";
+    el5.appendChild(spot);
+    if (host) host.appendChild(el5);
+    let timer = 0;
+    let last = -Infinity;
+    let on = false;
+    let disposed = false;
+    function end() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = 0;
+      }
+      on = false;
+      el5.classList.remove("is-on", "is-calm");
+      el5.hidden = true;
+    }
+    function start(ms) {
+      if (disposed) return false;
+      const t = now();
+      if (t - last < VEIL_GAP_MS) return false;
+      last = t;
+      const calm = reduced2();
+      const dur = calm ? VEIL_REDUCED_MS : ms > 0 ? ms : VEIL_MS;
+      end();
+      el5.style.setProperty("--lfx-fight-veil-ms", Math.round(dur) + "ms");
+      el5.hidden = false;
+      el5.classList.toggle("is-calm", calm);
+      void el5.offsetWidth;
+      el5.classList.add("is-on");
+      on = true;
+      timer = setTimeout(end, dur);
+      return true;
+    }
+    return {
+      el: el5,
+      start,
+      stop: end,
+      active: () => on,
+      dispose() {
+        if (disposed) return;
+        end();
+        disposed = true;
+        if (el5.parentNode) el5.parentNode.removeChild(el5);
+      }
+    };
+  }
+
   // src/js/store3d/modules/fight.js
+  var warn8 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] fight", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  var LASER_TICK = 0.1;
+  var AUX_TAP = 0.22;
+  var LZ_GAP = 0.25;
+  var PEER_HIT_DIST = 4.5;
+  var WP_DEBOUNCE = 0.3;
+  var SIT_Y = 0.48;
+  var NAME = { hand: "Hand", belt: "G\xFCrtel", whip: "Peitsche", laser: "Laserpointer" };
+  var POSE = { sit: 7, ko: 9, cover: 10, whip: 11, belt: 12, aim: 13, away: 15 };
   var fight_default = {
     name: "fight",
     init(ctx) {
-      const provider = {
-        weapon: () => "hand",
-        setWeapon() {
-        },
-        energy: () => 100,
-        protected: () => false,
-        onKO: () => () => {
-        },
-        hitPlayer: () => false,
-        blind() {
+      const flags = ctx.opts && ctx.opts.devFlags || {};
+      const host = ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode || null;
+      const L2 = ctx.layout || {};
+      const offs = [];
+      const koFns = /* @__PURE__ */ new Set();
+      const laserFns = /* @__PURE__ */ new Set();
+      const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+      const sound = (n) => {
+        try {
+          const s = ctx.use("sound");
+          if (s && s.play) s.play(n);
+        } catch {
         }
       };
-      const off = ctx.provide("fight", provider);
-      return { dispose() {
-        off();
-      } };
+      const found = (id) => {
+        try {
+          const d = ctx.use("discover");
+          if (d && d.found) d.found(id);
+        } catch {
+        }
+      };
+      let T5 = 0;
+      let weapon = "hand";
+      let nextSwing = 0;
+      let swingPose = null;
+      let swingPoseUntil = 0;
+      let koing = false;
+      let seatedKO = false;
+      let koSeq = 0;
+      let menuNow = false;
+      let coverUntil = 0;
+      let hudVal = 100;
+      let auxHeld = false;
+      let auxStart = 0;
+      let auxLaser = false;
+      let wpSent = null;
+      let wpDue = -1;
+      let disposed = false;
+      const energy = createEnergy();
+      const hud = createEnergyHud(host, { touch: !!ctx.isTouch });
+      const veil = createBlindVeil(host);
+      const wheel = createWeaponWheel(host, {
+        ctx,
+        touch: !!ctx.isTouch,
+        onPick: (id) => {
+          setWeapon(id);
+          return true;
+        }
+      });
+      function zoneState() {
+        const s = { xr: xrOn() };
+        try {
+          const c2 = ctx.use("cinema2d");
+          s.cinemaPlaying = !!(c2 && c2.active === true && (c2.phase === "playing" || c2.phase === "paused" || c2.phase === "starting"));
+        } catch {
+        }
+        try {
+          const z = L2.zones && L2.zones.kids;
+          const p = ctx.player.getPose();
+          const r = z && z.rect;
+          s.inKids = !!(r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1 && (r.y1 === void 0 || (p.y || 0) <= r.y1));
+        } catch {
+        }
+        try {
+          const c = ctx.use("couch");
+          s.couchSeated = !!(c && c.seated && c.seated());
+        } catch {
+        }
+        try {
+          const sa = ctx.use("salon");
+          s.salonBusy = !!(sa && (sa.busy && sa.busy() || sa.sitting && sa.sitting()));
+        } catch {
+        }
+        return s;
+      }
+      function protReason() {
+        const z = isSafe(zoneState());
+        if (z) return z;
+        if (energy.isKO()) return "ko";
+        if (energy.protected(T5)) return "energy";
+        return null;
+      }
+      let netRef;
+      let netOffs = [];
+      const netFight = () => {
+        const n = ctx.use("net");
+        return n && n.fight || null;
+      };
+      const netOn = () => {
+        const f = netFight();
+        return !!(f && typeof f.has === "function" && f.has());
+      };
+      function ensureNet() {
+        const f = netFight();
+        if (f === netRef) return;
+        for (const off of netOffs) {
+          try {
+            off();
+          } catch {
+          }
+        }
+        netOffs = [];
+        netRef = f;
+        wpSent = null;
+        if (f && typeof f.on === "function") {
+          for (const [t, fn] of [["fh", onFh], ["lb", onLb]]) {
+            try {
+              netOffs.push(f.on(t, fn));
+            } catch (err) {
+              warn8("on " + t, err);
+            }
+          }
+        }
+      }
+      const peerPos = (c) => {
+        const f = netFight();
+        try {
+          return f && f.peerPos ? f.peerPos(c) : null;
+        } catch {
+          return null;
+        }
+      };
+      const netSend = (type, payload) => {
+        const f = netFight();
+        try {
+          return !!(f && f.has && f.has() && f.send(type, payload));
+        } catch {
+          return false;
+        }
+      };
+      function peerList() {
+        const n = ctx.use("net");
+        try {
+          return n && n.peers ? n.peers().map((p) => p.c).filter((c) => c != null) : [];
+        } catch {
+          return [];
+        }
+      }
+      function strengthOf(dmg) {
+        return Math.max(0.3, Math.min(1, dmg / 26));
+      }
+      function hitPlayer(o) {
+        if (disposed || !o || xrOn() || flags.fight === false) return false;
+        if (protReason()) return false;
+        const dmg = Number(o.dmg);
+        if (!(dmg > 0)) return false;
+        const r = energy.hit(dmg, T5);
+        if (r.ignored) return false;
+        const k = strengthOf(dmg);
+        const kn = o.knock || {};
+        try {
+          ctx.player.knock({ x: Number(kn.x) || 0, z: Number(kn.z) || 0 }, Math.max(0.5, Math.min(2.2, Number(o.kmul) || 0.8 + k * 0.8)));
+        } catch {
+        }
+        hudVal = r.energy;
+        hud.set(r.energy);
+        hud.hit(k);
+        sound("ouch");
+        if (r.ko) startKO();
+        return true;
+      }
+      function blindPlayer(ms) {
+        if (disposed || xrOn() || flags.fight === false) return false;
+        if (protReason()) return false;
+        if (!veil.start(ms > 0 ? ms : void 0)) return false;
+        coverUntil = T5 + (ms > 0 ? ms : 2500) / 1e3;
+        if (laserOn) setLaser(false);
+        return true;
+      }
+      function onFh(m) {
+        if (!m || xrOn()) return;
+        const info = weaponInfo(WEAPON_IDS[m.w | 0]);
+        if (!(info.dmg > 0)) return;
+        let dx;
+        let dz;
+        if (Array.isArray(m.d)) {
+          dx = Number(m.d[0]);
+          dz = Number(m.d[1]);
+        } else if (m.dir) {
+          dx = Number(m.dir.x);
+          dz = Number(m.dir.z);
+        }
+        if (!Number.isFinite(dx) || !Number.isFinite(dz) || !dx && !dz) return;
+        const sp = peerPos(m.c);
+        if (sp) {
+          const p = ctx.player.getPose();
+          if (Math.hypot(sp.x - p.x, sp.z - p.z) > PEER_HIT_DIST) return;
+        }
+        hitPlayer({ dmg: info.dmg, knock: { x: dx, z: dz }, kmul: 0.6 + info.knock * 0.5, src: m.src ? "gang" : "pvp", from: m.c });
+      }
+      function onLb(m) {
+        if (!m || xrOn()) return;
+        const sp = peerPos(m.c);
+        if (sp) {
+          const p = ctx.player.getPose();
+          if (Math.hypot(sp.x - p.x, sp.z - p.z) > LASER_RANGE + 1) return;
+        }
+        blindPlayer(BLIND_MS + 500);
+      }
+      function benchSpot() {
+        const fx = L2.city && Array.isArray(L2.city.fixtures) ? L2.city.fixtures.find((f) => f && f.id === "benchN") : null;
+        return fx ? { x: (fx.x0 + fx.x1) / 2, z: (fx.z0 + fx.z1) / 2, y: fx.y1 !== void 0 ? fx.y1 : SIT_Y } : null;
+      }
+      function seat(o) {
+        const sp = benchSpot();
+        const x = o && Number.isFinite(o.x) ? o.x : sp ? sp.x : null;
+        const z = o && Number.isFinite(o.z) ? o.z : sp ? sp.z : null;
+        if (x == null || z == null) return false;
+        const y = o && Number.isFinite(o.y) ? o.y : sp ? sp.y : SIT_Y;
+        try {
+          ctx.player.teleport(x, z, o && Number.isFinite(o.yaw) ? o.yaw : 0, 0, y);
+        } catch (err) {
+          warn8("teleport", err);
+          return false;
+        }
+        seatedKO = true;
+        try {
+          const sv = ctx.use("selfview");
+          if (sv && sv.playAnim) sv.playAnim("sit");
+        } catch {
+        }
+        return true;
+      }
+      function startKO() {
+        if (koing) return;
+        koing = true;
+        seatedKO = false;
+        const my = ++koSeq;
+        if (laserOn) setLaser(false);
+        if (wheel.isOpen()) wheel.close();
+        veil.stop();
+        coverUntil = 0;
+        try {
+          ctx.player.freeze(true);
+        } catch {
+        }
+        sound("ko");
+        for (const fn of [...koFns]) {
+          try {
+            fn();
+          } catch (err) {
+            warn8("onKO", err);
+          }
+        }
+        const ok = hud.knockout({
+          hold: KO_HOLD_MS,
+          onBlack: () => {
+            if (my !== koSeq || disposed) return;
+            try {
+              ctx.items.drop();
+            } catch {
+            }
+            seat();
+            energy.wake(T5);
+            hudVal = 100;
+            hud.set(100);
+            hud.shield(SHIELD_MS);
+            try {
+              const c = ctx.use("cashier");
+              if (c && c.event) c.event("playerKO");
+            } catch {
+            }
+            found("knockout");
+          },
+          onDone: () => {
+            if (my === koSeq) finishKO();
+          }
+        });
+        if (!ok) {
+          energy.wake(T5);
+          seat();
+          finishKO();
+        }
+      }
+      function finishKO() {
+        koing = false;
+        try {
+          ctx.player.freeze(false);
+        } catch {
+        }
+      }
+      function setWeapon(id) {
+        if (!WEAPON_IDS.includes(id) || xrOn() || disposed) return false;
+        if (id === weapon) return true;
+        if (laserOn) setLaser(false);
+        weapon = id;
+        wpDue = T5 + WP_DEBOUNCE;
+        try {
+          if (ctx.deps && typeof ctx.deps.toast === "function") ctx.deps.toast("Waffe: " + NAME[id]);
+        } catch {
+        }
+        return true;
+      }
+      let laserOn = false;
+      let laserAcc = 0;
+      let lzAt = -9;
+      let lzOnSent = false;
+      let point = null;
+      const dwell = /* @__PURE__ */ new Map();
+      const tmpO = new Vector3();
+      const tmpD = new Vector3();
+      const tmpH = new Vector3();
+      let dot = null;
+      let beam = null;
+      const stateOut = () => ({ on: laserOn, point: laserOn && point ? { ...point } : null });
+      const emitLaser = () => {
+        const s = stateOut();
+        for (const fn of [...laserFns]) {
+          try {
+            fn(s);
+          } catch (err) {
+            warn8("onLaser", err);
+          }
+        }
+      };
+      function ensureGfx() {
+        if (dot) return;
+        dot = new Mesh(new SphereGeometry(0.045, 8, 6), new MeshBasicMaterial({ color: 16722474, fog: false }));
+        dot.visible = false;
+        dot.frustumCulled = false;
+        dot.name = "lfx-laser-dot";
+        ctx.scene.add(dot);
+      }
+      function ensureBeam() {
+        if (beam) return;
+        beam = new Mesh(new BoxGeometry(0.012, 0.012, 1), new MeshBasicMaterial({ color: 16724016, transparent: true, opacity: 0.55, fog: false, depthWrite: false }));
+        beam.visible = false;
+        beam.frustumCulled = false;
+        beam.name = "lfx-laser-beam";
+        ctx.scene.add(beam);
+      }
+      function hideGfx() {
+        if (dot) dot.visible = false;
+        if (beam) beam.visible = false;
+      }
+      function canLaser() {
+        return !disposed && !xrOn() && !koing && !energy.isKO() && weapon === "laser" && flags.fight !== false && ctx.playing() && !isSafe(zoneState());
+      }
+      function setLaser(on) {
+        on = !!on;
+        if (on === laserOn) return on;
+        if (on && !canLaser()) return false;
+        laserOn = on;
+        laserAcc = LASER_TICK;
+        try {
+          const s = ctx.use("sound");
+          if (s && s.laser) s.laser(on);
+        } catch {
+        }
+        if (!on) {
+          dwell.clear();
+          point = null;
+          hideGfx();
+          const a = animalsProv();
+          try {
+            if (a && a.laser) a.laser(null);
+          } catch {
+          }
+          if (lzOnSent) {
+            netSend("lz", { on: 0 });
+            lzOnSent = false;
+          }
+          try {
+            const sv = ctx.use("selfview");
+            if (sv && sv.playAnim && aimPlayed) sv.playAnim(null);
+          } catch {
+          }
+          aimPlayed = false;
+        } else {
+          try {
+            const sv = ctx.use("selfview");
+            if (sv && sv.playAnim) {
+              sv.playAnim("aim");
+              aimPlayed = true;
+            }
+          } catch {
+          }
+        }
+        emitLaser();
+        return on;
+      }
+      let aimPlayed = false;
+      const animalsProv = () => ctx.use("animals") || ctx.use("npc");
+      function aimRay(o, d) {
+        ctx.camera.getWorldDirection(d);
+        o.copy(ctx.camera.position);
+        let sv = null;
+        try {
+          sv = ctx.use("selfview");
+        } catch {
+        }
+        if (sv && sv.mode && sv.mode() === "third") {
+          const e = sv.eye(tmpH);
+          const t = Math.max(0, (e.x - o.x) * d.x + (e.y - o.y) * d.y + (e.z - o.z) * d.z);
+          o.addScaledVector(d, t);
+        }
+      }
+      function laserTick() {
+        aimRay(tmpO, tmpD);
+        const o = { x: tmpO.x, y: tmpO.y, z: tmpO.z };
+        const d = { x: tmpD.x, y: tmpD.y, z: tmpD.z };
+        const hit = castRay(o, d, L2.colliders, LASER_RANGE);
+        point = hit.point;
+        const dir = hit.dir;
+        const seen = /* @__PURE__ */ new Set();
+        const step = (key2, kind, onTarget, pt) => {
+          let st = dwell.get(key2);
+          if (!st) {
+            st = createLaserDwell();
+            dwell.set(key2, st);
+          }
+          seen.add(key2);
+          return stepLaser(st, LASER_TICK, kind, onTarget, pt);
+        };
+        const n = ctx.use("npc");
+        let people = [];
+        try {
+          people = n && n.people ? n.people() : [];
+        } catch {
+        }
+        for (const p of people) {
+          if (!p || !p.handle || p.kind === "peer" || typeof p.handle.headWorld !== "function") continue;
+          if (p.handle.root && p.handle.root.visible === false) continue;
+          const hw = p.handle.headWorld(tmpH);
+          const on = rayHitsHead(o, d, hw, 0.17, hit.t);
+          for (const ev of step(p.handle, "person", on, null)) {
+            if (ev.type === "blind") {
+              try {
+                if (n && n.laserHit) n.laserHit(p.handle);
+              } catch (err) {
+                warn8("npc.laserHit", err);
+              }
+            }
+          }
+        }
+        try {
+          const c = ctx.use("cashier");
+          const r = c && c.richard ? c.richard() : null;
+          if (r && r.pos && r.inStore !== false) {
+            const on = rayHitsHead(o, d, { x: r.pos.x, y: (r.pos.y || 0) + 1.65, z: r.pos.z }, 0.2, hit.t);
+            for (const ev of step("richard", "richard", on, null)) {
+              if (ev.type === "hit") {
+                const br = ctx.use("brawl");
+                if (br && br.hitBy) br.hitBy("laser", { x: dir.x, z: dir.z });
+              }
+            }
+          }
+        } catch (err) {
+          warn8("richard", err);
+        }
+        try {
+          const tr = ctx.use("traffic");
+          if (tr && tr.laserHit) {
+            let ref = null;
+            for (let t = 1; t <= hit.t && !ref; t += 0.75) ref = tr.laserHit({ x: o.x + dir.x * t, y: o.y + dir.y * t, z: o.z + dir.z * t });
+            const key2 = ref ? "car:" + ref.id : "car:-";
+            for (const ev of step(key2, "driver", !!ref, null)) {
+              if (ev.type === "brake" && tr.blindDriver) tr.blindDriver(ref, { decel: BRAKE_DECEL, stand: ev.honk || HONK_S });
+            }
+          }
+        } catch (err) {
+          warn8("traffic", err);
+        }
+        try {
+          const a = animalsProv();
+          if (a && a.laser) a.laser({ x: point.x, y: point.y, z: point.z });
+        } catch (err) {
+          warn8("animals.laser", err);
+        }
+        if (netOn()) {
+          for (const c of peerList()) {
+            const pp = peerPos(c);
+            if (!pp) continue;
+            const on = rayHitsHead(o, d, { x: pp.x, y: (pp.y || 0) + 1.55, z: pp.z }, 0.2, hit.t);
+            for (const ev of step("peer:" + c, "person", on, null)) if (ev.type === "blind") netSend("lb", { c });
+          }
+        }
+        for (const k of [...dwell.keys()]) if (!seen.has(k)) dwell.delete(k);
+        ensureGfx();
+        dot.position.set(point.x, point.y, point.z);
+        dot.visible = true;
+        let third = false;
+        try {
+          const sv = ctx.use("selfview");
+          third = !!(sv && sv.mode && sv.mode() === "third");
+        } catch {
+        }
+        if (third && ctx.quality() !== "low") {
+          ensureBeam();
+          beam.position.set((o.x + point.x) / 2, (o.y + point.y) / 2 - 0.08, (o.z + point.z) / 2);
+          beam.scale.set(1, 1, Math.max(0.05, hit.t));
+          beam.lookAt(point.x, point.y - 0.08, point.z);
+          beam.visible = true;
+        } else if (beam) beam.visible = false;
+        if (netOn() && T5 - lzAt >= LZ_GAP) {
+          lzAt = T5;
+          if (netSend("lz", { on: 1, point: { x: point.x, y: point.y, z: point.z } })) lzOnSent = true;
+        }
+        emitLaser();
+      }
+      function swingOk() {
+        return !disposed && !xrOn() && !koing && !energy.isKO() && T5 >= nextSwing && flags.fight !== false;
+      }
+      function swung(ev) {
+        const info = weaponInfo(ev && ev.weapon ? ev.weapon : weapon);
+        nextSwing = T5 + info.cooldown;
+        sound(info.sfx);
+        if (info.id === "whip" || info.id === "belt") {
+          swingPose = info.id;
+          swingPoseUntil = T5 + 0.5;
+          try {
+            const sv = ctx.use("selfview");
+            if (sv && sv.playAnim) sv.playAnim(info.id);
+          } catch {
+          }
+        }
+      }
+      offs.push(ctx.input.onAction("hit", (ev) => {
+        if (disposed || xrOn() || !ev || !ev.origin || !ev.dir || !netOn() || weapon === "laser") return false;
+        const info = weaponInfo(ev.weapon || weapon);
+        if (!(info.max > 0)) return false;
+        const cands2 = [];
+        for (const c of peerList()) {
+          const pp = peerPos(c);
+          if (pp) cands2.push({ x: pp.x, y: pp.y || 0, z: pp.z, c });
+        }
+        if (!cands2.length) return false;
+        const y = ctx.player.getY();
+        const pool = cands2.filter((q) => Math.abs(q.y - y) < 1.2);
+        const o = ctx.player.getPose();
+        const dirs = { x: ev.dir.x, z: ev.dir.z };
+        const sel = selectTargets({ x: o.x, z: o.z }, dirs, pool, info);
+        if (!sel.length) return false;
+        const l = Math.hypot(dirs.x, dirs.z) || 1;
+        const wi = WEAPON_IDS.indexOf(info.id);
+        for (const s of sel) netSend("fh", { c: s.cand.c, w: wi, dir: { x: dirs.x / l, z: dirs.z / l }, src: 0 });
+        return true;
+      }, { prio: 25 }));
+      function wheelCtl(open) {
+        if (open) {
+          if (disposed || xrOn() || koing || !ctx.playing()) return false;
+          return wheel.open(weapon);
+        }
+        if (!wheel.isOpen()) return false;
+        wheel.commit();
+        return true;
+      }
+      const provider = {
+        weapon: () => weapon,
+        setWeapon,
+        cycle(dir) {
+          return setWeapon(cycleWeapon(weapon, dir));
+        },
+        wheel: wheelCtl,
+        energy: () => energy.value(T5),
+        protected: () => !!protReason(),
+        onKO(fn) {
+          if (typeof fn !== "function") return () => {
+          };
+          koFns.add(fn);
+          return () => koFns.delete(fn);
+        },
+        koSeat: (o) => seat(o),
+        hitPlayer,
+        blindPlayer,
+        blind: blindPlayer,
+        laserState: stateOut,
+        onLaser(fn) {
+          if (typeof fn !== "function") return () => {
+          };
+          laserFns.add(fn);
+          return () => laserFns.delete(fn);
+        },
+        swingOk,
+        swung,
+        laser: (on) => setLaser(on),
+        auxDown() {
+          auxHeld = true;
+          auxStart = T5;
+          auxLaser = false;
+        },
+        auxUp() {
+          const held = auxHeld;
+          auxHeld = false;
+          if (!held) return;
+          if (auxLaser) {
+            auxLaser = false;
+            setLaser(false);
+            return;
+          }
+          wheelCtl(true);
+        },
+        heldWeapon: () => !xrOn() && !koing && (weapon === "belt" || weapon === "whip" || weapon === "laser") ? weapon : null,
+        sitting: () => seatedKO,
+        poseCode() {
+          if (disposed || xrOn()) return null;
+          if (energy.isKO() || koing && !seatedKO) return POSE.ko;
+          if (T5 < coverUntil || veil.active()) return POSE.cover;
+          if (menuNow && energy.protected(T5)) return POSE.away;
+          if (swingPose && T5 < swingPoseUntil) return POSE[swingPose];
+          if (laserOn) return POSE.aim;
+          if (seatedKO) return POSE.sit;
+          return null;
+        }
+      };
+      const offProvider = ctx.provide("fight", provider);
+      const offDbg = debugHook(ctx, "fight", { state: () => ({ weapon, energy: energy.value(T5), koing, laserOn, point, menuNow, prot: protReason() }) });
+      offs.push(ctx.on("xr", (on) => {
+        if (!on) return;
+        if (laserOn) setLaser(false);
+        if (wheel.isOpen()) wheel.close();
+        veil.stop();
+        hud.show(false);
+      }));
+      return {
+        update(dt) {
+          if (disposed) return;
+          T5 += Math.min(0.25, Math.max(0, dt || 0));
+          ensureNet();
+          const xr = xrOn();
+          if (xr) {
+            if (laserOn) setLaser(false);
+            return;
+          }
+          const wo = wheel.isOpen();
+          menuNow = !ctx.playing() && !wo && !koing;
+          energy.setMenu(menuNow, T5);
+          if (!koing) {
+            const ev = energy.value(T5);
+            if (Math.abs(ev - hudVal) >= 0.5 || ev >= 100 && hudVal < 100) {
+              hudVal = ev;
+              hud.set(ev);
+            }
+          }
+          if (seatedKO && (ctx.player.getNet ? Math.hypot((ctx.player.getNet() || {}).vx || 0, (ctx.player.getNet() || {}).vz || 0) > 0.8 : false)) seatedKO = false;
+          try {
+            const sv = ctx.use("selfview");
+            const fig = sv && sv.figure ? sv.figure() : null;
+            if (fig && fig.setHandItem) {
+              const want = weapon === "belt" || weapon === "whip" || weapon === "laser" ? weapon : null;
+              if ((fig.getHandItem ? fig.getHandItem() : null) !== want) fig.setHandItem(want);
+            }
+          } catch {
+          }
+          if (wpDue >= 0 && T5 >= wpDue) {
+            if (netOn()) {
+              if (wpSent !== weapon && netSend("wp", { w: WEAPON_IDS.indexOf(weapon) })) wpSent = weapon;
+              wpDue = -1;
+            } else wpDue = T5 + 1;
+          } else if (wpDue < 0 && netOn() && wpSent == null && weapon !== "hand") wpDue = T5;
+          if (auxHeld && !auxLaser && weapon === "laser" && T5 - auxStart >= AUX_TAP) auxLaser = setLaser(true);
+          if (laserOn) {
+            if (!ctx.playing() || koing || weapon !== "laser" || isSafe(zoneState())) setLaser(false);
+            else {
+              laserAcc += dt || 0;
+              if (laserAcc >= LASER_TICK) {
+                laserAcc = 0;
+                laserTick();
+              }
+            }
+          }
+        },
+        onSuspend() {
+          if (laserOn) setLaser(false);
+          if (wheel.isOpen()) wheel.close();
+        },
+        dispose() {
+          disposed = true;
+          koSeq++;
+          if (koing) {
+            try {
+              ctx.player.freeze(false);
+            } catch {
+            }
+          }
+          koing = false;
+          if (laserOn) {
+            try {
+              const s = ctx.use("sound");
+              if (s && s.laser) s.laser(false);
+            } catch {
+            }
+          }
+          laserOn = false;
+          for (const off of netOffs) {
+            try {
+              off();
+            } catch {
+            }
+          }
+          netOffs = [];
+          for (const off of offs) {
+            try {
+              off();
+            } catch {
+            }
+          }
+          for (const m of [dot, beam]) {
+            if (!m) continue;
+            if (m.parent) m.parent.remove(m);
+            m.geometry.dispose();
+            m.material.dispose();
+          }
+          dot = null;
+          beam = null;
+          hud.dispose();
+          veil.dispose();
+          wheel.dispose();
+          offDbg();
+          offProvider();
+        }
+      };
     }
   };
 
+  // src/js/store3d/npc/gang-logic.js
+  var GANG_MAX = 3;
+  var STREET_MARGIN = 6;
+  var ROWDY_HP = 60;
+  var FLEE_HP = 0.25;
+  var ST = ["idle", "approach", "taunt", "threaten", "attack", "flee", "beaten"];
+  function fnv2(s) {
+    let h3 = 2166136261;
+    s = String(s);
+    for (let i = 0; i < s.length; i++) {
+      h3 ^= s.charCodeAt(i);
+      h3 = Math.imul(h3, 16777619);
+    }
+    h3 ^= h3 >>> 15;
+    h3 = Math.imul(h3, 2246822507);
+    h3 ^= h3 >>> 13;
+    return (h3 >>> 0) / 4294967296;
+  }
+  function spawnCount(tod, seed) {
+    const u = fnv2(`gang:${tod}:${seed}`);
+    if (tod === "night") return u < 0.5 ? 2 : 3;
+    if (tod === "dusk") return u < 0.5 ? 1 : 0;
+    return u < 0.2 ? 1 : 0;
+  }
+  var inR = (r, x, z) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;
+  var distR = (r, x, z) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
+  function gangAreaOk(x, z, allowed, forbidden = [], margin = STREET_MARGIN) {
+    for (const f of forbidden) if (inR(f, x, z)) return false;
+    for (const a of allowed) if (distR(a, x, z) <= margin) return true;
+    return false;
+  }
+  function spawnPlan(seed, n, spots) {
+    const pool = spots.slice();
+    const out = [];
+    for (let k = 0; k < n && pool.length; k++) {
+      const i = Math.floor(fnv2(`spot:${seed}:${k}`) * pool.length);
+      out.push(pool.splice(i, 1)[0]);
+    }
+    return out;
+  }
+  function createRowdy(i, p, seed = 0) {
+    return { i, st: "idle", x: p.x, z: p.z, hx: p.x, hz: p.z, yaw: 0, hp: ROWDY_HP, t: 0, cool: 0, speed: 1.1 + fnv2(`spd:${seed}:${i}`) * 0.5, struck: false };
+  }
+  function createGang(seed, n, spots) {
+    return { seed, phase: 0, members: spawnPlan(seed, Math.min(GANG_MAX, n), spots).map((p, i) => createRowdy(i, p, seed)) };
+  }
+  function hitRowdy(m, dmg) {
+    const ev = [];
+    if (m.st === "beaten" || m.st === "flee") {
+      m.hp = Math.max(0, m.hp - dmg);
+      return ev;
+    }
+    m.hp = Math.max(0, m.hp - dmg);
+    if (m.hp <= 0) {
+      m.st = "beaten";
+      m.t = 4;
+      ev.push({ type: "beaten", i: m.i });
+    } else if (m.hp <= ROWDY_HP * FLEE_HP) {
+      m.st = "flee";
+      m.t = 6;
+      ev.push({ type: "gang-flee", i: m.i });
+    }
+    return ev;
+  }
+  function moveTo(m, tx, tz, dt, env2, mul = 1) {
+    const dx = tx - m.x;
+    const dz = tz - m.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1e-3) return d;
+    const s = Math.min(d, m.speed * mul * dt);
+    const nx = m.x + dx / d * s;
+    const nz = m.z + dz / d * s;
+    if (gangAreaOk(nx, nz, env2.allowed, env2.forbidden)) {
+      m.x = nx;
+      m.z = nz;
+    }
+    m.yaw = Math.atan2(-dx, -dz);
+    return d;
+  }
+  function stepRowdy(m, dt, env2) {
+    const ev = [];
+    const p = env2.player;
+    m.cool = Math.max(0, m.cool - dt);
+    m.t = Math.max(0, m.t - dt);
+    if (m.st === "beaten") {
+      if (m.t <= 0) {
+        m.st = "flee";
+        m.t = 6;
+      }
+      return ev;
+    }
+    if (m.st === "flee") {
+      moveTo(m, m.hx, m.hz, dt, env2, 1.6);
+      if (m.t <= 0) {
+        m.st = "idle";
+        m.hp = Math.max(m.hp, ROWDY_HP * 0.5);
+      }
+      return ev;
+    }
+    const usable = p && !p.safe && gangAreaOk(p.x, p.z, env2.allowed, env2.forbidden);
+    const dist = p ? Math.hypot(p.x - m.x, p.z - m.z) : Infinity;
+    if (!usable) {
+      if (m.st !== "idle") {
+        m.st = "idle";
+        m.t = 0;
+      }
+      moveTo(m, m.hx, m.hz, dt, env2);
+      return ev;
+    }
+    if (m.st === "idle") {
+      if (dist < 12) m.st = "approach";
+      return ev;
+    }
+    if (m.st === "approach") {
+      moveTo(m, p.x, p.z, dt, env2);
+      if (dist < 3.2) {
+        m.st = "taunt";
+        m.t = 2.5;
+        ev.push({ type: "say", i: m.i, cat: "taunt" });
+      }
+      return ev;
+    }
+    if (m.st === "taunt") {
+      m.yaw = Math.atan2(m.x - p.x, m.z - p.z);
+      if (m.t <= 0) {
+        m.st = "threaten";
+        m.t = 2;
+        ev.push({ type: "say", i: m.i, cat: "threaten" });
+      }
+      return ev;
+    }
+    if (m.st === "threaten") {
+      if (m.t <= 0) m.st = "attack";
+      return ev;
+    }
+    if (m.st === "attack") {
+      if (dist > 1.2) moveTo(m, p.x, p.z, dt, env2, 1.5);
+      else if (m.cool <= 0) {
+        m.cool = 1.2;
+        ev.push({ type: "strike", i: m.i, dmg: 8 });
+      }
+    }
+    return ev;
+  }
+
+  // src/js/store3d/net/gang.js
+  var TODS = ["day", "dusk", "night"];
+  var GS_R = 2;
+  var clamp12 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var fin = (v, d = 0) => Number.isFinite(v) ? v : d;
+  var phaseOf = (tod) => Math.max(0, TODS.indexOf(tod));
+  function netAnim(st, speed = 0, striking = false) {
+    if (st === "beaten") return 9;
+    if (striking) return 6;
+    if (st === "taunt" || st === "threaten") return 14;
+    if (speed > 2.2) return 2;
+    if (speed > 0.3) return 1;
+    return 0;
+  }
+  function encodeGs(frame, { phase = 0, seed = 0, members = [] } = {}) {
+    if (!frame) return null;
+    const list = members.slice(0, 3);
+    const q = [clamp12(Math.round(fin(phase)), 0, 255), clamp12(Math.round(fin(seed)), 0, 16777215), list.length];
+    for (const m of list) {
+      const [cx, cy, cz] = frame.enc(fin(m.x), fin(m.y), fin(m.z), GS_R);
+      q.push(
+        clamp12(Math.max(0, ST.indexOf(m.st)), 0, 9),
+        cx,
+        cy,
+        cz,
+        frame.encYaw(fin(m.yaw)),
+        clamp12(Math.round(fin(m.a)), 0, 15),
+        clamp12(Math.round(fin(m.tgt)), 0, 65535),
+        clamp12(Math.round(fin(m.hp)), 0, 100)
+      );
+    }
+    return q;
+  }
+  function decodeGs(frame, q) {
+    if (!frame || !Array.isArray(q) || q.length < 3 || !q.every((v) => Number.isFinite(v))) return null;
+    const n = q[2];
+    if (!Number.isInteger(n) || n < 0 || n > 3 || q.length !== 3 + 8 * n) return null;
+    const members = [];
+    for (let i = 0; i < n; i++) {
+      const o = 3 + 8 * i;
+      const [x, y, z] = frame.dec(q[o + 1], q[o + 2], q[o + 3], GS_R);
+      members.push({ st: ST[q[o]] || "idle", x, y, z, yaw: frame.decYaw(q[o + 4]), a: q[o + 5], tgt: q[o + 6], hp: q[o + 7] });
+    }
+    return { phase: q[0], tod: TODS[q[0]] || "day", seed: q[1], members };
+  }
+  var WEAPON_INDEX = { hand: 0, belt: 1, whip: 2, laser: 3 };
+  var weaponIndex2 = (id) => Object.prototype.hasOwnProperty.call(WEAPON_INDEX, id) ? WEAPON_INDEX[id] : 0;
+  var WEAPON_BY_INDEX = ["hand", "belt", "whip", "laser"];
+
   // src/js/store3d/modules/gang.js
+  var warn9 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] gang", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  var SLOT_MS = 20 * 60 * 1e3;
+  var NEAR_M = 44;
+  var FAR_M = 52;
+  var LEAD_NEAR_M = 35;
+  var GS_EVERY_S = 0.17;
+  var STALE_S = 6;
+  var HIT_PRIO = 25;
+  var WALL_GROW = 0.3;
+  var LEATHER2 = [[0.09, 0.08, 0.08], [0.16, 0.1, 0.07], [0.1, 0.1, 0.13]];
+  var HATS3 = ["beanie", "cap", "beanie"];
+  var HAIRS = ["tuft", "bald", "short"];
+  var clamp13 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var wrapPi = (a) => {
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+  };
+  function rowdyLook(seed, i) {
+    const r = seeded((Math.imul(seed | 0, 2654435761) ^ Math.imul(i + 1, 40503)) >>> 0);
+    const base = makeLook(r, {});
+    const k = Math.floor(r() * LEATHER2.length);
+    return {
+      ...base,
+      role: null,
+      top: LEATHER2[k],
+      bottom: [0.1, 0.12, 0.2],
+      shoes: [0.06, 0.06, 0.07],
+      hat: HATS3[Math.floor(r() * HATS3.length)],
+      hatColor: LEATHER2[(k + 1) % LEATHER2.length],
+      hairStyle: HAIRS[Math.floor(r() * HAIRS.length)],
+      glasses: false,
+      bag: null,
+      umbrella: false,
+      stripe: r() < 0.7 ? [0.72, 0.72, 0.78] : [0.8, 0.1, 0.1],
+      // Nieten / Warnstreifen
+      height: 1 + r() * 0.08,
+      build: 1.05 + r() * 0.15
+    };
+  }
+  var rects = (zn, ids) => ids.map((id) => zn[id] && zn[id].rect).filter(Boolean);
+  var grow = (r, g) => ({ x0: r.x0 - g, z0: r.z0 - g, x1: r.x1 + g, z1: r.z1 + g });
+  function gangEnv(city2) {
+    const zn = city2 && city2.zones;
+    if (!zn || !zn.alley || !zn.yard || !zn.store) return null;
+    const allowed = rects(zn, ["alley", "yard", "escape"]);
+    const solid = (city2.colliders || []).filter((c) => c && c.kind !== "escape" && !c.dynamic && (c.y1 === void 0 || c.y1 > 0.4) && Number.isFinite(c.x0)).map((c) => ({ x0: c.x0, z0: c.z0, x1: c.x1, z1: c.z1 }));
+    const shut = [...rects(zn, ["store", "doorway"]).map((r) => grow(r, WALL_GROW)), ...solid];
+    const clear = (x, z) => !shut.some((r) => x > r.x0 - 0.7 && x < r.x1 + 0.7 && z > r.z0 - 0.7 && z < r.z1 + 0.7);
+    const spots = [];
+    const grid = (r, step) => {
+      for (let x = r.x0 + 0.9; x <= r.x1 - 0.9; x += step) for (let z = r.z0 + 0.9; z <= r.z1 - 0.9; z += step) if (clear(x, z)) spots.push({ x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10 });
+    };
+    grid(zn.alley.rect, 1.6);
+    grid(zn.yard.rect, 3.2);
+    return { allowed, forbidden: shut, spots };
+  }
   var gang_default = {
     name: "gang",
     init(ctx) {
-      const off = ctx.provide("gang", { active: () => false, members: () => [], hit: () => false });
-      return { dispose() {
-        off();
-      } };
+      const env2 = gangEnv(ctx.layout && ctx.layout.city);
+      const opts = ctx.opts || {};
+      const off = !env2 || !env2.spots.length || opts.devFlags && opts.devFlags.npc === false;
+      if (off) {
+        const offProvider = ctx.provide("gang", { active: () => false, members: () => [], hit: () => false, role: () => "local" });
+        return { dispose() {
+          offProvider();
+        } };
+      }
+      let disposed = false;
+      let entered = false;
+      let clockT = 0;
+      let members = [];
+      let curSeed = 0;
+      let curTod = "day";
+      let planKey = "";
+      let role = "local";
+      let lastGc = -1e9;
+      let gsAcc = 0;
+      let lastGs = null;
+      let lastGsT = -1e9;
+      let appliedGs = null;
+      let lastMyHit = -1e9;
+      let foundFlee = false;
+      let reserved = -1;
+      let sentRelease = false;
+      let koOff = null;
+      let koTries = 0;
+      let netBound = null;
+      let netOffs = [];
+      let gangSayT = -1e9;
+      const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+      const quality = () => typeof ctx.quality === "function" ? ctx.quality() : "mid";
+      const figCap = () => quality() === "low" ? 2 : GANG_MAX;
+      const poseOf = () => {
+        try {
+          return ctx.player.getPose();
+        } catch {
+          return null;
+        }
+      };
+      const fightProv = () => ctx.use("fight");
+      const netFight = () => {
+        const n = ctx.use("net");
+        return n && n.fight ? n.fight : null;
+      };
+      const myC = () => {
+        const n = ctx.use("net");
+        const me = n && typeof n.me === "function" ? n.me() : null;
+        return me ? me.c : 0;
+      };
+      function view(m) {
+        m.fig = null;
+        m.speaker = null;
+        m.shown = m.st;
+        m.px = m.x;
+        m.pz = m.z;
+        m.spd = 0;
+        m.tx = m.x;
+        m.tz = m.z;
+        m.tyaw = m.yaw;
+        m.tgt = 0;
+        m.lockUntil = 0;
+        m.striking = 0;
+        m.hitT = -1e9;
+        m.sayT = -1e9;
+        m.anim = "";
+        m.lastA = 0;
+        m.lastIdx = {};
+        return m;
+      }
+      function destroyFig(m) {
+        if (m.speaker) {
+          try {
+            m.speaker.release();
+          } catch {
+          }
+          m.speaker = null;
+        }
+        if (m.fig) {
+          const f = m.fig;
+          m.fig = null;
+          if (!f.disposed) {
+            try {
+              f.dispose();
+            } catch (err) {
+              warn9("dispose", err);
+            }
+          }
+        }
+        m.anim = "";
+      }
+      function destroyAll() {
+        for (const m of members) destroyFig(m);
+        members = [];
+        planKey = "";
+        foundFlee = false;
+      }
+      function setReserve(n) {
+        if (n === reserved) return;
+        const np = ctx.use("npc");
+        if (np && typeof np.reserve === "function") {
+          try {
+            np.reserve(n, "gang");
+            reserved = n;
+          } catch (err) {
+            warn9("reserve", err);
+          }
+        }
+      }
+      function wantPlan() {
+        const w = ctx.use("weather");
+        let tod = w && TODS.includes(w.tod) ? w.tod : "day";
+        let seedBase = Date.now();
+        try {
+          const n2 = ctx.use("net");
+          const s = n2 && n2.active && n2.active() && typeof n2.serverNow === "function" ? n2.serverNow() : null;
+          if (Number.isFinite(s)) seedBase = s;
+        } catch {
+        }
+        let seed = Math.floor(seedBase / SLOT_MS) & 16777215;
+        let n = spawnCount(tod, seed);
+        if (opts.debug && Number.isFinite(opts.gang)) {
+          n = clamp13(Math.round(opts.gang), 0, GANG_MAX);
+          tod = "night";
+          seed = 1;
+        }
+        return { tod, seed, n: Math.min(n, figCap()) };
+      }
+      const allCalm = () => members.every((m) => m.st === "idle");
+      function rebuild(seed, n, tod) {
+        destroyAll();
+        curSeed = seed;
+        curTod = tod;
+        members = createGang(seed, n, env2.spots).members.map(view);
+      }
+      function applyPlan() {
+        const p = wantPlan();
+        const key2 = `${p.tod}:${p.seed}:${p.n}`;
+        if (key2 === planKey) return;
+        if (members.length && !allCalm()) return;
+        rebuild(p.seed, p.n, p.tod);
+        planKey = key2;
+      }
+      function say(m, cat, force) {
+        if (!m.fig) return;
+        if (!force && (clockT - m.sayT < 2.5 || clockT - gangSayT < 1.2)) return;
+        const L2 = pickLine2(cat, Math.random, m.lastIdx[cat] ?? -1);
+        if (!L2) return;
+        m.lastIdx[cat] = L2.index;
+        m.sayT = clockT;
+        gangSayT = clockT;
+        const np = ctx.use("npc");
+        const bubble = () => {
+          if (np && typeof np.say === "function" && m.fig && !m.fig.disposed) {
+            try {
+              np.say(m.fig, L2.text, 3800);
+            } catch {
+            }
+          }
+        };
+        const c = ctx.use("cashier");
+        if (!c || typeof c.speaker !== "function") {
+          bubble();
+          return;
+        }
+        try {
+          if (!m.speaker) m.speaker = c.speaker({ id: `rowdy${m.i}`, voiceSeed: curSeed * 13 + m.i + 3, pitch: 0.72 + (curSeed + m.i * 5) % 7 * 0.03, rate: 0.95 + (curSeed + m.i * 3) % 5 * 0.03, prio: 1, pos: () => ({ x: m.x, y: 1.6, z: m.z }) });
+          Promise.resolve(m.speaker.say(L2.text)).then((r) => {
+            if (r !== "spoken") bubble();
+          }, bubble);
+        } catch (err) {
+          warn9("say", err);
+          bubble();
+        }
+      }
+      const play = (m, name, restart = true) => {
+        if (!m.fig || m.fig.disposed) return;
+        try {
+          m.fig.setAnim(name, { restart, then: "idle" });
+        } catch (err) {
+          warn9("anim", err);
+        }
+      };
+      function enter(m) {
+        const st = m.st;
+        m.shown = st;
+        m.anim = "";
+        if (st === "taunt") {
+          play(m, "sleeves");
+          m.lockUntil = clockT + timedDuration("sleeves");
+          say(m, "rowdyAccost", true);
+        } else if (st === "threaten") {
+          play(m, "threat");
+          m.lockUntil = clockT + timedDuration("threat");
+          say(m, "rowdyThreat", true);
+        } else if (st === "attack") say(m, "rowdyAttack");
+        else if (st === "flee") say(m, "rowdyFlee", true);
+        else if (st === "beaten") {
+          play(m, "ko");
+          m.anim = "ko";
+        } else if (st === "idle") play(m, "idle");
+      }
+      function swing(m) {
+        m.striking = 0.5;
+        m.lockUntil = clockT + 0.5;
+        play(m, "swing");
+      }
+      function applyHit(m, dmg, dir, byMe) {
+        const ev = hitRowdy(m, dmg);
+        const alive = m.st !== "beaten" && m.st !== "flee";
+        if (alive && dmg > 0 && ["idle", "approach", "taunt", "threaten"].includes(m.st)) m.st = "attack";
+        if (dir) {
+          const nx = m.x + dir.x * 0.45;
+          const nz = m.z + dir.z * 0.45;
+          if (gangAreaOk(nx, nz, env2.allowed, env2.forbidden)) {
+            m.x = nx;
+            m.z = nz;
+          }
+        }
+        m.striking = 0;
+        if (m.fig && dir) {
+          try {
+            m.fig.hitReact(dir);
+          } catch {
+          }
+        }
+        if (byMe) lastMyHit = clockT;
+        if (!ev.length && alive) say(m, "rowdyHit");
+        else if (m.st === "beaten") say(m, "rowdyHit", true);
+      }
+      function hitMember(i, weapon, dir) {
+        const m = members[i];
+        if (!m || xrOn() || !m.fig || clockT - m.hitT < 0.25) return false;
+        const wid = typeof weapon === "string" ? weapon : "hand";
+        if (wid === "laser") return false;
+        m.hitT = clockT;
+        const l = dir ? Math.hypot(dir.x, dir.z) : 0;
+        const d = l > 1e-4 ? { x: dir.x / l, z: dir.z / l } : { x: 0, z: -1 };
+        const w = weaponInfo(wid);
+        if (role === "follower") {
+          const fn = netFight();
+          if (!fn || !fn.send("gh", { i, w: weaponIndex2(wid) })) return false;
+          lastMyHit = clockT;
+          if (m.fig) {
+            try {
+              m.fig.hitReact(d);
+            } catch {
+            }
+          }
+          return true;
+        }
+        applyHit(m, w.dmg, d, true);
+        return true;
+      }
+      function onGh(e) {
+        if (role !== "leader" || !e) return;
+        const m = members[e.i];
+        if (!m || m.st === "beaten") return;
+        const fn = netFight();
+        const pp = fn ? fn.peerPos(e.c) : null;
+        let d = { x: 0, z: -1 };
+        if (pp) {
+          const dx = m.x - pp.x;
+          const dz = m.z - pp.z;
+          const l = Math.hypot(dx, dz) || 1;
+          d = { x: dx / l, z: dz / l };
+        }
+        applyHit(m, weaponInfo(WEAPON_BY_INDEX[e.w] || "hand").dmg, d, false);
+      }
+      const onHitAction = (ev) => {
+        if (disposed || !ev || !members.length || xrOn()) return false;
+        const wid = typeof ev.weapon === "string" ? ev.weapon : "hand";
+        if (wid === "laser" || !ev.origin || !ev.dir) return false;
+        const cands2 = [];
+        members.forEach((m, i) => {
+          if (m.fig && m.st !== "beaten") cands2.push({ x: m.x, z: m.z, i });
+        });
+        const sel = selectTargets(ev.origin, ev.dir, cands2, wid);
+        let any = false;
+        for (const s of sel) if (hitMember(s.cand.i, wid, { x: ev.dir.x, z: ev.dir.z })) any = true;
+        return any;
+      };
+      let offHit = null;
+      try {
+        if (ctx.input && typeof ctx.input.onAction === "function") offHit = ctx.input.onAction("hit", onHitAction, { prio: HIT_PRIO });
+      } catch (err) {
+        warn9("Aktion hit", err);
+      }
+      function checkDispersed() {
+        if (foundFlee || !members.length || clockT - lastMyHit > 25) return;
+        if (!members.every((m) => m.st === "flee" || m.st === "beaten")) return;
+        foundFlee = true;
+        const d = ctx.use("discover");
+        if (d && typeof d.found === "function") {
+          try {
+            d.found("gang-flee");
+          } catch (err) {
+            warn9("found", err);
+          }
+        }
+      }
+      function bindNet() {
+        const fn = netFight();
+        if (fn === netBound) return fn;
+        for (const o of netOffs) {
+          try {
+            o();
+          } catch {
+          }
+        }
+        netOffs = [];
+        netBound = fn;
+        if (fn) {
+          netOffs.push(fn.on("gs", (e) => {
+            if (e && fn.leader() === e.c && !fn.isLeader()) {
+              lastGs = e;
+              lastGsT = clockT;
+            }
+          }));
+          netOffs.push(fn.on("gh", onGh));
+        }
+        return fn;
+      }
+      function decideRole(fn) {
+        if (fn && fn.has()) {
+          if (fn.isLeader()) return "leader";
+          if (fn.leader()) return "follower";
+        }
+        return "local";
+      }
+      function applyGs(e) {
+        if (!e || e === appliedGs) return;
+        appliedGs = e;
+        if (e.seed !== curSeed || e.members.length !== members.length) {
+          destroyAll();
+          curSeed = e.seed;
+          curTod = e.tod;
+          members = e.members.map((d, i) => view(createRowdy(i, { x: d.x, z: d.z }, e.seed)));
+          planKey = "gs";
+        }
+        e.members.forEach((d, i) => {
+          const m = members[i];
+          if (!m) return;
+          if (Math.hypot(d.x - m.x, d.z - m.z) > 3) {
+            m.x = d.x;
+            m.z = d.z;
+            m.px = d.x;
+            m.pz = d.z;
+            m.yaw = d.yaw;
+          }
+          m.st = d.st;
+          m.hp = d.hp;
+          m.tgt = d.tgt;
+          m.tx = d.x;
+          m.tz = d.z;
+          m.tyaw = d.yaw;
+          if (d.a === 6 && m.lastA !== 6) swing(m);
+          m.lastA = d.a;
+        });
+      }
+      function collectTargets(fn) {
+        const out = [];
+        const pose = poseOf();
+        if (pose) {
+          const fp = fightProv();
+          out.push({ c: myC(), self: true, x: pose.x, z: pose.z, safe: !entered || !!(fp && typeof fp.protected === "function" && fp.protected()) });
+        }
+        if (role === "leader" && fn && fn.has()) {
+          const n = ctx.use("net");
+          const list = n && typeof n.peers === "function" ? n.peers() : [];
+          for (const p of list) {
+            if (p.f & 8) continue;
+            const pp = fn.peerPos(p.c);
+            if (pp) out.push({ c: p.c, self: false, x: pp.x, z: pp.z, safe: false });
+          }
+        }
+        return out;
+      }
+      function strike(m, e, target, fn) {
+        if (!target) return;
+        const dx = target.x - m.x;
+        const dz = target.z - m.z;
+        const l = Math.hypot(dx, dz) || 1;
+        const dir = { x: dx / l, z: dz / l };
+        swing(m);
+        if (target.self) {
+          const fp = fightProv();
+          if (fp && typeof fp.hitPlayer === "function") {
+            try {
+              fp.hitPlayer({ dmg: e.dmg, knock: dir, src: "gang", from: { x: m.x, z: m.z } });
+            } catch (err) {
+              warn9("hitPlayer", err);
+            }
+          }
+        } else if (fn) fn.send("fh", { c: target.c, w: 0, dir, src: 1, from: { x: m.x, z: m.z } });
+      }
+      function stepLogic(dt, fn) {
+        if (role === "follower") {
+          const k = Math.min(1, dt * 9);
+          for (const m of members) {
+            m.x += (m.tx - m.x) * k;
+            m.z += (m.tz - m.z) * k;
+            m.yaw += wrapPi(m.tyaw - m.yaw) * k;
+          }
+          return;
+        }
+        const targets = entered ? collectTargets(fn) : [];
+        for (const m of members) {
+          let best = null;
+          let bd = Infinity;
+          for (const t of targets) {
+            if (t.safe || !gangAreaOk(t.x, t.z, env2.allowed, env2.forbidden)) continue;
+            const d = Math.hypot(t.x - m.x, t.z - m.z);
+            if (d < bd) {
+              bd = d;
+              best = t;
+            }
+          }
+          m.tgt = best ? best.c : 0;
+          const evs = stepRowdy(m, dt, { allowed: env2.allowed, forbidden: env2.forbidden, player: best ? { x: best.x, z: best.z, safe: false } : null });
+          for (const e of evs) if (e.type === "strike") strike(m, e, best, fn);
+        }
+      }
+      function onKO() {
+        let near = null;
+        let nd = 10;
+        const pose = poseOf();
+        for (const m of members) {
+          if (!["attack", "threaten", "taunt"].includes(m.st) || !m.fig || !pose) continue;
+          const d = Math.hypot(pose.x - m.x, pose.z - m.z);
+          if (d < nd) {
+            nd = d;
+            near = m;
+          }
+        }
+        if (near) say(near, "rowdyWin", true);
+        if (role !== "follower") {
+          for (const m of members) if (m.st === "attack" || m.st === "threaten" || m.st === "taunt" || m.st === "approach") {
+            m.st = "idle";
+            m.t = 0;
+          }
+        }
+      }
+      function tryBindKO() {
+        if (koOff || koTries > 40) return;
+        const fp = fightProv();
+        if (!fp || typeof fp.onKO !== "function") {
+          koTries++;
+          return;
+        }
+        try {
+          koOff = fp.onKO(onKO);
+        } catch (err) {
+          warn9("onKO", err);
+          koTries = 99;
+        }
+      }
+      function renderFigures(dt) {
+        const np = ctx.use("npc");
+        const cam = ctx.camera && ctx.camera.position;
+        if (!np || typeof np.figure !== "function" || !cam) return;
+        const cityP = ctx.use("city");
+        const vis = cityP && cityP.visible ? cityP.visible() : null;
+        const areas = ctx.use("areas");
+        const cands2 = [];
+        members.forEach((m, i) => {
+          const d = Math.hypot(cam.x - m.x, cam.z - m.z);
+          let area = "street";
+          if (areas && areas.at) {
+            try {
+              area = areas.at(m.x, m.z, 0) || "street";
+            } catch {
+              area = "street";
+            }
+          }
+          const ok = d <= (m.fig ? FAR_M : NEAR_M) && (!vis || regionVisible(area, vis));
+          if (ok) cands2.push({ i, d });
+        });
+        cands2.sort((a, b) => a.d - b.d);
+        const chosen = new Set(cands2.slice(0, figCap()).map((c) => c.i));
+        let figs = 0;
+        members.forEach((m, i) => {
+          if (!chosen.has(i)) {
+            if (m.fig) destroyFig(m);
+            return;
+          }
+          if (!m.fig) {
+            try {
+              m.fig = np.figure({ look: rowdyLook(curSeed, m.i), parent: ctx.scene, pos: { x: m.x, y: 0, z: m.z }, yaw: m.yaw });
+            } catch (err) {
+              warn9("figure", err);
+              m.fig = null;
+            }
+            if (m.fig) {
+              m.shown = m.st;
+              m.anim = "";
+              if (m.st === "beaten") {
+                play(m, "ko");
+                m.anim = "ko";
+              }
+            }
+          }
+          if (!m.fig) return;
+          figs++;
+          const f = m.fig;
+          f.root.position.set(m.x, 0, m.z);
+          f.root.rotation.y = m.yaw;
+          const inst = dt > 0 ? Math.hypot(m.x - m.px, m.z - m.pz) / dt : 0;
+          m.spd += (Math.min(inst, 8) - m.spd) * Math.min(1, dt * 6);
+          m.px = m.x;
+          m.pz = m.z;
+          if (m.striking > 0) m.striking = Math.max(0, m.striking - dt);
+          if (m.st === "beaten") {
+            if (m.anim !== "ko") {
+              play(m, "ko");
+              m.anim = "ko";
+            }
+            return;
+          }
+          if (clockT < m.lockUntil) return;
+          const name = m.spd > 2.2 ? "run" : m.spd > 0.3 ? "walk" : "idle";
+          if (m.anim !== name || name !== "idle") {
+            try {
+              f.setAnim(name, { speed: m.spd, restart: false, then: "idle" });
+            } catch (err) {
+              warn9("anim", err);
+            }
+            m.anim = name;
+          }
+        });
+        setReserve(figs);
+      }
+      const provider = {
+        active: () => members.length > 0,
+        members: () => members.map((m, i) => ({ i, handle: m.fig, st: m.st, hp: m.hp, pos: { x: m.x, z: m.z } })),
+        hit: (i, weapon, dir) => hitMember(i, weapon, dir),
+        role: () => role
+      };
+      const removeProvider = ctx.provide("gang", provider);
+      const offEnter = typeof ctx.on === "function" ? ctx.on("enter", () => {
+        entered = true;
+      }) : null;
+      function releaseLead(fn) {
+        if (role === "leader" && fn && !sentRelease) {
+          fn.send("gr", {});
+          sentRelease = true;
+        }
+      }
+      return {
+        update(dt) {
+          if (disposed) return;
+          dt = Math.min(Math.max(dt || 0, 0), 0.1);
+          clockT += dt;
+          tryBindKO();
+          const fn = bindNet();
+          if (xrOn()) {
+            releaseLead(fn);
+            if (members.length) destroyAll();
+            setReserve(0);
+            return;
+          }
+          const next = decideRole(fn);
+          if (next !== role) {
+            if (next !== "leader") sentRelease = false;
+            if (role === "follower" && members.length) {
+              const p = wantPlan();
+              planKey = `${p.tod}:${p.seed}:${p.n}`;
+            }
+            role = next;
+            gsAcc = 0;
+            if (role === "follower") appliedGs = null;
+          }
+          if (role === "follower") {
+            if (lastGs && lastGs.c === (fn && fn.leader())) {
+              applyGs(lastGs);
+            }
+            if (clockT - lastGsT > STALE_S && members.length) destroyAll();
+          } else {
+            applyPlan();
+            if (role === "local" && fn && fn.has() && members.length && clockT - lastGc > 1.5) {
+              const pose = poseOf();
+              if (pose && members.some((m) => Math.hypot(pose.x - m.x, pose.z - m.z) < LEAD_NEAR_M)) {
+                lastGc = clockT;
+                fn.send("gc", {});
+              }
+            }
+          }
+          stepLogic(dt, fn);
+          for (const m of members) if (m.st !== m.shown) enter(m);
+          if (role === "leader" && fn) {
+            if (!members.length) releaseLead(fn);
+            else {
+              gsAcc += dt;
+              if (gsAcc >= GS_EVERY_S) {
+                gsAcc = 0;
+                fn.send("gs", {
+                  g: fn.gen(),
+                  phase: phaseOf(curTod),
+                  seed: curSeed,
+                  members: members.map((m) => ({ st: m.st, x: m.x, y: 0, z: m.z, yaw: m.yaw, a: netAnim(m.st, m.spd, m.striking > 0), tgt: m.tgt, hp: m.hp }))
+                });
+              }
+            }
+          }
+          checkDispersed();
+          renderFigures(dt);
+        },
+        onSuspend() {
+          for (const m of members) destroyFig(m);
+          setReserve(0);
+          releaseLead(netFight());
+        },
+        dispose() {
+          if (disposed) return;
+          disposed = true;
+          releaseLead(netFight());
+          if (offHit) {
+            try {
+              offHit();
+            } catch {
+            }
+          }
+          if (koOff) {
+            try {
+              koOff();
+            } catch {
+            }
+          }
+          if (offEnter) {
+            try {
+              offEnter();
+            } catch {
+            }
+          }
+          for (const o of netOffs) {
+            try {
+              o();
+            } catch {
+            }
+          }
+          netOffs = [];
+          destroyAll();
+          setReserve(0);
+          removeProvider();
+        }
+      };
     }
   };
 
@@ -60024,10 +63767,144 @@ void main() {
     return false;
   }
 
+  // src/js/store3d/net/peerlaser.js
+  var MAX_LASERS = 4;
+  var EXPIRE_S = 6;
+  var COLOR = 16722474;
+  function createPeerLasers(ctx) {
+    const lasers = /* @__PURE__ */ new Map();
+    let dots = null;
+    let beams = null;
+    let disposed = false;
+    const dummy = new Object3D();
+    const tmp3 = new Vector3();
+    function ensure() {
+      if (dots || disposed || !ctx.scene) return;
+      const g = new SphereGeometry(0.045, 6, 4);
+      const m = new MeshBasicMaterial({ color: COLOR, fog: false, depthWrite: false });
+      dots = new InstancedMesh(g, m, MAX_LASERS);
+      dots.frustumCulled = false;
+      dots.count = 0;
+      dots.visible = false;
+      ctx.scene.add(dots);
+    }
+    function ensureBeams() {
+      if (beams || disposed || !ctx.scene) return;
+      const g = new BoxGeometry(0.01, 0.01, 1);
+      const m = new MeshBasicMaterial({ color: COLOR, fog: false, transparent: true, opacity: 0.55, depthWrite: false });
+      beams = new InstancedMesh(g, m, MAX_LASERS);
+      beams.frustumCulled = false;
+      beams.count = 0;
+      beams.visible = false;
+      ctx.scene.add(beams);
+    }
+    function free(mesh) {
+      if (!mesh) return;
+      if (mesh.parent) mesh.parent.remove(mesh);
+      try {
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+        if (mesh.dispose) mesh.dispose();
+      } catch {
+      }
+    }
+    return {
+      set(c, on, point) {
+        if (disposed) return;
+        if (!on || !point || !Number.isFinite(point.x)) {
+          lasers.delete(c);
+          return;
+        }
+        if (!lasers.has(c) && lasers.size >= MAX_LASERS) return;
+        lasers.set(c, { x: point.x, y: point.y, z: point.z, left: EXPIRE_S });
+      },
+      drop(c) {
+        lasers.delete(c);
+      },
+      active: () => lasers.size,
+      update(dt, originOf) {
+        if (disposed) return;
+        for (const [c, l] of [...lasers]) {
+          l.left -= dt;
+          if (l.left <= 0) lasers.delete(c);
+        }
+        if (!lasers.size) {
+          if (dots) {
+            dots.count = 0;
+            dots.visible = false;
+          }
+          if (beams) {
+            beams.count = 0;
+            beams.visible = false;
+          }
+          return;
+        }
+        ensure();
+        const low = (ctx.quality ? ctx.quality() : "mid") === "low";
+        if (!low) ensureBeams();
+        if (!dots) return;
+        let n = 0;
+        let nb = 0;
+        for (const [c, l] of lasers) {
+          dummy.position.set(l.x, l.y, l.z);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.set(1, 1, 1);
+          dummy.updateMatrix();
+          dots.setMatrixAt(n++, dummy.matrix);
+          if (!low && beams) {
+            const o = typeof originOf === "function" ? originOf(c) : null;
+            if (o) {
+              tmp3.set(l.x - o.x, l.y - o.y, l.z - o.z);
+              const len = tmp3.length();
+              if (len > 0.05) {
+                dummy.position.set((l.x + o.x) / 2, (l.y + o.y) / 2, (l.z + o.z) / 2);
+                dummy.lookAt(l.x, l.y, l.z);
+                dummy.scale.set(1, 1, len);
+                dummy.updateMatrix();
+                beams.setMatrixAt(nb++, dummy.matrix);
+              }
+            }
+          }
+        }
+        dots.count = n;
+        dots.instanceMatrix.needsUpdate = true;
+        dots.visible = n > 0;
+        if (beams) {
+          beams.count = low ? 0 : nb;
+          beams.instanceMatrix.needsUpdate = true;
+          beams.visible = !low && nb > 0;
+        }
+      },
+      clear() {
+        lasers.clear();
+        if (dots) {
+          dots.count = 0;
+          dots.visible = false;
+        }
+        if (beams) {
+          beams.count = 0;
+          beams.visible = false;
+        }
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        lasers.clear();
+        free(dots);
+        free(beams);
+        dots = null;
+        beams = null;
+      }
+    };
+  }
+
   // src/js/store3d/net/peers.js
   var LOOK_WAIT_S = 0.6;
   var IA_HALF = 0.45;
-  var warn7 = (what, err) => {
+  var WEAPON_ITEM = [null, "belt", "whip", "laser"];
+  var AWAY = 15;
+  var LASER_HAND_Y = 1.25;
+  var warn10 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp peers", what, err && err.message ? err.message : "");
     } catch {
@@ -60039,6 +63916,8 @@ void main() {
     const figListeners = /* @__PURE__ */ new Set();
     const tags = createTags(ctx);
     const held = createHeldCover(ctx);
+    const lasers = createPeerLasers(ctx);
+    const weapons = /* @__PURE__ */ new Map();
     let seatnet = null;
     let myC = 0;
     let active = true;
@@ -60078,7 +63957,7 @@ void main() {
         try {
           fn(kind, pub(p), fig);
         } catch (err) {
-          warn7("onFigure", err);
+          warn10("onFigure", err);
         }
       }
     }
@@ -60097,6 +63976,9 @@ void main() {
         body: new Body({ src: [], netDelay: PEER_DELAY_MS }),
         last: null,
         tl: [],
+        w: weapons.get(d.c) || 0,
+        wShown: -1,
+        away: false,
         fig: null,
         emote: null,
         lk: null,
@@ -60149,6 +64031,8 @@ void main() {
       if (!p) return;
       destroyFig(p);
       if (seatnet) seatnet.stand(c);
+      weapons.delete(c);
+      lasers.drop(c);
       peers.delete(c);
       dirty = true;
     }
@@ -60165,7 +64049,7 @@ void main() {
         try {
           p.fig.setLook(toRender(code));
         } catch (err) {
-          warn7("setLook", err);
+          warn10("setLook", err);
         }
       }
     }
@@ -60186,9 +64070,9 @@ void main() {
       const m = ctx.use("member");
       if (!d || !m || typeof m.showCard !== "function") return false;
       try {
-        Promise.resolve(m.showCard(d, { mode: "peer" })).catch((err) => warn7("showCard", err));
+        Promise.resolve(m.showCard(d, { mode: "peer" })).catch((err) => warn10("showCard", err));
       } catch (err) {
-        warn7("showCard", err);
+        warn10("showCard", err);
         return false;
       }
       return true;
@@ -60241,7 +64125,7 @@ void main() {
           }
         });
       } catch (err) {
-        warn7("ausweis", err);
+        warn10("ausweis", err);
         return;
       }
       p.ia = { min, max, label, rm: typeof rm === "function" ? rm : () => {
@@ -60256,6 +64140,7 @@ void main() {
         const fig = n.figure({ look, parent: ctx.scene });
         p.fig = fig;
         p.lastA = -1;
+        p.wShown = -1;
         if (p.emote) p.emote.shown = false;
         if (p.pos) {
           fig.root.position.set(p.pos.x, p.pos.y, p.pos.z);
@@ -60264,7 +64149,7 @@ void main() {
         emitFig("add", p, fig);
         return true;
       } catch (err) {
-        warn7("figure", err);
+        warn10("figure", err);
         return false;
       }
     }
@@ -60279,7 +64164,7 @@ void main() {
         try {
           fig.dispose();
         } catch (err) {
-          warn7("dispose", err);
+          warn10("dispose", err);
         }
       }
     }
@@ -60323,6 +64208,14 @@ void main() {
     function applyFig(p) {
       const fig = p.fig;
       if (!fig || fig.disposed || !p.pos) return;
+      if (p.wShown !== p.w && typeof fig.setHandItem === "function") {
+        try {
+          fig.setHandItem(WEAPON_ITEM[p.w] || null);
+        } catch (err) {
+          warn10("setHandItem", err);
+        }
+        p.wShown = p.w;
+      }
       const cam = ctx.camera && ctx.camera.position;
       const near = !!cam && Math.hypot(cam.x - p.pos.x, cam.z - p.pos.z) < NEAR_HIDE && cam.y > p.pos.y - 0.2 && cam.y < p.pos.y + 2.2;
       fig.root.visible = p.vis && !near;
@@ -60395,7 +64288,9 @@ void main() {
         const id = cleanItemId(p.h);
         const mode = lod.hand === "none" ? "none" : lod.hand === "neutral" || p.dist > lod.coverDist ? "neutral" : "cover";
         held.set(p.c, p.fig, id && p.f & F2.FILM ? id : null, mode);
-        if (p.f & F2.NAME && p.n) tagItems.push({ c: p.c, fig: p.fig, text: p.n, dist: p.dist });
+        const named = p.f & F2.NAME && p.n ? p.n : "";
+        const tagText = p.away ? named ? named + " \u23F8" : "\u23F8" : named;
+        if (tagText) tagItems.push({ c: p.c, fig: p.fig, text: tagText, dist: p.dist });
         applyFig(p);
       }
       tags.sync(tagItems, lod);
@@ -60407,10 +64302,14 @@ void main() {
             n.reserve(want);
             lastReserve = want;
           } catch (err) {
-            warn7("reserve", err);
+            warn10("reserve", err);
           }
         }
       }
+    }
+    function laserOrigin(c) {
+      const p = peers.get(c);
+      return p && p.pos && p.vis ? { x: p.pos.x, y: p.pos.y + LASER_HAND_Y, z: p.pos.z } : null;
     }
     const api = {
       /** wl: { c, s, peers:[{c,k,n,f,j,ad?,q?,se?,h?}] } */
@@ -60499,6 +64398,11 @@ void main() {
           if (now !== null) p.body.syncNetClock(now - dt * 1e3);
           p.body.step(dt);
           resolve(p, dt);
+          const aw = p.a === AWAY;
+          if (aw !== p.away) {
+            p.away = aw;
+            dirty = true;
+          }
           if (p.emote && (!stepRemote(p.emote, dt) || endedByPose(p.emote, p.tl))) {
             p.emote = null;
             p.lastA = -1;
@@ -60511,6 +64415,7 @@ void main() {
           evaluate();
         }
         tags.update();
+        lasers.update(dt, laserOrigin);
       },
       list() {
         const me = myInfo();
@@ -60521,6 +64426,23 @@ void main() {
       name(c) {
         const p = peers.get(c);
         return p ? displayName(p.n, p.f) : "Jemand";
+      },
+      /** Anzeigeort { x, y, z } eines Peers (auch ohne Figur) oder null. */
+      pos(c) {
+        const p = peers.get(c);
+        return p && p.pos ? { x: p.pos.x, y: p.pos.y, z: p.pos.z } : null;
+      },
+      /** Waffenwahl eines Peers (Fähigkeit fight; 0 = Hand/leer): zeigt den Gegenstand in der Hand der Figur. */
+      setWeapon(c, w) {
+        const v = Number.isInteger(w) && w >= 1 && w <= 3 ? w : 0;
+        if (v) weapons.set(c, v);
+        else weapons.delete(c);
+        const p = peers.get(c);
+        if (p) p.w = v;
+      },
+      /** Laserpunkt eines Peers (Meter, lokal) ein/aus. */
+      setLaser(c, on, point) {
+        if (!isMe(c)) lasers.set(c, !!on, point);
       },
       get: (c) => {
         const p = peers.get(c);
@@ -60556,6 +64478,8 @@ void main() {
       clear() {
         for (const c of [...peers.keys()]) removePeer(c);
         tags.clear();
+        lasers.clear();
+        weapons.clear();
         if (seatnet) seatnet.clear();
         const n = npc();
         if (n && typeof n.reserve === "function") {
@@ -60577,6 +64501,7 @@ void main() {
         disposed = true;
         tags.dispose();
         held.dispose();
+        lasers.dispose();
         figListeners.clear();
       }
     };
@@ -60642,11 +64567,12 @@ void main() {
     return {
       /** Text zeigen; null/leer = ausblenden (und Platz im Host freigeben). */
       set(text, o) {
+        const show = !!(text || o && o.solo);
         const btns = () => {
-          if (btnChat) btnChat.hidden = !(text && o && o.chat);
-          if (btnEmote) btnEmote.hidden = !(text && o && o.emote);
+          if (btnChat) btnChat.hidden = !(show && o && o.chat);
+          if (btnEmote) btnEmote.hidden = !(show && o && o.emote);
         };
-        if (!text) {
+        if (!show) {
           btns();
           if (root) root.hidden = true;
           if (host && host.classList) host.classList.remove("lfx-store-has-social");
@@ -60657,9 +64583,10 @@ void main() {
         btns();
         root.hidden = false;
         if (ctx.isTouch && host.classList) host.classList.add("lfx-store-has-social");
-        if (text !== shown) {
-          label.textContent = text;
-          shown = text;
+        const want = text || "";
+        if (want !== shown) {
+          label.textContent = want;
+          shown = want;
         }
       },
       dispose() {
@@ -60669,6 +64596,309 @@ void main() {
         btnChat = null;
         btnEmote = null;
         shown = "";
+      }
+    };
+  }
+
+  // src/js/store3d/net/emote-ui.js
+  var warn11 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp emotes", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  var TOAST_MS = 1700;
+  function createEmoteUi({ ctx, onPick }) {
+    let el5 = null;
+    let buttons = [];
+    let closing = false;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    function cleanup() {
+      el5 = null;
+      buttons = [];
+    }
+    function focusAt(i) {
+      const n = buttons.length;
+      if (!n) return;
+      const b = buttons[(i % n + n) % n];
+      try {
+        b.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    function pick3(emote) {
+      let done = true;
+      try {
+        done = onPick ? onPick(emote) !== false : true;
+      } catch (err) {
+        warn11("onPick", err);
+      }
+      if (done) api.close();
+    }
+    function onKey(e) {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const idx2 = buttons.indexOf(document.activeElement);
+      if (e.code === "KeyT") {
+        e.preventDefault();
+        e.stopPropagation();
+        api.close();
+        return;
+      }
+      if (/^(Digit|Numpad)[1-8]$/.test(e.code)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat) pick3(EMOTES[Number(e.code.slice(-1)) - 1]);
+        return;
+      }
+      if (e.code === "ArrowRight" || e.code === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        focusAt(idx2 + 1);
+        return;
+      }
+      if (e.code === "ArrowLeft" || e.code === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        focusAt(idx2 < 0 ? 0 : idx2 - 1);
+      }
+    }
+    function build8() {
+      const root = document.createElement("div");
+      root.className = "lfx-mp-emotes" + (ctx.isTouch ? " is-touch" : " is-desk");
+      root.setAttribute("role", "dialog");
+      root.setAttribute("aria-label", "Emotes");
+      const ring = document.createElement("div");
+      ring.className = "lfx-mp-emotes-ring";
+      EMOTES.forEach((em, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "lfx-mp-emote";
+        b.dataset.emote = em.id;
+        const a = i / EMOTES.length * Math.PI * 2;
+        b.style.left = (50 + 37 * Math.sin(a)).toFixed(2) + "%";
+        b.style.top = (50 - 37 * Math.cos(a)).toFixed(2) + "%";
+        const label = document.createElement("span");
+        label.className = "lfx-mp-emote-label";
+        label.textContent = em.label;
+        b.appendChild(label);
+        if (!ctx.isTouch) {
+          const key2 = document.createElement("span");
+          key2.className = "lfx-mp-emote-key";
+          key2.textContent = em.key;
+          b.appendChild(key2);
+        }
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          pick3(em);
+        });
+        ring.appendChild(b);
+        buttons.push(b);
+      });
+      const hub = document.createElement("button");
+      hub.type = "button";
+      hub.className = "lfx-mp-emotes-hub";
+      hub.textContent = ctx.isTouch ? "Schlie\xDFen" : "T / Esc";
+      hub.setAttribute("aria-label", "Emote-Auswahl schlie\xDFen");
+      hub.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        api.close();
+      });
+      ring.appendChild(hub);
+      root.appendChild(ring);
+      root.addEventListener("click", (e) => {
+        if (e.target === root) api.close();
+      });
+      root.addEventListener("keydown", onKey);
+      return root;
+    }
+    const api = {
+      open() {
+        if (el5 || xrOn() || !ctx.overlay || typeof ctx.overlay.open !== "function") return false;
+        el5 = build8();
+        try {
+          ctx.overlay.open(el5, { onClose: () => {
+            cleanup();
+          } });
+        } catch (err) {
+          warn11("overlay", err);
+          cleanup();
+          return false;
+        }
+        if (!el5) return false;
+        focusAt(0);
+        return true;
+      },
+      close() {
+        if (!el5 || closing) return;
+        closing = true;
+        try {
+          if (ctx.overlay && ctx.overlay.isOpen && ctx.overlay.isOpen()) ctx.overlay.close();
+        } catch (err) {
+          warn11("close", err);
+        }
+        if (el5 && el5.parentNode) el5.parentNode.removeChild(el5);
+        cleanup();
+        closing = false;
+      },
+      isOpen: () => !!el5,
+      dispose() {
+        api.close();
+      }
+    };
+    return api;
+  }
+  function createLocalEmotes(ctx) {
+    const cd = createCooldown();
+    const hooks = /* @__PURE__ */ new Set();
+    let disposed = false;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    const usable = () => !disposed && !xrOn() && !!ctx.overlay && (typeof ctx.playing !== "function" || !!ctx.playing());
+    function toast(text) {
+      try {
+        ctx.xr.toast(text, TOAST_MS);
+      } catch {
+      }
+    }
+    function notify(em) {
+      if (disposed || !em) return;
+      try {
+        const sv = ctx.use && ctx.use("selfview");
+        if (sv && typeof sv.playAnim === "function" && em.anim) sv.playAnim(em.anim);
+      } catch (err) {
+        warn11("selfview", err);
+      }
+      for (const fn of [...hooks]) {
+        try {
+          fn({ name: em.id, code: em.code, anim: em.anim });
+        } catch (err) {
+          warn11("H\xF6rer", err);
+        }
+      }
+    }
+    function emote(x) {
+      const em = findEmote(x);
+      if (!em || !usable()) return false;
+      if (!cd.ready()) {
+        toast("Einen Moment \u2026");
+        return false;
+      }
+      cd.mark();
+      toast(em.verb);
+      notify(em);
+      return true;
+    }
+    const ui = createEmoteUi({ ctx, onPick: (em) => {
+      emote(em.code);
+      return true;
+    } });
+    let off = null;
+    try {
+      if (ctx.input && typeof ctx.input.onAction === "function") off = ctx.input.onAction("emote", () => usable() ? ui.open() : false, { prio: 0 });
+    } catch (err) {
+      warn11("Aktion", err);
+    }
+    return {
+      open: () => usable() ? ui.open() : false,
+      emote,
+      notify,
+      usable,
+      isOpen: ui.isOpen,
+      onPlayerEmote(fn) {
+        if (typeof fn !== "function") return () => {
+        };
+        hooks.add(fn);
+        return () => hooks.delete(fn);
+      },
+      stop() {
+        ui.close();
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (off) {
+          try {
+            off();
+          } catch {
+          }
+          off = null;
+        }
+        hooks.clear();
+        ui.dispose();
+      }
+    };
+  }
+  function createEmotes(core) {
+    const ctx = core.ctx;
+    const cd = createCooldown();
+    let disposed = false;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    const usable = () => !disposed && core.active() && core.cap("emote") && core.prefs().on !== false && !xrOn();
+    function toast(text) {
+      try {
+        ctx.xr.toast(text, TOAST_MS);
+      } catch {
+        try {
+          core.toast(text);
+        } catch {
+        }
+      }
+    }
+    function emote(x) {
+      const em = findEmote(x);
+      if (!em || !usable()) return false;
+      if (!cd.ready()) {
+        toast("Einen Moment \u2026");
+        return false;
+      }
+      if (!core.send(build.e(em.code))) return false;
+      cd.mark();
+      toast(em.verb);
+      if (typeof core.localEmote === "function") {
+        try {
+          core.localEmote(em);
+        } catch (err) {
+          warn11("localEmote", err);
+        }
+      }
+      return true;
+    }
+    const ui = createEmoteUi({ ctx, onPick: (em) => {
+      emote(em.code);
+      return true;
+    } });
+    let off = null;
+    try {
+      if (ctx.input && typeof ctx.input.onAction === "function") {
+        off = ctx.input.onAction("emote", () => {
+          if (!usable()) return false;
+          return ui.open();
+        }, { prio: 10 });
+      }
+    } catch (err) {
+      warn11("Aktion", err);
+    }
+    return {
+      open: () => usable() ? ui.open() : false,
+      emote,
+      cooldown: cd,
+      isOpen: ui.isOpen,
+      stop() {
+        ui.close();
+      },
+      // Verbindung weg: Rad zu
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (off) {
+          try {
+            off();
+          } catch {
+          }
+          off = null;
+        }
+        ui.dispose();
       }
     };
   }
@@ -60876,222 +65106,6 @@ void main() {
     };
   }
 
-  // src/js/store3d/net/emote-ui.js
-  var warn8 = (what, err) => {
-    try {
-      console.warn("[LenzFlix Store3D] mp emotes", what, err && err.message ? err.message : "");
-    } catch {
-    }
-  };
-  var TOAST_MS = 1700;
-  function createEmoteUi({ ctx, onPick }) {
-    let el5 = null;
-    let buttons = [];
-    let closing = false;
-    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
-    function cleanup() {
-      el5 = null;
-      buttons = [];
-    }
-    function focusAt(i) {
-      const n = buttons.length;
-      if (!n) return;
-      const b = buttons[(i % n + n) % n];
-      try {
-        b.focus({ preventScroll: true });
-      } catch {
-      }
-    }
-    function pick3(emote) {
-      let done = true;
-      try {
-        done = onPick ? onPick(emote) !== false : true;
-      } catch (err) {
-        warn8("onPick", err);
-      }
-      if (done) api.close();
-    }
-    function onKey(e) {
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
-      const idx2 = buttons.indexOf(document.activeElement);
-      if (e.code === "KeyT") {
-        e.preventDefault();
-        e.stopPropagation();
-        api.close();
-        return;
-      }
-      if (/^(Digit|Numpad)[1-8]$/.test(e.code)) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!e.repeat) pick3(EMOTES[Number(e.code.slice(-1)) - 1]);
-        return;
-      }
-      if (e.code === "ArrowRight" || e.code === "ArrowDown") {
-        e.preventDefault();
-        e.stopPropagation();
-        focusAt(idx2 + 1);
-        return;
-      }
-      if (e.code === "ArrowLeft" || e.code === "ArrowUp") {
-        e.preventDefault();
-        e.stopPropagation();
-        focusAt(idx2 < 0 ? 0 : idx2 - 1);
-      }
-    }
-    function build8() {
-      const root = document.createElement("div");
-      root.className = "lfx-mp-emotes" + (ctx.isTouch ? " is-touch" : " is-desk");
-      root.setAttribute("role", "dialog");
-      root.setAttribute("aria-label", "Emotes");
-      const ring = document.createElement("div");
-      ring.className = "lfx-mp-emotes-ring";
-      EMOTES.forEach((em, i) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "lfx-mp-emote";
-        b.dataset.emote = em.id;
-        const a = i / EMOTES.length * Math.PI * 2;
-        b.style.left = (50 + 37 * Math.sin(a)).toFixed(2) + "%";
-        b.style.top = (50 - 37 * Math.cos(a)).toFixed(2) + "%";
-        const label = document.createElement("span");
-        label.className = "lfx-mp-emote-label";
-        label.textContent = em.label;
-        b.appendChild(label);
-        if (!ctx.isTouch) {
-          const key2 = document.createElement("span");
-          key2.className = "lfx-mp-emote-key";
-          key2.textContent = em.key;
-          b.appendChild(key2);
-        }
-        b.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          pick3(em);
-        });
-        ring.appendChild(b);
-        buttons.push(b);
-      });
-      const hub = document.createElement("button");
-      hub.type = "button";
-      hub.className = "lfx-mp-emotes-hub";
-      hub.textContent = ctx.isTouch ? "Schlie\xDFen" : "T / Esc";
-      hub.setAttribute("aria-label", "Emote-Auswahl schlie\xDFen");
-      hub.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        api.close();
-      });
-      ring.appendChild(hub);
-      root.appendChild(ring);
-      root.addEventListener("click", (e) => {
-        if (e.target === root) api.close();
-      });
-      root.addEventListener("keydown", onKey);
-      return root;
-    }
-    const api = {
-      open() {
-        if (el5 || xrOn() || !ctx.overlay || typeof ctx.overlay.open !== "function") return false;
-        el5 = build8();
-        try {
-          ctx.overlay.open(el5, { onClose: () => {
-            cleanup();
-          } });
-        } catch (err) {
-          warn8("overlay", err);
-          cleanup();
-          return false;
-        }
-        if (!el5) return false;
-        focusAt(0);
-        return true;
-      },
-      close() {
-        if (!el5 || closing) return;
-        closing = true;
-        try {
-          if (ctx.overlay && ctx.overlay.isOpen && ctx.overlay.isOpen()) ctx.overlay.close();
-        } catch (err) {
-          warn8("close", err);
-        }
-        if (el5 && el5.parentNode) el5.parentNode.removeChild(el5);
-        cleanup();
-        closing = false;
-      },
-      isOpen: () => !!el5,
-      dispose() {
-        api.close();
-      }
-    };
-    return api;
-  }
-  function createEmotes(core) {
-    const ctx = core.ctx;
-    const cd = createCooldown();
-    let disposed = false;
-    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
-    const usable = () => !disposed && core.active() && core.cap("emote") && core.prefs().on !== false && !xrOn();
-    function toast(text) {
-      try {
-        ctx.xr.toast(text, TOAST_MS);
-      } catch {
-        try {
-          core.toast(text);
-        } catch {
-        }
-      }
-    }
-    function emote(x) {
-      const em = findEmote(x);
-      if (!em || !usable()) return false;
-      if (!cd.ready()) {
-        toast("Einen Moment \u2026");
-        return false;
-      }
-      if (!core.send(build.e(em.code))) return false;
-      cd.mark();
-      toast(em.verb);
-      return true;
-    }
-    const ui = createEmoteUi({ ctx, onPick: (em) => {
-      emote(em.code);
-      return true;
-    } });
-    let off = null;
-    try {
-      if (ctx.input && typeof ctx.input.onAction === "function") {
-        off = ctx.input.onAction("emote", () => {
-          if (!usable()) return false;
-          return ui.open();
-        });
-      }
-    } catch (err) {
-      warn8("Aktion", err);
-    }
-    return {
-      open: () => usable() ? ui.open() : false,
-      emote,
-      cooldown: cd,
-      isOpen: ui.isOpen,
-      stop() {
-        ui.close();
-      },
-      // Verbindung weg: Rad zu
-      dispose() {
-        if (disposed) return;
-        disposed = true;
-        if (off) {
-          try {
-            off();
-          } catch {
-          }
-          off = null;
-        }
-        ui.dispose();
-      }
-    };
-  }
-
   // src/js/store3d/net/chat.js
   var RING_MAX = 50;
   var HEAR_M = 16;
@@ -61178,7 +65192,7 @@ void main() {
   var LINES_TOUCH = 3;
   var NOTE_MS = 2500;
   var TICK_S = 0.25;
-  var warn9 = (what, err) => {
+  var warn12 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp chat", what, err && err.message ? err.message : "");
     } catch {
@@ -61370,7 +65384,7 @@ void main() {
         try {
           if (ctx.overlay && ctx.overlay.isOpen && ctx.overlay.isOpen()) ctx.overlay.close();
         } catch (err) {
-          warn9("close", err);
+          warn12("close", err);
         }
         onOverlayClosed();
         render();
@@ -61559,8 +65573,8 @@ void main() {
   var ITEM_ID = /^[0-9a-f]{32}$/;
   var isTapeId = (id) => typeof id === "string" && id.includes(".");
   var r25 = (v) => Math.round(v * 100) / 100;
-  var clamp11 = (v, a, b) => v < a ? a : v > b ? b : v;
-  var fin = (v) => Number.isFinite(v) ? v : 0;
+  var clamp14 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var fin2 = (v) => Number.isFinite(v) ? v : 0;
   function createLimiter3(perS, burst) {
     let tokens = burst;
     let last = null;
@@ -61629,12 +65643,12 @@ void main() {
     return { x: b.pos.x, y: b.pos.y, z: b.pos.z, vx: b.vel.x, vy: b.vel.y, vz: b.vel.z, yaw: b.yaw || 0, tip, ax: tip > 0 ? b.tipAx : 0, az: tip > 0 ? b.tipAz : 0, s: b.sleeping ? 1 : 0 };
   }
   function handState(pose) {
-    const yaw = fin(pose.yaw);
+    const yaw = fin2(pose.yaw);
     const fx = -Math.sin(yaw);
     const fz = -Math.cos(yaw);
     const rx = Math.cos(yaw);
     const rz = -Math.sin(yaw);
-    return { x: fin(pose.x) + fx * 0.45 + rx * 0.2, y: fin(pose.y) + 1.05, z: fin(pose.z) + fz * 0.45 + rz * 0.2, vx: 0, vy: 0, vz: 0, yaw, tip: 0, ax: 0, az: 0, s: 0 };
+    return { x: fin2(pose.x) + fx * 0.45 + rx * 0.2, y: fin2(pose.y) + 1.05, z: fin2(pose.z) + fz * 0.45 + rz * 0.2, vx: 0, vy: 0, vz: 0, yaw, tip: 0, ax: 0, az: 0, s: 0 };
   }
   function moved2(a, b) {
     if (!a) return true;
@@ -61648,7 +65662,7 @@ void main() {
     const p = frame.enc(st.x, st.y, st.z, r);
     const sl = st.s === 1;
     const v = sl ? [0, 0] : frame.encVec(st.x, st.z, st.vx, st.vz, r);
-    const tip = clamp11(Math.round(st.tip * 100), 0, 157);
+    const tip = clamp14(Math.round(st.tip * 100), 0, 157);
     return [
       id,
       g,
@@ -61660,8 +65674,8 @@ void main() {
       v[1],
       frame.encYaw(st.yaw),
       tip,
-      tip > 0 ? clamp11(Math.round(st.ax * 100), -100, 100) : 0,
-      tip > 0 ? clamp11(Math.round(st.az * 100), -100, 100) : 0,
+      tip > 0 ? clamp14(Math.round(st.ax * 100), -100, 100) : 0,
+      tip > 0 ? clamp14(Math.round(st.az * 100), -100, 100) : 0,
       sl ? 1 : 0
     ];
   }
@@ -61727,7 +65741,7 @@ void main() {
   }
 
   // src/js/store3d/net/phys.js
-  var warn10 = (what, err) => {
+  var warn13 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp phys", what, err && err.message ? err.message : "");
     } catch {
@@ -61882,7 +65896,7 @@ void main() {
         else if (ev.type === "hold") claimFor(ev.body, true);
         else if (ev.type === "spawn") onSpawn(ev.body);
       } catch (err) {
-        warn10("Welt", err);
+        warn13("Welt", err);
       }
     }
     function attach() {
@@ -62089,7 +66103,7 @@ void main() {
           continue;
         }
         let st;
-        let fin2 = 0;
+        let fin3 = 0;
         if (b.held) {
           if (!pose) {
             try {
@@ -62102,10 +66116,10 @@ void main() {
           st = handState(pose);
         } else {
           st = bodyState2(b);
-          fin2 = st.s === 1 ? 1 : 0;
+          fin3 = st.s === 1 ? 1 : 0;
         }
-        if (!fin2 && !moved2(e.last, st) && !(b.held && t - e.sentAt >= HELD_RESEND_MS)) continue;
-        cands2.push({ id, e, st, final: fin2, sentAt: e.sentAt });
+        if (!fin3 && !moved2(e.last, st) && !(b.held && t - e.sentAt >= HELD_RESEND_MS)) continue;
+        cands2.push({ id, e, st, final: fin3, sentAt: e.sentAt });
       }
       const gone = cands2.filter((c) => c.drop);
       for (const c of gone) owners.free(c.id);
@@ -62192,7 +66206,7 @@ void main() {
               if (typeof e.i === "string") dropTape(e.i);
             } else if (e.t === "l") onLeave(e.c);
           } catch (err) {
-            warn10(e.t, err);
+            warn13(e.t, err);
           }
         }
       },
@@ -62255,8 +66269,8 @@ void main() {
   var SEND_DIST = 3.4;
   var RECV_DIST = 4.5;
   var PUSH_S = 100;
-  var clamp12 = (v, a, b) => v < a ? a : v > b ? b : v;
-  var warn11 = (what, err) => {
+  var clamp15 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var warn14 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp push", what, err && err.message ? err.message : "");
     } catch {
@@ -62282,9 +66296,10 @@ void main() {
       try {
         if (typeof fig.hitReact === "function") fig.hitReact(dir);
       } catch (err) {
-        warn11("hitReact", err);
+        warn14("hitReact", err);
       }
       if (disposed || xrOn() || !core.active() || !core.cap("push") || !dir) return;
+      if (core.cap("fight")) return;
       const info = core.peers && core.peers.get ? core.peers.get(c) : null;
       if (info && info.f & F2.VR) return;
       const t = clock();
@@ -62345,9 +66360,9 @@ void main() {
       if (!dir[0] && !dir[1]) return;
       lastRecv = t;
       try {
-        ctx.player.knock({ x: dir[0], z: dir[1], up: 0 }, clamp12(s, 1, 100) / 100 * PUSH_KNOCK);
+        ctx.player.knock({ x: dir[0], z: dir[1], up: 0 }, clamp15(s, 1, 100) / 100 * PUSH_KNOCK);
       } catch (err) {
-        warn11("knock", err);
+        warn14("knock", err);
         return;
       }
       try {
@@ -62374,7 +66389,7 @@ void main() {
             try {
               onPu(e);
             } catch (err) {
-              warn11("pu", err);
+              warn14("pu", err);
             }
           }
         }
@@ -62404,7 +66419,7 @@ void main() {
   var GRUDGE = 6;
   var MOVE_M = 0.04;
   var YAW_RAD = 0.05;
-  var warn12 = (what, err) => {
+  var warn15 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp richard", what, err && err.message ? err.message : "");
     } catch {
@@ -62482,7 +66497,7 @@ void main() {
         try {
           b.setNetRole("local");
         } catch (err) {
-          warn12("local", err);
+          warn15("local", err);
         }
       }
       role = "local";
@@ -62512,7 +66527,7 @@ void main() {
         try {
           b.setNetRole("local");
         } catch (err) {
-          warn12("release", err);
+          warn15("release", err);
         }
       }
       role = "local";
@@ -62568,7 +66583,7 @@ void main() {
       try {
         b.applyRemote(decode2(q), { self: !!myC() && r.tg === myC() });
       } catch (err) {
-        warn12("rs", err);
+        warn15("rs", err);
       }
       if (q[0] === 0 || q[0] === GRUDGE) {
         role = "local";
@@ -62953,6 +66968,302 @@ void main() {
     };
   }
 
+  // src/js/store3d/net/fight.js
+  var WP_DEBOUNCE_MS = 300;
+  var LZ_GAP_MS = 250;
+  var GS_GAP = 170;
+  var FH_GAP_MS = 340;
+  var GH_GAP_MS = 260;
+  var GC_GAP_MS = 1e3;
+  var LB_GAP_MS = 4e3;
+  var LZ_EPS_CM = 5;
+  var TYPES = ["wp", "fh", "lz", "lb", "gs", "gh", "ga", "pu"];
+  var warn16 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp fight", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  var isInt3 = (v) => Number.isInteger(v);
+  function createFightNet(core) {
+    const ctx = core.ctx;
+    const frame = core.frame;
+    const clock = typeof core.now === "function" ? core.now : () => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const listeners = /* @__PURE__ */ new Map();
+    let disposed = false;
+    let leaderC = 0;
+    let gen = 0;
+    let sentWp = -1;
+    let pendingWp = null;
+    let lastLz = null;
+    let pendingLz = null;
+    const last = { lz: -1e9, gs: -1e9, fh: -1e9, gh: -1e9, gc: -1e9 };
+    const lastLb = /* @__PURE__ */ new Map();
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    const myC = () => {
+      const m = core.me();
+      return m ? m.c : 0;
+    };
+    const poseOf = () => {
+      try {
+        return ctx.player.getPose();
+      } catch {
+        return null;
+      }
+    };
+    const has = () => !disposed && core.active() && core.cap("fight");
+    function dispatch(type, msg) {
+      const l = listeners.get(type);
+      if (!l) return;
+      for (const fn of [...l]) {
+        try {
+          fn(msg);
+        } catch (err) {
+          warn16("H\xF6rer " + type, err);
+        }
+      }
+    }
+    const out = (m) => m ? core.send(m) : false;
+    function flushLz(t) {
+      if (!pendingLz || t - last.lz < LZ_GAP_MS) return;
+      const p = pendingLz;
+      pendingLz = null;
+      if (out(build.lz(p.on, p.q))) {
+        last.lz = t;
+        lastLz = p;
+      }
+    }
+    function sendLz(payload, t) {
+      const pose = poseOf();
+      const on = payload && payload.on ? 1 : 0;
+      const r = pose ? frame.area(pose.x, pose.z, pose.y || 0) : 2;
+      const pt = payload && payload.point && Number.isFinite(payload.point.x) ? payload.point : pose;
+      if (!pt) return false;
+      const q = frame.enc(pt.x, Number.isFinite(pt.y) ? pt.y : 0, pt.z, r);
+      if (lastLz && lastLz.on === on && (!on || Math.hypot(q[0] - lastLz.q[0], q[1] - lastLz.q[1], q[2] - lastLz.q[2]) <= LZ_EPS_CM)) {
+        pendingLz = null;
+        return true;
+      }
+      pendingLz = { on, q };
+      flushLz(t);
+      return true;
+    }
+    function send(type, payload) {
+      if (!has() || typeof type !== "string") return false;
+      const t = clock();
+      const p = payload && typeof payload === "object" ? payload : {};
+      if (xrOn() && type !== "gr") return false;
+      switch (type) {
+        case "wp": {
+          const w = Number.isInteger(p.w) ? p.w : -1;
+          if (w < 0 || w > 3) return false;
+          if (w === sentWp && !pendingWp) return true;
+          pendingWp = { w, at: t };
+          return true;
+        }
+        case "fh": {
+          if (!isInt3(p.c) || !isInt3(p.w)) return false;
+          if (t - last.fh < FH_GAP_MS) return false;
+          const pose = poseOf();
+          const from = p.from && Number.isFinite(p.from.x) ? p.from : pose;
+          if (!from) return false;
+          let d = null;
+          if (p.dir && pose) d = frame.encDir(from.x, from.z, p.dir.x, p.dir.z, frame.area(pose.x, pose.z, pose.y || 0));
+          if (!d || !d[0] && !d[1]) return false;
+          if (!out(build.fh(p.c, p.w, d, p.src === 1 || p.src === true))) return false;
+          last.fh = t;
+          return true;
+        }
+        case "lz":
+          return sendLz(p, t);
+        case "lb": {
+          if (!isInt3(p.c)) return false;
+          if (t - (lastLb.get(p.c) ?? -1e9) < LB_GAP_MS) return false;
+          if (!out(build.lb(p.c))) return false;
+          lastLb.set(p.c, t);
+          return true;
+        }
+        case "gc": {
+          if (t - last.gc < GC_GAP_MS) return false;
+          if (!out(build.gc())) return false;
+          last.gc = t;
+          return true;
+        }
+        case "gs": {
+          if (!isInt3(p.g) || t - last.gs < GS_GAP) return false;
+          const q = encodeGs(frame, p);
+          if (!q || !out(build.gs(p.g, q))) return false;
+          last.gs = t;
+          return true;
+        }
+        case "gr":
+          return out(build.gr());
+        case "gh": {
+          if (!isInt3(p.i) || !isInt3(p.w)) return false;
+          if (t - last.gh < GH_GAP_MS) return false;
+          if (!out(build.gh(p.i, p.w))) return false;
+          last.gh = t;
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    const peerR = (c) => {
+      const i = core.peers && core.peers.get ? core.peers.get(c) : null;
+      return i && Number.isInteger(i.r) ? i.r : 2;
+    };
+    const peerPos = (c) => {
+      try {
+        const v = core.peers && typeof core.peers.pos === "function" ? core.peers.pos(c) : null;
+        return v ? { x: v.x, y: v.y, z: v.z } : null;
+      } catch {
+        return null;
+      }
+    };
+    function onWp(e) {
+      if (!e || !isInt3(e.c) || !isInt3(e.w)) return;
+      if (core.peers && typeof core.peers.setWeapon === "function") {
+        try {
+          core.peers.setWeapon(e.c, e.w);
+        } catch (err) {
+          warn16("setWeapon", err);
+        }
+      }
+      dispatch("wp", { c: e.c, w: e.w });
+    }
+    function onLz(e) {
+      if (!e || !isInt3(e.c) || !Array.isArray(e.q) || e.q.length < 3) return;
+      const [x, y, z] = frame.dec(e.q[0], e.q[1], e.q[2], peerR(e.c));
+      const on = !!e.on;
+      const point = { x, y, z };
+      if (core.peers && typeof core.peers.setLaser === "function") {
+        try {
+          core.peers.setLaser(e.c, on, point);
+        } catch (err) {
+          warn16("setLaser", err);
+        }
+      }
+      dispatch("lz", { c: e.c, on, point });
+    }
+    function onFh(e) {
+      if (!e || !isInt3(e.c) || !isInt3(e.w) || !Array.isArray(e.d) || e.d.length < 2) return;
+      const pose = poseOf();
+      let dir = { x: Number(e.d[0]) / 100, z: Number(e.d[1]) / 100 };
+      if (pose) {
+        const r = frame.area(pose.x, pose.z, pose.y || 0);
+        const p = frame.enc(pose.x, pose.y || 0, pose.z, r);
+        const d = frame.decDir(p[0], p[2], Number(e.d[0]), Number(e.d[1]), r);
+        dir = { x: d[0], z: d[1] };
+      }
+      dispatch("fh", { c: e.c, w: e.w, dir, src: e.src === 1 ? 1 : 0, from: peerPos(e.c) });
+    }
+    function onGa(e) {
+      if (!e || !Number.isInteger(e.c)) return;
+      leaderC = e.c > 0 ? e.c : 0;
+      if (e.c > 0 && e.c === myC() && Number.isFinite(e.g)) gen = e.g | 0;
+      dispatch("ga", { c: e.c, g: Number.isFinite(e.g) ? e.g | 0 : 0 });
+    }
+    function onGs(e) {
+      if (!e || !Array.isArray(e.q)) return;
+      const d = decodeGs(frame, e.q);
+      if (!d) return;
+      if (isInt3(e.c) && e.c > 0) leaderC = e.c;
+      dispatch("gs", { c: e.c | 0, g: Number.isFinite(e.g) ? e.g | 0 : 0, ...d });
+    }
+    const handlers = {
+      wp: onWp,
+      lz: onLz,
+      fh: onFh,
+      ga: onGa,
+      gs: onGs,
+      lb: (e) => {
+        if (e && isInt3(e.c)) dispatch("lb", { c: e.c });
+      },
+      gh: (e) => {
+        if (e && isInt3(e.c) && isInt3(e.i) && isInt3(e.w)) dispatch("gh", { c: e.c, i: e.i, w: e.w });
+      },
+      pu: (e) => {
+        if (e && isInt3(e.c)) dispatch("pu", { c: e.c, d: e.d, s: e.s });
+      }
+    };
+    const offs = TYPES.map((t) => core.on(t, (e) => {
+      if (!disposed && core.active()) {
+        try {
+          handlers[t](e);
+        } catch (err) {
+          warn16(t, err);
+        }
+      }
+    }));
+    function reset() {
+      leaderC = 0;
+      gen = 0;
+      sentWp = -1;
+      pendingWp = null;
+      lastLz = null;
+      pendingLz = null;
+      lastLb.clear();
+      for (const k of Object.keys(last)) last[k] = -1e9;
+    }
+    const fight = {
+      has,
+      send,
+      on(type, fn) {
+        if (!TYPES.includes(type) || typeof fn !== "function") return () => {
+        };
+        const l = listeners.get(type) || /* @__PURE__ */ new Set();
+        l.add(fn);
+        listeners.set(type, l);
+        return () => l.delete(fn);
+      },
+      leader: () => leaderC > 0 ? leaderC : null,
+      isLeader: () => leaderC > 0 && leaderC === myC(),
+      gen: () => gen,
+      peerPos
+    };
+    return {
+      fight,
+      /** Willkommen: wl.wp { c: w }, wl.gl (Führer oder null), wl.gs { g, q }. */
+      welcome(wl) {
+        reset();
+        if (!wl || !core.cap("fight")) return;
+        if (wl.wp && typeof wl.wp === "object") for (const k of Object.keys(wl.wp)) onWp({ c: Number(k), w: wl.wp[k] });
+        if (Number.isInteger(wl.gl) && wl.gl > 0) {
+          leaderC = wl.gl;
+          onGa({ c: wl.gl, g: wl.gs && Number.isFinite(wl.gs.g) ? wl.gs.g : 0 });
+          if (wl.gs && Array.isArray(wl.gs.q)) onGs({ c: wl.gl, g: wl.gs.g, q: wl.gs.q });
+        }
+      },
+      tick() {
+        if (disposed || !has()) return;
+        const t = clock();
+        if (pendingWp && t - pendingWp.at >= WP_DEBOUNCE_MS) {
+          const w = pendingWp.w;
+          pendingWp = null;
+          if (w !== sentWp && out(build.wp(w))) sentWp = w;
+        }
+        flushLz(t);
+      },
+      /** Verbindung weg: Führer und Zustände vergessen (Peers räumt peers.clear()). */
+      stop() {
+        reset();
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        for (const o of offs) {
+          try {
+            o();
+          } catch {
+          }
+        }
+        listeners.clear();
+        reset();
+      }
+    };
+  }
+
   // src/js/store3d/net/parts.js
   var stub = () => ({});
   var PART_FACTORIES = {
@@ -62969,12 +67280,14 @@ void main() {
     // Welle c (C2)
     kino: stub,
     // Welle d
-    look: createLook
+    look: createLook,
     // 1.17.0: eigener Look und Ausweis (Fähigkeit look)
+    fight: createFightNet
+    // 1.18.0: Waffenwahl, Treffer, Laser, Bandenführung (Fähigkeit fight); Provider-Anteil net.fight
   };
 
   // src/js/store3d/modules/net.js
-  var warn13 = (what, err) => {
+  var warn17 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp", what, err && err.message ? err.message : "");
     } catch {
@@ -62988,8 +67301,27 @@ void main() {
   var net_default = {
     name: "net",
     init(ctx) {
+      const local = createLocalEmotes(ctx);
+      const emotesApi = { open: () => local.open(), emote: (x) => local.emote(x), usable: () => local.usable(), onPlayerEmote: (fn) => local.onPlayerEmote(fn) };
+      const removeEmotes = ctx.provide("emotes", emotesApi);
       const mp = ctx.deps && ctx.deps.mp;
-      if (!mp || typeof mp.ticket !== "function") return null;
+      if (!mp || typeof mp.ticket !== "function") {
+        const soloHud = ctx.isTouch ? createHud(ctx, { onEmote: () => local.open() }) : null;
+        return {
+          update() {
+            if (!soloHud) return;
+            soloHud.set(null, { emote: local.usable(), solo: local.usable() && !(ctx.suspended && ctx.suspended()) });
+          },
+          onSuspend() {
+            if (soloHud) soloHud.set(null);
+          },
+          dispose() {
+            removeEmotes();
+            local.dispose();
+            if (soloHud) soloHud.dispose();
+          }
+        };
+      }
       const opts = ctx.opts || {};
       const WS = opts.debug && opts.mpTransport || (typeof WebSocket !== "undefined" ? WebSocket : null);
       const bus = /* @__PURE__ */ new Map();
@@ -63000,7 +67332,7 @@ void main() {
           try {
             fn(...a);
           } catch (err) {
-            warn13("H\xF6rer " + ev, err);
+            warn17("H\xF6rer " + ev, err);
           }
         }
       };
@@ -63019,7 +67351,7 @@ void main() {
           try {
             fn();
           } catch (err) {
-            warn13("onChange", err);
+            warn17("onChange", err);
           }
         }
       };
@@ -63035,7 +67367,7 @@ void main() {
         try {
           if (ctx.deps.onPrefs) ctx.deps.onPrefs({ mp: p });
         } catch (err) {
-          warn13("prefs", err);
+          warn17("prefs", err);
         }
       };
       let disposed = false;
@@ -63079,7 +67411,9 @@ void main() {
         prefs,
         setPref: (p) => setPref(p),
         toast,
-        on: (t, fn) => on("msg:" + t, fn)
+        on: (t, fn) => on("msg:" + t, fn),
+        localEmote: (em) => local.notify(em)
+        // gesendetes Emote: eigene Figur + Hook (1.18.0)
       };
       let partErrs = [];
       const callParts = (name, ...a) => {
@@ -63088,7 +67422,7 @@ void main() {
           try {
             p[name](...a);
           } catch (err) {
-            warn13("Teil " + name, err);
+            warn17("Teil " + name, err);
             const t = nowMs();
             partErrs = partErrs.filter((x) => t - x < PART_ERR_WINDOW_MS);
             partErrs.push(t);
@@ -63195,7 +67529,7 @@ void main() {
           clearTimeout: (h3) => clearTimeout(h3),
           random: Math.random
         },
-        hello: () => ({ cap: ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look"], f: flags(), cv: mp.cv }),
+        hello: () => ({ cap: ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look", "fight"], f: flags(), cv: mp.cv }),
         onMsg,
         onState
       });
@@ -63206,7 +67540,7 @@ void main() {
           const h3 = PART_FACTORIES[k](core);
           if (h3) parts.push(h3);
         } catch (err) {
-          warn13("Teil " + k, err);
+          warn17("Teil " + k, err);
         }
       }
       const chatPart = () => parts.find((p) => typeof p.sayResult === "function") || null;
@@ -63222,7 +67556,7 @@ void main() {
       }
       function openEmotes() {
         const e = emotePart();
-        return !!e && emoteOn() ? !!e.open() : false;
+        return e && emoteOn() ? !!e.open() : local.open();
       }
       const isMuted = (k) => {
         const c = chatPart();
@@ -63321,6 +67655,14 @@ void main() {
           } catch {
           }
         }
+        if (s.a !== 7) {
+          try {
+            const fp = ctx.use("fight");
+            const pc = fp && typeof fp.poseCode === "function" ? fp.poseCode() : 0;
+            if (Number.isInteger(pc) && pc >= 9 && pc <= 15) s.a = pc;
+          } catch {
+          }
+        }
         const m = pose.update(s, ms);
         if (m) transport.send(m);
       }
@@ -63404,6 +67746,13 @@ void main() {
         filmTitle,
         showCard: showPlayerCard
       });
+      const fightPart = parts.find((p) => p && p.fight);
+      const fightApi = fightPart ? fightPart.fight : void 0;
+      emotesApi.open = () => openEmotes();
+      emotesApi.emote = (x) => {
+        const e = emotePart();
+        return e && emoteOn() ? !!e.emote(x) : local.emote(x);
+      };
       const removeProvider = ctx.provide("net", {
         active: () => live && !disposed,
         prefs,
@@ -63436,9 +67785,10 @@ void main() {
         /** Emote auslösen (Code 1..8 oder Name); false bei Cooldown/ohne Verbindung. */
         emote: (x) => {
           const e = emotePart();
-          return !!e && emoteOn() ? !!e.emote(x) : false;
+          return e && emoteOn() ? !!e.emote(x) : false;
         },
         openEmotes,
+        fight: fightApi,
         say: (t) => {
           const c = chatPart();
           return !!c && c.say(t);
@@ -63468,14 +67818,17 @@ void main() {
       return {
         update(dt, t) {
           if (disposed) return;
-          if (!live) return;
+          if (!live) {
+            if (ctx.isTouch && !cinemaVr && !ctx.suspended()) hud.set(null, { emote: local.usable(), solo: local.usable() });
+            return;
+          }
           if (cinemaVr || ctx.suspended()) return;
           peers.tick(dt);
           callParts("tick", dt, t);
           if (!live) return;
           samplePose(nowMs());
           hudText = ctx.playing() && !(ctx.xr && ctx.xr.presenting()) ? hudLabel() : "";
-          hud.set(hudText, { chat: chatOn(), emote: emoteOn() });
+          hud.set(hudText, { chat: chatOn(), emote: emoteOn() || hudText !== "" && local.usable() });
         },
         onSuspend() {
           if (disposed) return;
@@ -63530,6 +67883,8 @@ void main() {
           }
           hud.dispose();
           removeProvider();
+          removeEmotes();
+          local.dispose();
           bus.clear();
           changeFns.clear();
           live = false;
@@ -63584,7 +67939,7 @@ void main() {
 
   // src/js/store3d/modules/runtime.js
   var ease3 = (t) => t * t * (3 - 2 * t);
-  var warn14 = (...a) => {
+  var warn18 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -63771,7 +68126,7 @@ void main() {
             try {
               fn();
             } catch (err) {
-              warn14("exitThen", err);
+              warn18("exitThen", err);
             }
             return true;
           },
@@ -63828,7 +68183,7 @@ void main() {
           const h3 = await m.init(this.ctx);
           if (h3) this.handles.push({ name: m.name, h: h3 });
         } catch (err) {
-          warn14(`Modul "${m && m.name}" konnte nicht starten`, err);
+          warn18(`Modul "${m && m.name}" konnte nicht starten`, err);
         }
         if (progress) progress((i + 1) / n);
       }
@@ -63840,7 +68195,7 @@ void main() {
         try {
           fn(...args);
         } catch (err) {
-          warn14(`Event ${ev}`, err);
+          warn18(`Event ${ev}`, err);
         }
       }
     }
@@ -63850,7 +68205,7 @@ void main() {
         try {
           h3[name](...args);
         } catch (err) {
-          warn14(`Modul "${mn}".${name}`, err);
+          warn18(`Modul "${mn}".${name}`, err);
         }
       }
     }
@@ -63919,7 +68274,7 @@ void main() {
             break;
           }
         } catch (err) {
-          warn14("Aktion " + name, err);
+          warn18("Aktion " + name, err);
         }
       }
       this.emit(name, ev, consumed);
@@ -64063,7 +68418,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn14("overlay.onClose", err);
+            warn18("overlay.onClose", err);
           }
         });
         return;
@@ -64075,7 +68430,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn14("overlay.onClose", err);
+            warn18("overlay.onClose", err);
           }
         });
         return false;
@@ -64105,7 +68460,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn14("panel.onClose", err);
+            warn18("panel.onClose", err);
           }
         });
         return dead;
@@ -64154,7 +68509,7 @@ void main() {
       try {
         if (st.onClose) st.onClose();
       } catch (err) {
-        warn14("overlay.onClose", err);
+        warn18("overlay.onClose", err);
       }
       app.setMode(st.prev === "hold" && app.holdview.isOpen ? "hold" : "play");
       if (app.mode === "play" && app.desktop && !app.suspended) app.desktop.requestLock();
@@ -64437,12 +68792,12 @@ void main() {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    const warn20 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    const warn24 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
     if (info.online) {
       const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
       return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
     }
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn20}`;
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn24}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -65818,7 +70173,7 @@ void main() {
   var SWING_DURS = { hand: SWING_DUR, belt: 0.36, whip: 0.55 };
   var HELD_WEAPONS = ["belt", "whip", "laser"];
   var WEAPON_POS = [0.27, -0.27, -0.44];
-  var LEATHER2 = 5387294;
+  var LEATHER3 = 5387294;
   var STEEL2 = 12370636;
   var WHIP_SEGS = 7;
   var THROW_DUR = 0.35;
@@ -65891,7 +70246,7 @@ void main() {
       };
       const w = { id, group: g, geos: geos3, mats };
       if (id === "belt") {
-        const lm = mat2(LEATHER2);
+        const lm = mat2(LEATHER3);
         part(new BoxGeometry(0.035, 0.012, 0.2), lm, 0, 0, 0.09, 0.15);
         part(new BoxGeometry(0.035, 0.012, 0.16), lm, 0, -0.03, 0.24, 0.55);
         part(new BoxGeometry(0.05, 0.04, 0.025), mat2(STEEL2), 0, 5e-3, -0.015);
@@ -65899,7 +70254,7 @@ void main() {
       } else if (id === "whip") {
         part(new BoxGeometry(0.03, 0.03, 0.17), mat2(3088408), 0, 0, 0.02);
         part(new BoxGeometry(0.036, 0.036, 0.02), mat2(STEEL2), 0, 0, -0.07);
-        const lm = mat2(LEATHER2);
+        const lm = mat2(LEATHER3);
         const segs = [];
         let parent = g;
         for (let i = 0; i < WHIP_SEGS; i++) {
@@ -66594,10 +70949,10 @@ void main() {
   };
 
   // src/js/store3d/xr/rig.js
-  var _e5 = new Euler(0, 0, 0, "YXZ");
+  var _e6 = new Euler(0, 0, 0, "YXZ");
   function headLocal(cameraXr) {
-    _e5.setFromQuaternion(cameraXr.quaternion, "YXZ");
-    return { x: cameraXr.position.x, y: cameraXr.position.y, z: cameraXr.position.z, yaw: _e5.y, pitch: _e5.x };
+    _e6.setFromQuaternion(cameraXr.quaternion, "YXZ");
+    return { x: cameraXr.position.x, y: cameraXr.position.y, z: cameraXr.position.z, yaw: _e6.y, pitch: _e6.x };
   }
   function headWorld(rig, head) {
     const ry = rig.rotation.y;
@@ -66981,9 +71336,9 @@ void main() {
     }
     return L2;
   }
-  function rayClearance(rects, x, z, dx, dz, maxDist = Infinity) {
+  function rayClearance(rects2, x, z, dx, dz, maxDist = Infinity) {
     let best = maxDist;
-    for (const r of rects || []) {
+    for (const r of rects2 || []) {
       if (!r || !Number.isFinite(r.x0 + r.x1 + r.z0 + r.z1)) continue;
       let t0 = 0;
       let t1 = best;
@@ -67055,7 +71410,7 @@ void main() {
     g.globalAlpha = 1;
   }
   var keyOf2 = (h3) => h3 ? h3.kind === "action" ? `action:${h3.ref.row}:${h3.ref.action}` : `${h3.kind}:${h3.ref}` : null;
-  var warn15 = (what, err) => {
+  var warn19 = (what, err) => {
     try {
       console.warn(`[LenzFlix Store3D] ${what}`, err);
     } catch {
@@ -67329,7 +71684,7 @@ void main() {
           } else if (h3.kind === "input") {
           } else return false;
         } catch (err) {
-          warn15("Panel", err);
+          warn19("Panel", err);
         }
         return true;
       },
@@ -67346,7 +71701,7 @@ void main() {
         try {
           if (cb) cb();
         } catch (err) {
-          warn15("Panel.onClose", err);
+          warn19("Panel.onClose", err);
         }
       }
     };
@@ -68160,10 +72515,10 @@ void main() {
   };
 
   // src/js/store3d/xr/hands.js
-  var _p5 = new Vector3();
+  var _p6 = new Vector3();
   var _n = new Vector3();
   var _h = new Vector3();
-  var _q6 = new Quaternion();
+  var _q7 = new Quaternion();
   function attachVisuals(rec) {
     const geos3 = [];
     const mats = [];
@@ -68231,36 +72586,36 @@ void main() {
         if (rec.source.hand) {
           const joint = rec.handGroup && rec.handGroup.joints ? rec.handGroup.joints.wrist : null;
           if (joint && joint.visible) {
-            _q6.copy(joint.quaternion);
-            _n.set(0, -1, 0).applyQuaternion(_q6);
-            _p5.copy(joint.position).addScaledVector(_n, 0.03);
+            _q7.copy(joint.quaternion);
+            _n.set(0, -1, 0).applyQuaternion(_q7);
+            _p6.copy(joint.position).addScaledVector(_n, 0.03);
             show = true;
           }
         } else if (rec.grip.visible) {
-          _q6.copy(rec.grip.quaternion);
-          _n.set(0, 1, 0).applyQuaternion(_q6);
-          _p5.set(0, 0.035, 0.09).applyQuaternion(_q6).add(rec.grip.position);
+          _q7.copy(rec.grip.quaternion);
+          _n.set(0, 1, 0).applyQuaternion(_q7);
+          _p6.set(0, 0.035, 0.09).applyQuaternion(_q7).add(rec.grip.position);
           show = true;
         }
       }
       if (show) {
-        _h.copy(headPos).sub(_p5).normalize();
+        _h.copy(headPos).sub(_p6).normalize();
         show = _n.dot(_h) > 0.35;
       }
       this.visible = show;
       g.visible = show;
       if (show) {
-        g.position.copy(_p5);
+        g.position.copy(_p6);
         g.quaternion.setFromUnitVectors(_h.set(0, 1, 0), _n);
       }
     }
     /** Strahl (Welt) gegen die Kugel um den Knopf; Treffer → Abstand t, sonst null. */
     hit(o, d, maxDist = 3) {
       if (!this.visible) return null;
-      this.group.getWorldPosition(_p5);
-      const cx = _p5.x - o.x;
-      const cy = _p5.y - o.y;
-      const cz = _p5.z - o.z;
+      this.group.getWorldPosition(_p6);
+      const cx = _p6.x - o.x;
+      const cy = _p6.y - o.y;
+      const cz = _p6.z - o.z;
       const t = cx * d.x + cy * d.y + cz * d.z;
       if (t < 0 || t > maxDist) return null;
       const dist2 = cx * cx + cy * cy + cz * cz - t * t;
@@ -69673,13 +74028,13 @@ void main() {
 
   // src/js/store3d/cinema/cinema.js
   var FAIL_HOLD_MS = 2600;
-  var warn16 = (...a) => {
+  var warn20 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
     }
   };
-  var clamp13 = (v, a, b) => Math.max(a, Math.min(b, v));
+  var clamp16 = (v, a, b) => Math.max(a, Math.min(b, v));
   var Cinema = class {
     constructor(app) {
       this.app = app;
@@ -69750,7 +74105,7 @@ void main() {
       try {
         return fn(p);
       } catch (err) {
-        warn16("Party", err);
+        warn20("Party", err);
         return void 0;
       }
     }
@@ -69806,7 +74161,7 @@ void main() {
       this._pt((p) => p.beginRun(item));
       const f = this._fade();
       const run = () => this._build(this.gen);
-      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn16("Kino betreten", err));
+      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn20("Kino betreten", err));
       else run();
       return true;
     }
@@ -69830,7 +74185,7 @@ void main() {
         try {
           if (app.holdview && typeof app.holdview.close === "function") app.holdview.close(false);
         } catch (err) {
-          warn16("H\xFClle schlie\xDFen", err);
+          warn20("H\xFClle schlie\xDFen", err);
         }
         if (app.mods) app.mods.hook("onSuspend");
         this._duck(true);
@@ -69874,7 +74229,7 @@ void main() {
         }
         this.phase = "starting";
       } catch (err) {
-        warn16("Kino bauen", err);
+        warn20("Kino bauen", err);
         this.failCode = "B";
         this._selfLeave("fail", "B");
       }
@@ -69902,7 +74257,7 @@ void main() {
       } catch {
       }
       const floor = !this._xr || this._xr.floor !== false;
-      let off = floor ? clamp13(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
+      let off = floor ? clamp16(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
       if (!Number.isFinite(off)) off = 0;
       placeRig(eng.rig, { x: s.x, z: s.z, yaw: s.yaw }, head, { y: s.y + off });
       eng.rig.updateMatrixWorld(true);
@@ -69917,7 +74272,7 @@ void main() {
         if (x && typeof x.savePrefs === "function") x.savePrefs();
         else this.app.savePrefs();
       } catch (err) {
-        warn16("Platz speichern", err);
+        warn20("Platz speichern", err);
       }
       if (name === this.seat || !this.hall || this.phase === "entering" || this.phase === "leaving") {
         this.seat = name;
@@ -70030,7 +74385,7 @@ void main() {
       this.phase = "failed";
       this.failCode = code;
       this.marks.fail = Math.round(this.watch.startAt == null ? 0 : this.now - this.watch.startAt);
-      warn16("Kino-Start fehlgeschlagen", code);
+      warn20("Kino-Start fehlgeschlagen", code);
       const d = this._deps;
       const st = this.state || {};
       const txt = failToast(code);
@@ -70043,7 +74398,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn16("Stopp", err);
+          warn20("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS, () => this._selfLeave("fail", code));
@@ -70195,7 +74550,7 @@ void main() {
         if ((reason === "fail" || this.failCode) && this._xr) this._xr.toast(failToast(this.failCode), 3200);
         return true;
       }, (err) => {
-        warn16("Kino verlassen", err);
+        warn20("Kino verlassen", err);
         if (gen !== this.gen) return false;
         this._leavePromise = null;
         if (this._active) this._teardown();
@@ -70262,7 +74617,7 @@ void main() {
   };
 
   // src/js/store3d/xr/mode.js
-  var warn17 = (...a) => {
+  var warn21 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -70330,7 +74685,7 @@ void main() {
         const f = this.app.deps && this.app.deps.onXr;
         if (typeof f === "function") f(state);
       } catch (err) {
-        warn17("onXr", err);
+        warn21("onXr", err);
       }
     }
     /** Muss synchron aus einem Klick laufen. */
@@ -70344,7 +74699,7 @@ void main() {
         const cash = ctx && ctx.use("cashier");
         if (cash && typeof cash.unlockVoice === "function") cash.unlockVoice();
       } catch (err) {
-        warn17("Entsperren", err);
+        warn21("Entsperren", err);
       }
       Promise.resolve(p).then((ok) => {
         if (!ok && !this.presenting) this.releaseSources();
@@ -70644,7 +74999,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn17("exitThen", err);
+          warn21("exitThen", err);
         }
       }
     }
@@ -70663,7 +75018,7 @@ void main() {
       try {
         if (this.cinema && typeof this.cinema.onVisibility === "function") this.cinema.onVisibility(state);
       } catch (err) {
-        warn17("Kino-Sichtbarkeit", err);
+        warn21("Kino-Sichtbarkeit", err);
       }
     }
     // --- Schleife ---
@@ -70771,7 +75126,7 @@ void main() {
           try {
             h3.tick(dt);
           } catch (err) {
-            warn17("Panel", err);
+            warn21("Panel", err);
           }
         }
       }
@@ -70779,7 +75134,7 @@ void main() {
         try {
           b.update(dt);
         } catch (err) {
-          warn17("Blase", err);
+          warn21("Blase", err);
         }
       }
       if (this.vignette) this.vignette.update(dt, !!(app.opts.vr && app.opts.vr.vignette !== false) && !this.inCinema, this.speed, this.turnRate);
@@ -70881,7 +75236,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn17("exitThen", err);
+          warn21("exitThen", err);
         }
         return true;
       }
@@ -71486,7 +75841,7 @@ void main() {
     STUCK_MS: 3e3
     // lokale Pausenposition weicht so weit ab: Gruppenposition nehmen
   });
-  var clamp14 = (x, a, b) => Math.min(b, Math.max(a, x));
+  var clamp17 = (x, a, b) => Math.min(b, Math.max(a, x));
   var num5 = (x, d = 0) => Number.isFinite(Number(x)) ? Number(x) : d;
   function expectedPos(s, now) {
     if (!s) return 0;
@@ -71877,8 +76232,8 @@ void main() {
           }
         }
         if (S.leadAt && now - S.leadAt >= cfg.TICK_MS && ready >= 3 && !obs.seeking && S.sess.st === 1 && !obs.paused) {
-          const dur = clamp14(now - S.leadAt, 0, cfg.LEAD_MAX_MS);
-          S.lead = clamp14(S.lead == null ? dur : 0.7 * S.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
+          const dur = clamp17(now - S.leadAt, 0, cfg.LEAD_MAX_MS);
+          S.lead = clamp17(S.lead == null ? dur : 0.7 * S.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
           S.leadAt = 0;
         }
         if (held) return;
@@ -71973,7 +76328,7 @@ void main() {
           }
         }
         if (st === 1 && S.rateOk !== false && A.setRate && ad > Dr && ad <= Math.max(D2, cfg.RATE_MAX_MS)) {
-          const r = 1 - clamp14(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
+          const r = 1 - clamp17(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
           if (S.rateSet !== r) {
             try {
               A.setRate(r);
@@ -72018,7 +76373,7 @@ void main() {
   var POLL_MS = 1e3;
   var RESYNC_MS = 1500;
   var LOST_MS = 2e4;
-  var warn18 = (...a) => {
+  var warn22 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -72034,7 +76389,7 @@ void main() {
       try {
         return typeof f === "function" ? f(...a) : null;
       } catch (err) {
-        warn18("party", err);
+        warn22("party", err);
         return null;
       }
     };
@@ -72152,7 +76507,7 @@ void main() {
         try {
           sync.dispose();
         } catch (err) {
-          warn18("dispose", err);
+          warn22("dispose", err);
         }
       }
       sync = null;
@@ -72231,7 +76586,7 @@ void main() {
       try {
         sync.leave();
       } catch (err) {
-        warn18("kl", err);
+        warn22("kl", err);
       }
       endSession();
     }
@@ -72404,7 +76759,7 @@ void main() {
           try {
             sync.leave();
           } catch (err) {
-            warn18("kl", err);
+            warn22("kl", err);
           }
           endSession();
         }
@@ -72449,7 +76804,7 @@ void main() {
   // src/js/store3d/cinema/palast.js
   var FAIL_HOLD_MS2 = 1800;
   var GAP_MS3 = 2e3;
-  var warn19 = (...a) => {
+  var warn23 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -72460,7 +76815,7 @@ void main() {
       try {
         return o[name](...a);
       } catch (err) {
-        warn19(name, err);
+        warn23(name, err);
       }
     }
     return void 0;
@@ -72607,7 +76962,7 @@ void main() {
         try {
           d.onCinema2d({ active: this.active, full: this.active && this.full });
         } catch (err) {
-          warn19("onCinema2d", err);
+          warn23("onCinema2d", err);
         }
       }
     }
@@ -72858,7 +77213,7 @@ void main() {
           this.state = d.state() || {};
         }
       } catch (err) {
-        warn19("Palast-Kino bauen", err);
+        warn23("Palast-Kino bauen", err);
         this.leave("build", "B");
       }
     }
@@ -73010,7 +77365,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn19("Stopp", err);
+          warn23("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS2, () => this.leave("fail", code));
@@ -73618,6 +77973,12 @@ void main() {
         onTake: (src) => this.doUse(src || "click"),
         onJump: () => this.doJump(),
         onHit: () => this.doHit("key"),
+        onHitUp: () => this.onHitUp(),
+        onTakeUp: () => this.onHitUp(),
+        onWheel: () => this.onWeaponWheel(true),
+        onWheelUp: () => this.onWeaponWheel(false),
+        onWeaponPick: (n) => this.onWeaponPick(n),
+        onWeaponCycle: (dir) => this.onWeaponCycle(dir),
         onThrow: () => this.doThrow("key"),
         onChat: () => this.doChat("key"),
         onEmote: () => this.doEmote("key"),
@@ -73649,8 +78010,11 @@ void main() {
         onJump: () => this.doJump(),
         onUse: () => this.doUse("touch"),
         onHit: () => this.doHit("touch"),
+        onHitUp: () => this.onHitUp(),
         onThrow: () => this.doThrow("touch"),
-        onView: () => this.doView()
+        onView: () => this.doView(),
+        onAux: () => this.onAux(),
+        onAuxUp: () => this.onAuxUp()
       }) : null;
       this.progress(0.86, "Module werden geladen");
       this.mods.ctx.on("xr", (on) => this.onXrHold(on));
@@ -73897,7 +78261,10 @@ void main() {
       cam.getWorldDirection(this._d);
       const sv = this.modUse("selfview");
       const origin = sv && sv.mode() === "third" ? sv.eye(new Vector3()) : cam.position.clone();
-      return { name, source, aim: this.aim, origin, dir: this._d.clone(), weapon: "hand", range: 1.6, max: 1 };
+      const fi = this.modUse("fight");
+      const wid = fi && typeof fi.weapon === "function" ? fi.weapon() : "hand";
+      const wi = weaponInfo(wid === "laser" ? "hand" : wid);
+      return { name, source, aim: this.aim, origin, dir: this._d.clone(), weapon: wi.id, range: wi.range, max: wi.max };
     }
     /**
      * Zielstrahl (1.17.0). Ego: Kamera und Blickrichtung (bzw. der übergebene Strahl `ray`, z. B. Tippen), bitgleich zu früher.
@@ -73944,10 +78311,30 @@ void main() {
     /** Schlagen (F; Linksklick ohne Ziel): Arm-Schwung und ctx.input.onAction('hit') / Ereignis 'hit'. */
     doHit(src = "key") {
       if (!this.canAct()) return false;
+      const f = this.modUse("fight");
+      if (f && typeof f.weapon === "function") {
+        if (f.weapon() === "laser") return !!(f.laser && f.laser(true));
+        if (typeof f.swingOk === "function" && !f.swingOk()) return false;
+      }
       const ev = this.actionEvent("hit", src);
       this.player.swing();
-      if (this.hands) this.hands.swing();
+      if (this.hands) this.hands.swing(ev.weapon);
+      if (f && typeof f.swung === "function") f.swung(ev);
       return this.mods.action("hit", ev);
+    }
+    /** Loslassen von F bzw. der linken Maustaste: Laser aus (1.18.0). */
+    onHitUp() {
+      const f = this.modUse("fight");
+      if (f && typeof f.laser === "function") f.laser(false);
+    }
+    /** Waffenknopf (Touch): tippen = Waffenrad, halten mit Laser = leuchten (1.18.0). */
+    onAux() {
+      const f = this.canAct() ? this.modUse("fight") : null;
+      if (f && f.auxDown) f.auxDown();
+    }
+    onAuxUp() {
+      const f = this.modUse("fight");
+      if (f && f.auxUp) f.auxUp();
     }
     /** Werfen (G): ctx.input.onAction('throw') / Ereignis 'throw'; ev.carried = getragene Hülle oder null. Welle 1: nur Animation. */
     doThrow(src = "key") {
@@ -73972,11 +78359,13 @@ void main() {
     // --- Kampf (1.18.0, Welle 4: leere Nähte; Tasten/Rad belegt Welle 6) ---
     /** Waffenrad öffnen/schließen (R halten). Reicht nur an den Provider fight durch. */
     onWeaponWheel(open) {
+      if (open && !this.canAct()) return false;
       const f = this.modUse("fight");
       return !!(f && f.wheel && f.wheel(!!open));
     }
     /** Direktwahl 1–4. */
     onWeaponPick(n) {
+      if (!this.canAct()) return false;
       const f = this.modUse("fight");
       if (!f) return false;
       const id = ["hand", "belt", "whip", "laser"][(n | 0) - 1];
@@ -73986,6 +78375,7 @@ void main() {
     }
     /** Mausrad: nächste/vorige Waffe (dir = ±1). */
     onWeaponCycle(dir) {
+      if (!this.canAct()) return false;
       const f = this.modUse("fight");
       return !!(f && f.cycle && f.cycle(dir < 0 ? -1 : 1));
     }
@@ -74232,6 +78622,13 @@ void main() {
       }
       if (this.hands) {
         const svm = this.modUse("selfview");
+        const fw = this.modUse("fight");
+        if (fw && typeof fw.heldWeapon === "function" && !this.carried && !(this.holdview && this.holdview.isOpen)) {
+          const hw = fw.heldWeapon();
+          if (hw !== this.hands.weapon) this.hands.setHeld(hw ? { weapon: hw } : null);
+          const ls = typeof fw.laserState === "function" ? fw.laserState() : null;
+          this.hands.setLaser(!!(ls && ls.on));
+        }
         this.hands.setVisible(!inXr && this.mode === "play" && !this.mods.cam && !(svm && svm.mode && svm.mode() === "third"));
         if (!inXr) this.hands.update(dt);
       }

@@ -4,7 +4,10 @@
 // Lebenszyklus: onSuspend (echt ausgesetzt) schließt mit 1000, onResume verbindet neu; VR-Kino (ctx.suspended() false) hält die Verbindung, verbirgt nur Figuren (W9).
 // Das Jellyfin-Token gelangt nie hierher; deps.mp.ticket() liefert nur das kurzlebige Ticket.
 //   Provider 'net': { active(), me(), has(cap), count(), serverNow(), peers(), peerName(c), on(ev), send(msg), physGate(body), menu(), renderMenu(el),
-//                     onChange(fn), emote(code), openEmotes(), say(text), openChat(), setKino(on) }   ev = 'state' | 'peers' | 'msg:<t>'
+//                     onChange(fn), emote(code), openEmotes(), say(text), openChat(), setKino(on), fight? }   ev = 'state' | 'peers' | 'msg:<t>'
+//   1.18.0: net.fight (Fähigkeit fight, net/fight.js): { has(), send(type, payload), on(type, fn) → off, leader(), isLeader(), gen(), peerPos(c) } (Formen im Kopf von net/fight.js).
+// Provider 'emotes' (1.18.0, auch OHNE Mehrspieler): { open() → bool, emote(x) → bool, usable() → bool, onPlayerEmote(fn({ name, code, anim })) → off } – Emote-Rad (T, Touch-Knopf),
+//   eigene Figur spielt lokal (selfview.playAnim); mit Mehrspieler wird zusätzlich gesendet. Ohne deps.mp gibt es sonst weder net-Provider noch Verbindung.
 import { createTransport } from '../net/transport.js';
 import { createFrame } from '../net/frame.js';
 import { createPose } from '../net/pose.js';
@@ -13,6 +16,7 @@ import { createSeatNet } from '../palast/seatnet.js';
 import { joinOffers } from '../palast/choice.js';
 import { F, build, bodyAnimToNet } from '../net/proto.js';
 import { createHud } from '../net/hud.js';
+import { createLocalEmotes } from '../net/emote-ui.js';
 import { createPanel } from '../net/panel.js';
 import { PART_FACTORIES } from '../net/parts.js';
 
@@ -26,8 +30,22 @@ const PART_ERR_WINDOW_MS = 60000;
 export default {
   name: 'net',
   init(ctx) {
+    // Emote-Rad auch ohne Mehrspieler (1.18.0): lokaler Zweig, Provider 'emotes' (NPC-Reaktionen hängen an onPlayerEmote)
+    const local = createLocalEmotes(ctx);
+    const emotesApi = { open: () => local.open(), emote: (x) => local.emote(x), usable: () => local.usable(), onPlayerEmote: (fn) => local.onPlayerEmote(fn) };
+    const removeEmotes = ctx.provide('emotes', emotesApi);
     const mp = ctx.deps && ctx.deps.mp;
-    if (!mp || typeof mp.ticket !== 'function') return null;
+    if (!mp || typeof mp.ticket !== 'function') {
+      const soloHud = ctx.isTouch ? createHud(ctx, { onEmote: () => local.open() }) : null;
+      return {
+        update() {
+          if (!soloHud) return;
+          soloHud.set(null, { emote: local.usable(), solo: local.usable() && !(ctx.suspended && ctx.suspended()) });
+        },
+        onSuspend() { if (soloHud) soloHud.set(null); },
+        dispose() { removeEmotes(); local.dispose(); if (soloHud) soloHud.dispose(); },
+      };
+    }
     const opts = ctx.opts || {};
     const WS = (opts.debug && opts.mpTransport) || (typeof WebSocket !== 'undefined' ? WebSocket : null);
 
@@ -85,6 +103,7 @@ export default {
     const core = {
       ctx, frame, send: (m) => send(m), me: () => (transport ? transport.me() : null), cap: (n) => !!transport && transport.has(n),
       active: () => live && !disposed, serverNow: () => (transport ? transport.serverNow() : null), peers: null, prefs, setPref: (p) => setPref(p), toast, on: (t, fn) => on('msg:' + t, fn),
+      localEmote: (em) => local.notify(em), // gesendetes Emote: eigene Figur + Hook (1.18.0)
     };
     let partErrs = [];
     const callParts = (name, ...a) => {
@@ -188,7 +207,7 @@ export default {
         clearTimeout: (h) => clearTimeout(h),
         random: Math.random,
       },
-      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'], f: flags(), cv: mp.cv }),
+      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'], f: flags(), cv: mp.cv }),
       onMsg,
       onState,
     });
@@ -204,7 +223,7 @@ export default {
     const chatOn = () => { const c = chatPart(); return !!(c && live && c.enabled() && core.cap('chat') && !(ctx.xr && ctx.xr.presenting())); };
     const emoteOn = () => !!(emotePart() && live && prefs().on !== false && core.cap('emote') && !(ctx.xr && ctx.xr.presenting()));
     function openChat() { const c = chatPart(); return !!c && chatOn() ? !!c.open() : false; }
-    function openEmotes() { const e = emotePart(); return !!e && emoteOn() ? !!e.open() : false; }
+    function openEmotes() { const e = emotePart(); return e && emoteOn() ? !!e.open() : local.open(); } // ohne Verbindung/Fähigkeit: lokaler Zweig (1.18.0)
     const isMuted = (k) => { const c = chatPart(); return c ? c.isMuted(k) : prefs().mute.includes(k); };
     /** Eine Zeile je Person (k): Name, grober Ort, Geräteanzahl, Admin; ohne mich. */
     function players() {
@@ -292,6 +311,14 @@ export default {
       }
       // Friseurstuhl im Salon (1.17.0): a=7 ohne se; r bleibt der Bereich (peers.js nutzt Kinositze nur bei r===1, sonst sitzt die Figur an der Körperposition)
       if (s.a !== 7) { try { const sa = ctx.use('salon'); if (sa && typeof sa.sitting === 'function' && sa.sitting()) s.a = 7; } catch { /* egal */ } }
+      // 1.18.0: Kampf-Posen 9..15 (ko, cover, whip, belt, aim, threat, away) aus dem Modul fight; nie über den Sitz (a=7 mit se bleibt)
+      if (s.a !== 7) {
+        try {
+          const fp = ctx.use('fight');
+          const pc = fp && typeof fp.poseCode === 'function' ? fp.poseCode() : 0;
+          if (Number.isInteger(pc) && pc >= 9 && pc <= 15) s.a = pc;
+        } catch { /* egal */ }
+      }
       const m = pose.update(s, ms);
       if (m) transport.send(m);
     }
@@ -360,6 +387,10 @@ export default {
     });
 
     // ---------------------------------------------------------------- Provider
+    const fightPart = parts.find((p) => p && p.fight);
+    const fightApi = fightPart ? fightPart.fight : undefined;
+    emotesApi.open = () => openEmotes();
+    emotesApi.emote = (x) => { const e = emotePart(); return e && emoteOn() ? !!e.emote(x) : local.emote(x); };
     const removeProvider = ctx.provide('net', {
       active: () => live && !disposed,
       prefs,
@@ -378,8 +409,9 @@ export default {
       renderMenu: (el) => panel.render(el),
       onChange: (fn) => { if (typeof fn !== 'function') return () => {}; changeFns.add(fn); return () => changeFns.delete(fn); },
       /** Emote auslösen (Code 1..8 oder Name); false bei Cooldown/ohne Verbindung. */
-      emote: (x) => { const e = emotePart(); return !!e && emoteOn() ? !!e.emote(x) : false; },
+      emote: (x) => { const e = emotePart(); return e && emoteOn() ? !!e.emote(x) : false; },
       openEmotes,
+      fight: fightApi,
       say: (t) => { const c = chatPart(); return !!c && c.say(t); },
       openChat,
       /** Kino-Sitzung aktiv: Verbindung bleibt auch im verborgenen Tab offen (W9). */
@@ -396,14 +428,18 @@ export default {
     return {
       update(dt, t) {
         if (disposed) return;
-        if (!live) return;
+        if (!live) {
+          // ohne Verbindung: nur der lokale Emote-Knopf (Touch), nie bei Aussetzen/VR-Kino
+          if (ctx.isTouch && !cinemaVr && !ctx.suspended()) hud.set(null, { emote: local.usable(), solo: local.usable() });
+          return;
+        }
         if (cinemaVr || ctx.suspended()) return;
         peers.tick(dt);
         callParts('tick', dt, t);
         if (!live) return;
         samplePose(nowMs());
         hudText = ctx.playing() && !(ctx.xr && ctx.xr.presenting()) ? hudLabel() : '';
-        hud.set(hudText, { chat: chatOn(), emote: emoteOn() });
+        hud.set(hudText, { chat: chatOn(), emote: emoteOn() || (hudText !== '' && local.usable()) });
       },
       onSuspend() {
         if (disposed) return;
@@ -439,6 +475,8 @@ export default {
         try { peers.dispose(); } catch { /* egal */ }
         hud.dispose();
         removeProvider();
+        removeEmotes();
+        local.dispose();
         bus.clear();
         changeFns.clear();
         live = false;

@@ -1,11 +1,14 @@
 // VIDEOTHEK LENZ · Modul `kiosk` (Welle 2, Paket E): Verkäuferin am Kiosk (Figur aus Provider 'npc'), Interaktion „Snack kaufen“ mit kleinem
 // Overlay (4 erfundene Snacks, Witz-Texte, Preise in DM wie in modules/snack.js), Kauf = Spruch + Sound + Snack kurz in der Hand (Bissanimation)
 // + Fund 'kiosk-snack'. In VR: Panel statt DOM-Overlay, kein Snack in der Hand. Anker: city.kiosk.vendor (Paket A) sonst Fallback (npc/spots.js).
+// 1.18.0: spricht über die Sprecher-Regie (npc.speak, Stimme 'kiosk'); bei Provokation (Schlag) wirft sie Bonbons (setHandItem 'candy', Pose toss, Wurf-Pool
+// des npc-Moduls via npc.throwProp, Treffer → fight.hitPlayer, Abklingzeit in npc/aggro-logic.js); Laserblick: Hände vor die Augen (onLaser). Keine Angriffe in VR.
 import { Mesh, MeshLambertMaterial, Vector3 } from 'three';
 import { box, merge } from '../util/geo.js';
 import { sph } from './m4-geo.js';
 import { vendorAnchor } from '../npc/spots.js';
 import { pickLine } from '../npc/lines.js';
+import { createAggro, provoke as aggroProvoke } from '../npc/aggro-logic.js';
 
 const SNACKS = [
   { id: 'brezel', name: 'Mega-Brezel', price: '1,99', blurb: 'Warm, salzig und größer als dein Kopf.', after: 'Mampf! Die Brezel war eindeutig größer als dein Kopf.' },
@@ -50,6 +53,35 @@ export default {
     let chat = 8 + rand() * 12;
     let lastLine = -1;
     let waveCool = 0;
+    const aggro = createAggro('kiosk');
+    let clockK = 0; // s aus dt
+    const timers = [];
+    const later = (sec, fn) => { timers.push({ t: clockK + sec, fn }); };
+    /** Sprechen über die Sprecher-Regie (Stimme 'kiosk'); ohne npc-Provider als Blase der Figur. */
+    function talk(text, ms) {
+      const n = npc();
+      if (n && typeof n.speak === 'function') n.speak(handle, text, { id: 'kiosk', voiceSeed: 'kiosk', ms });
+      else if (handle) handle.say(text, ms);
+    }
+    /** Schlag auf die Kioskfrau: Bonbon-Wurf (mit Abklingzeit), nie in VR. */
+    function provoked() {
+      if (!handle || ctx.xr.presenting() || aggroProvoke(aggro, clockK) !== 'throw') return;
+      const h = handle;
+      try { h.setHandItem('candy'); h.setAnim('toss', { restart: true }); } catch { /* egal */ }
+      later(0.4, () => {
+        const n = npc();
+        const p = ctx.player.getPose();
+        if (n && typeof n.throwProp === 'function') n.throwProp('candy', { x: anchor.x, y: 1.3, z: anchor.z }, { x: p.x, y: (Number.isFinite(p.y) ? p.y : 0) + 1.2, z: p.z });
+      });
+      later(1.4, () => { try { h.setHandItem(null); } catch { /* egal */ } });
+    }
+    function blinded() {
+      if (!handle) return;
+      handle.setAnim('cover', { restart: true });
+      const r = pickLine('blinded', rand, -1);
+      if (r) talk(r.text, 3200);
+      later(2, () => { if (handle && handle.anim.anim === 'cover') handle.setAnim('idle', { restart: true }); });
+    }
     const mat = new MeshLambertMaterial({ vertexColors: true });
     const geos = new Map();
     const camPos = new Vector3();
@@ -64,7 +96,8 @@ export default {
       removeCol = ctx.addCollider({ x0: anchor.x - 0.28, z0: anchor.z - 0.28, x1: anchor.x + 0.28, z1: anchor.z + 0.28, y1: 1.8, kind: 'npc' });
       offPerson = n.registerPerson({
         kind: 'kiosk', handle,
-        onHit: (dir) => { handle.hitReact(dir); const r = pickLine('kioskHit', rand, -1); if (r) handle.say(r.text, 3600); sound('oof'); },
+        onHit: (dir) => { handle.hitReact(dir); const r = pickLine('kioskHit', rand, -1); if (r) talk(r.text, 3600); sound('oof'); provoked(); },
+        onLaser: blinded,
       });
       const k = city.kiosk.counter;
       removeIa = ctx.addInteractable({
@@ -77,7 +110,7 @@ export default {
 
     function buy(s) {
       if (ctx.overlay.isOpen()) ctx.overlay.close();
-      if (handle) { handle.setAnim('wave', { restart: true }); const r = pickLine('kioskBuy', rand, -1); if (r) handle.say(`${s.name}! ${r.text}`, 4200); }
+      if (handle) { handle.setAnim('wave', { restart: true }); const r = pickLine('kioskBuy', rand, -1); if (r) talk(`${s.name}! ${r.text}`, 4200); }
       sound('buy');
       found('kiosk-snack');
       if (ctx.xr.presenting()) { toast(s.after); return; }
@@ -90,7 +123,7 @@ export default {
 
     function openMenu() {
       if (ctx.overlay.isOpen()) return;
-      if (handle) { handle.say(pickLine('kiosk', rand, lastLine).text, 3000); }
+      if (handle) { talk(pickLine('kiosk', rand, lastLine).text, 3000); }
       if (ctx.xr.presenting()) {
         const spec = {
           title: 'Kiosk', text: 'Was darf es sein?',
@@ -147,12 +180,18 @@ export default {
     return {
       update(dt) {
         dt = Math.min(dt, 0.1);
+        clockK += dt;
+        for (let i = timers.length - 1; i >= 0; i--) {
+          if (clockK < timers[i].t) continue;
+          const t = timers.splice(i, 1)[0];
+          try { t.fn(); } catch { /* egal */ }
+        }
         if (handle) {
           const p = ctx.player.getPose();
           const d = Math.hypot(p.x - anchor.x, p.z - anchor.z);
           if (d < 7) handle.lookAt(p.x, 1.6, p.z); else handle.lookAt(null);
           chat -= dt; waveCool -= dt;
-          if (d < 5 && chat <= 0) { const r = pickLine('kiosk', rand, lastLine); if (r) { lastLine = r.index; handle.say(r.text, 3800); } chat = 30 + rand() * 25; }
+          if (d < 5 && chat <= 0) { const r = pickLine('kiosk', rand, lastLine); if (r) { lastLine = r.index; talk(r.text, 3800); } chat = 30 + rand() * 25; }
           if (d < 4 && waveCool <= 0 && handle.anim.anim === 'idle') { handle.setAnim('wave'); waveCool = 25; }
         }
         if (hand) {
@@ -171,6 +210,7 @@ export default {
         }
       },
       dispose() {
+        timers.length = 0;
         endHand();
         removeIa();
         offPerson();

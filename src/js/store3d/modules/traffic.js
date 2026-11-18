@@ -1,17 +1,22 @@
 // VIDEOTHEK LENZ · Modul `traffic` (Welle 2, Paket E): Autos auf layout.city.lanes, parkende Autos in den Seitenstraßen, Hupen, Zebra-Fund.
-// Provider 'traffic' { zebraClear(edge) → bool (für Passanten am ungeregelten Zebra), cars() → [{ lane, x, z, v, state }], parked() → Rechtecke }.
+// Provider 'traffic' { zebraClear(edge) → bool (für Passanten am ungeregelten Zebra), cars() → [{ lane, x, z, v, state }], parked() → Rechtecke,
+//   laserHit(point {x,y,z}) → { id, lane, x, z } | null (fahrendes Auto, dessen Fahrerkabine der Laserpunkt trifft; Box 3,2 m lang, y 0,65..1,75),
+//   blindDriver(ref | id, { decel?, stand? }) → bool (Vollbremsung 9 m/s², 2,5 s stehen und hupen; 1.18.0) }.
 // Fahrlogik: npc/cars-logic.js (Halten bei Rot VOR dem Zebra, Zebra-Vorrang, Abstand, Hupen, sanftes Anrollen gegen den Spieler).
 // Bewegliche Autos sind dynamische Kollider (top:false, nie begehbar); parkende Autos sind statisch (dreiteilig: Haube/Kabine/Heck, Dach per Mantle).
 // ?cars=0 (ctx.opts.devFlags.cars === false): nichts, 'traffic' bleibt als Attrappe (zebraClear → true).
 import { presetFor } from '../engine/quality.js';
 import { signalAt } from '../world/city.js';
 import { createCarMesh, setCarLightsOn, disposeCarCaches, STYLE_COUNT, CAR_COLORS } from '../npc/cars.js';
-import { createCar, stepCar, assignCars, carCount, parkingSpots, posOf, laneSign, CAR_LEN, CAR_W, inZebra } from '../npc/cars-logic.js';
+import { createCar, stepCar, blindCar, assignCars, carCount, parkingSpots, posOf, laneSign, CAR_LEN, CAR_W, inZebra } from '../npc/cars-logic.js';
 import { debugHook } from './m3-debug.js';
 
 const NEAR_COLLIDER = 36; // m: darüber Auto-Kollider nur grob nachführen
 const FAR = 58;
 const HORN_HEAR = 38;
+const CAB_HALF = 1.6; // halbe Kabinenlänge (m) für den Laser-Treffer
+const CAB_Y0 = 0.65;
+const CAB_Y1 = 1.75;
 const SIGNAL_ZEBRAS = { zebraW: 'walkMain', zebraE: 'walkMain', zebraArmN: 'walkSide', zebraArmS: 'walkSide' };
 
 export default {
@@ -37,6 +42,8 @@ export default {
       zebraClear: () => true,
       cars: () => cars.map((c) => ({ lane: c.car.lane, ...posOf(c.lane, c.car.p), v: c.car.v, state: c.car.state })),
       parked: () => parkedCols.map((q) => ({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1 })),
+      laserHit: () => null,
+      blindDriver: () => false,
     };
     const offProvider = ctx.provide('traffic', api);
     if (flags.cars === false || !city || !city.lanes) return { dispose() { offProvider(); } };
@@ -126,6 +133,29 @@ export default {
         if (d > -CAR_LEN && d < 10 && e.car.v > 0.9) return false;
       }
       return true;
+    };
+
+    /** Trifft der Laserpunkt die Fahrerkabine eines fahrenden Autos? (Box um die Mitte, Längsachse = Fahrtrichtung.) */
+    api.laserHit = (pt) => {
+      if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.z)) return null;
+      const y = Number.isFinite(pt.y) ? pt.y : 1;
+      if (y < CAB_Y0 || y > CAB_Y1) return null;
+      for (const e of cars) {
+        if (e.car.state === 'away') continue;
+        const p = posOf(e.lane, e.car.p);
+        const alongX = !!e.lane.dir.x;
+        const hx = alongX ? CAB_HALF : CAR_W / 2 + 0.1;
+        const hz = alongX ? CAR_W / 2 + 0.1 : CAB_HALF;
+        if (Math.abs(pt.x - p.x) <= hx && Math.abs(pt.z - p.z) <= hz) return { id: e.car.id, lane: e.car.lane, x: p.x, z: p.z };
+      }
+      return null;
+    };
+    /** Fahrer blenden: ref = Rückgabe von laserHit oder Auto-Id. */
+    api.blindDriver = (ref, o) => {
+      if (xrOn()) return false;
+      const id = ref && typeof ref === 'object' ? ref.id : ref;
+      const e = cars.find((c) => c.car.id === id);
+      return !!e && blindCar(e.car, o);
     };
 
     function zebraOccupiedSet(people) {
