@@ -7,6 +7,7 @@
 // apple-mobile-web-app-title schreibt core/favicon.js. Kein apple-mobile-web-app-status-bar-style.
 import { brandName } from './theme.js';
 import { touchFor } from './favicon.js';
+import { reevaluate } from './router.js';
 
 const CLASS = 'lfx-standalone';
 const MQ = '(display-mode: standalone)';
@@ -38,7 +39,10 @@ export function isStandalone() {
 function syncClass() {
   const on = isStandalone();
   const cl = document.documentElement.classList;
-  if (cl.contains(CLASS) !== on) cl.toggle(CLASS, on);
+  if (cl.contains(CLASS) !== on) {
+    cl.toggle(CLASS, on);
+    reevaluate(); // Features, die an html.lfx-standalone hängen (sabback), neu bewerten; wie core/layout.js
+  }
 }
 
 const abs = (u, base) => {
@@ -97,11 +101,11 @@ function loadSource() {
 
 async function applyManifest(theme) {
   if (!('standalone' in navigator) || typeof fetch !== 'function') return;
-  if (theme === lastTheme) return;
-  if (theme !== failTheme) { failTheme = theme; fails = 0; }
-  if (fails >= MAX_FAILS) return;
   const el = document.head && document.head.querySelector('link[rel="manifest"]');
   if (!el) return;
+  if (theme === lastTheme && link === el) return; // Link-Identität zuerst: ein ersetzter <link> wird neu überschrieben
+  if (theme !== failTheme) { failTheme = theme; fails = 0; }
+  if (fails >= MAX_FAILS) return;
   if (!link || link !== el) {
     if (link) restoreLink();
     const href = el.getAttribute('href');

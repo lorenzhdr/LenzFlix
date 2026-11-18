@@ -224,6 +224,7 @@ export default {
       onQuality(lv) { level = lv; },
       onSuspend() { suspended = true; mesh.visible = false; },
       onResume() { suspended = false; },
+      dispose() { if (window.__lfxM4) delete window.__lfxM4.precip; },
     };
   },
 };

@@ -596,11 +596,17 @@ html.lfx-js .lfx-tp__mark-store-b {
   line-height: 26px;
   text-shadow: 0 0 8px rgb(255 61 127 / 0.7);
 }
-html.lfx-js .lfx-tp__beta {
+html.lfx-js .lfx-tp__badges {
   position: absolute;
   top: 20px;
   left: 16px;
   z-index: 5; /* über Regalen, Schild und Vignette der Store-Vorschau */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+html.lfx-js .lfx-tp__beta {
   padding: 2px 8px;
   border: 1px solid #ffd23f;
   border-radius: 999px;
@@ -611,16 +617,12 @@ html.lfx-js .lfx-tp__beta {
   text-transform: uppercase;
 }
 /* Sheet: Vorschau oben bündig, Pille unten links in der Vorschau (Schild oben bleibt frei) */
-html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
+html.lfx-js .lfx-tp--sheet .lfx-tp__badges {
   top: 54px;
   left: 14px;
 }
-/* Online-Pille neben dem Beta-Hinweis */
+/* Online-Pille neben dem Beta-Hinweis (gleicher Flex-Container, keine geratene Breite) */
 html.lfx-js .lfx-tp__online {
-  position: absolute;
-  top: 20px;
-  left: 72px;
-  z-index: 5;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -640,10 +642,6 @@ html.lfx-js .lfx-tp__online-dot {
   border-radius: 50%;
   background: var(--lfx-green);
   box-shadow: 0 0 6px var(--lfx-green);
-}
-html.lfx-js .lfx-tp--sheet .lfx-tp__online {
-  top: 54px;
-  left: 70px;
 }
 @media (prefers-reduced-motion: no-preference) {
   html.lfx-js .lfx-tp__online-dot {

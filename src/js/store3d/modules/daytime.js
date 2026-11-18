@@ -186,12 +186,13 @@ uniform float uTime;`)
     ctx.track(trailTex);
 
     let near = false;
+    let suspended = false;
     function pushPrecip() {
       const pr = ctx.use('precip');
       if (pr && typeof pr.setWeather === 'function') pr.setWeather(weather.precip);
     }
     function syncVisible() {
-      if (drops) drops.visible = weather.raining;
+      if (drops) drops.visible = weather.raining && !suspended;
       pushPrecip();
     }
     syncVisible();
@@ -213,8 +214,9 @@ uniform float uTime;`)
         }
         if (drops && weather.raining && near && !reduced) timeU.value = t; // reduzierte Bewegung: Rinnsale stehen
       },
-      onSuspend() { if (drops) drops.visible = false; },
+      onSuspend() { suspended = true; if (drops) drops.visible = false; },
       onResume() {
+        suspended = false;
         const now = timeOfDay(hourOpt);
         if (now !== tod) { tod = now; weather.tod = now; apply(); }
         syncVisible();

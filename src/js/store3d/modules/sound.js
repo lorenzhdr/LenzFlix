@@ -284,7 +284,7 @@ export default {
       const gain = rainWanted();
       if (gain > 0 && !rain) startRain();
       else if (gain > 0 && rain) { try { rain.g.gain.setTargetAtTime(gain, ac.currentTime, 1.2); } catch { /* egal */ } }
-      else if (gain === 0 && rain) { stopNodes(rain, (n) => n.s.stop()); rain = null; }
+      else if (gain === 0 && rain) { stopNodes(rain, (n) => n.s.stop(), 0.3, 1800); rain = null; } // weich ausblenden (e^-6 ≈ 0,25 %), dann erst stoppen
     }
     function startRain() {
       const gain = rainWanted();
@@ -299,9 +299,9 @@ export default {
       s.start();
       rain = { s, g };
     }
-    function stopNodes(n, stopFn) {
+    function stopNodes(n, stopFn, tc = 0.2, delay = 900) {
       if (!n) return;
-      try { n.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.2); setTimeout(() => { try { stopFn(n); } catch { /* egal */ } }, 900); } catch { /* egal */ }
+      try { n.g.gain.setTargetAtTime(0.0001, ac.currentTime, tc); setTimeout(() => { try { stopFn(n); } catch { /* egal */ } }, delay); } catch { /* egal */ }
     }
     function startAmbient() {
       if (!ac || ambientRunning) return;

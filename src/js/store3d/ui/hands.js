@@ -77,7 +77,13 @@ function buildFistGeometry() {
   }
   p(0.026, 0.026, 0.05, -0.05, 0.0, 0.012, 0xe2ae8a); // Daumenballen
   p(0.062, 0.022, 0.026, -0.016, -0.012, -0.066, 0xe6b28e); // Daumen quer vor den Fingern
-  return mergeList(list);
+  const geo = mergeList(list);
+  // Mittelpunkt auf den Ursprung (wie die alte mittige Box), damit Ruhelage und Hieb-Bogen unverändert sitzen
+  geo.computeBoundingBox();
+  const c = geo.boundingBox.getCenter(new Vector3());
+  geo.translate(-c.x, -c.y, -c.z);
+  geo.computeBoundingBox();
+  return geo;
 }
 
 const LENS_ON = new Color(0xff5a46).toArray();

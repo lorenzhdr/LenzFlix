@@ -148,6 +148,10 @@ describe('hands: Detailgrad (1.19.0)', () => {
     expect(fist.material.vertexColors).toBe(true);
     expect(fist.geometry.attributes.position.count).toBeGreaterThanOrEqual(15 * 24);
     expect(fist.geometry.attributes.position.array.every(Number.isFinite)).toBe(true);
+    // Faust um den Ursprung zentriert (wie die alte mittige Box): Ruhelage/Hieb-Bogen unverändert
+    fist.geometry.computeBoundingBox();
+    const { min, max } = fist.geometry.boundingBox;
+    for (const ax of ['x', 'y', 'z']) expect(Math.abs((min[ax] + max[ax]) / 2)).toBeLessThan(1e-6);
     h.dispose();
   });
 

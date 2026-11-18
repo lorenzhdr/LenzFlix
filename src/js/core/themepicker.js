@@ -201,11 +201,9 @@ function showOnline(card, n) {
   const label = `${n} ${n === 1 ? 'Person' : 'Personen'} gerade in der Videothek`;
   if (!pill) {
     pill = span('lfx-tp__online', [span('lfx-tp__online-dot'), span('lfx-tp__online-n')]);
-    pill.setAttribute('role', 'img');
-    pill.firstChild.setAttribute('aria-hidden', 'true');
-    card.append(pill);
+    pill.setAttribute('aria-hidden', 'true'); // die Zahl steht nur im Label der Kachel (sonst doppelte Ansage)
+    (card.querySelector('.lfx-tp__badges') || card).append(pill);
   }
-  pill.setAttribute('aria-label', label);
   pill.lastChild.textContent = `${n} online`;
   card.dataset.baseLabel = base;
   card.setAttribute('aria-label', `${base}, ${label}`);
@@ -216,7 +214,7 @@ function fillStoreOnline(c) {
   const card = c.cards.get('store');
   if (!card) return;
   const tick = () => {
-    if (current !== c) return;
+    if (current !== c || document.hidden) return; // versteckter Tab: kein Abruf
     if (c.onlineCtl) c.onlineCtl.abort();
     const ctl = typeof AbortController === 'function' ? new AbortController() : null;
     c.onlineCtl = ctl;
@@ -227,6 +225,8 @@ function fillStoreOnline(c) {
   };
   tick();
   c.onlineTimer = setInterval(tick, ONLINE_POLL_MS);
+  c.onVisible = () => { if (!document.hidden) tick(); }; // Tab wieder sichtbar: sofort einmal aktualisieren
+  document.addEventListener('visibilitychange', c.onVisible);
 }
 
 function buildCard(c, id) {
@@ -244,7 +244,7 @@ function buildCard(c, id) {
       span('lfx-tp__palette', (meta.palette || []).map((hex) => h('span', { class: 'lfx-tp__swatch', style: { background: hex } }))),
     ]),
     span('lfx-tp__state', [span('lfx-tp__active', ['Aktiv']), span('lfx-tp__spin')]),
-    BETA.has(id) ? span('lfx-tp__beta', ['Beta']) : null,
+    BETA.has(id) ? span('lfx-tp__badges', [span('lfx-tp__beta', ['Beta'])]) : null, // Beta + Online-Pille nebeneinander (Flex)
   ]);
   btn.setAttribute('aria-label', `${meta.name}${BETA.has(id) ? ' (Beta)' : ''}${meta.tagline ? `, ${meta.tagline}` : ''}`);
   btn.addEventListener('click', () => choose(c, id));
@@ -302,6 +302,7 @@ export function closeThemePicker() {
   if (c.unsub) c.unsub();
   if (c.onlineTimer) clearInterval(c.onlineTimer);
   if (c.onlineCtl) c.onlineCtl.abort();
+  if (c.onVisible) document.removeEventListener('visibilitychange', c.onVisible);
   window.removeEventListener('keydown', c.onKeydown, true);
   c.overlay.removeEventListener('click', c.onOverlayClick);
   unmountPoint(c.overlay);
