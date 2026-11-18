@@ -13776,237 +13776,6 @@
       return new this.constructor().copy(this);
     }
   };
-  var LineBasicMaterial = class extends Material {
-    /**
-     * Constructs a new line basic material.
-     *
-     * @param {Object} [parameters] - An object with one or more properties
-     * defining the material's appearance. Any property of the material
-     * (including any property from inherited materials) can be passed
-     * in here. Color values can be passed any type of value accepted
-     * by {@link Color#set}.
-     */
-    constructor(parameters) {
-      super();
-      this.isLineBasicMaterial = true;
-      this.type = "LineBasicMaterial";
-      this.color = new Color(16777215);
-      this.map = null;
-      this.linewidth = 1;
-      this.linecap = "round";
-      this.linejoin = "round";
-      this.fog = true;
-      this.setValues(parameters);
-    }
-    copy(source) {
-      super.copy(source);
-      this.color.copy(source.color);
-      this.map = source.map;
-      this.linewidth = source.linewidth;
-      this.linecap = source.linecap;
-      this.linejoin = source.linejoin;
-      this.fog = source.fog;
-      return this;
-    }
-  };
-  var _vStart = /* @__PURE__ */ new Vector3();
-  var _vEnd = /* @__PURE__ */ new Vector3();
-  var _inverseMatrix$1 = /* @__PURE__ */ new Matrix4();
-  var _ray$1 = /* @__PURE__ */ new Ray();
-  var _sphere$1 = /* @__PURE__ */ new Sphere();
-  var _intersectPointOnRay = /* @__PURE__ */ new Vector3();
-  var _intersectPointOnSegment = /* @__PURE__ */ new Vector3();
-  var Line = class extends Object3D {
-    /**
-     * Constructs a new line.
-     *
-     * @param {BufferGeometry} [geometry] - The line geometry.
-     * @param {Material|Array<Material>} [material] - The line material.
-     */
-    constructor(geometry = new BufferGeometry(), material2 = new LineBasicMaterial()) {
-      super();
-      this.isLine = true;
-      this.type = "Line";
-      this.geometry = geometry;
-      this.material = material2;
-      this.morphTargetDictionary = void 0;
-      this.morphTargetInfluences = void 0;
-      this.updateMorphTargets();
-    }
-    copy(source, recursive) {
-      super.copy(source, recursive);
-      this.material = Array.isArray(source.material) ? source.material.slice() : source.material;
-      this.geometry = source.geometry;
-      return this;
-    }
-    /**
-     * Computes an array of distance values which are necessary for rendering dashed lines.
-     * For each vertex in the geometry, the method calculates the cumulative length from the
-     * current point to the very beginning of the line.
-     *
-     * @return {Line} A reference to this line.
-     */
-    computeLineDistances() {
-      const geometry = this.geometry;
-      if (geometry.index === null) {
-        const positionAttribute = geometry.attributes.position;
-        const lineDistances = [0];
-        for (let i = 1, l = positionAttribute.count; i < l; i++) {
-          _vStart.fromBufferAttribute(positionAttribute, i - 1);
-          _vEnd.fromBufferAttribute(positionAttribute, i);
-          lineDistances[i] = lineDistances[i - 1];
-          lineDistances[i] += _vStart.distanceTo(_vEnd);
-        }
-        geometry.setAttribute("lineDistance", new Float32BufferAttribute(lineDistances, 1));
-      } else {
-        warn("Line.computeLineDistances(): Computation only possible with non-indexed BufferGeometry.");
-      }
-      return this;
-    }
-    /**
-     * Returns `true` if this line intersects the given frustum.
-     *
-     * @param {Frustum|FrustumArray} frustum - The frustum to test.
-     * @return {boolean} Whether this line intersects the given frustum or not.
-     */
-    intersectsFrustum(frustum) {
-      return frustum.intersectsObject(this);
-    }
-    /**
-     * Computes intersection points between a casted ray and this line.
-     *
-     * @param {Raycaster} raycaster - The raycaster.
-     * @param {Array<Object>} intersects - The target array that holds the intersection points.
-     */
-    raycast(raycaster, intersects) {
-      const geometry = this.geometry;
-      const matrixWorld = this.matrixWorld;
-      const threshold = raycaster.params.Line.threshold;
-      const drawRange = geometry.drawRange;
-      if (geometry.boundingSphere === null) geometry.computeBoundingSphere();
-      _sphere$1.copy(geometry.boundingSphere);
-      _sphere$1.applyMatrix4(matrixWorld);
-      _sphere$1.radius += threshold;
-      if (raycaster.ray.intersectsSphere(_sphere$1) === false) return;
-      _inverseMatrix$1.copy(matrixWorld).invert();
-      _ray$1.copy(raycaster.ray).applyMatrix4(_inverseMatrix$1);
-      const localThreshold = threshold / ((this.scale.x + this.scale.y + this.scale.z) / 3);
-      const localThresholdSq = localThreshold * localThreshold;
-      const step = this.isLineSegments ? 2 : 1;
-      const index = geometry.index;
-      const attributes = geometry.attributes;
-      const positionAttribute = attributes.position;
-      if (index !== null) {
-        const start = Math.max(0, drawRange.start);
-        const end = Math.min(index.count, drawRange.start + drawRange.count);
-        for (let i = start, l = end - 1; i < l; i += step) {
-          const a = index.getX(i);
-          const b = index.getX(i + 1);
-          const intersect2 = checkIntersection(this, raycaster, _ray$1, localThresholdSq, a, b, i);
-          if (intersect2) {
-            intersects.push(intersect2);
-          }
-        }
-        if (this.isLineLoop) {
-          const a = index.getX(end - 1);
-          const b = index.getX(start);
-          const intersect2 = checkIntersection(this, raycaster, _ray$1, localThresholdSq, a, b, end - 1);
-          if (intersect2) {
-            intersects.push(intersect2);
-          }
-        }
-      } else {
-        const start = Math.max(0, drawRange.start);
-        const end = Math.min(positionAttribute.count, drawRange.start + drawRange.count);
-        for (let i = start, l = end - 1; i < l; i += step) {
-          const intersect2 = checkIntersection(this, raycaster, _ray$1, localThresholdSq, i, i + 1, i);
-          if (intersect2) {
-            intersects.push(intersect2);
-          }
-        }
-        if (this.isLineLoop) {
-          const intersect2 = checkIntersection(this, raycaster, _ray$1, localThresholdSq, end - 1, start, end - 1);
-          if (intersect2) {
-            intersects.push(intersect2);
-          }
-        }
-      }
-    }
-    /**
-     * Sets the values of {@link Line#morphTargetDictionary} and {@link Line#morphTargetInfluences}
-     * to make sure existing morph targets can influence this 3D object.
-     */
-    updateMorphTargets() {
-      const geometry = this.geometry;
-      const morphAttributes = geometry.morphAttributes;
-      const keys = Object.keys(morphAttributes);
-      if (keys.length > 0) {
-        const morphAttribute = morphAttributes[keys[0]];
-        if (morphAttribute !== void 0) {
-          this.morphTargetInfluences = [];
-          this.morphTargetDictionary = {};
-          for (let m = 0, ml = morphAttribute.length; m < ml; m++) {
-            const name = morphAttribute[m].name || String(m);
-            this.morphTargetInfluences.push(0);
-            this.morphTargetDictionary[name] = m;
-          }
-        }
-      }
-    }
-  };
-  function checkIntersection(object, raycaster, ray, thresholdSq, a, b, i) {
-    const positionAttribute = object.geometry.attributes.position;
-    _vStart.fromBufferAttribute(positionAttribute, a);
-    _vEnd.fromBufferAttribute(positionAttribute, b);
-    const distSq = ray.distanceSqToSegment(_vStart, _vEnd, _intersectPointOnRay, _intersectPointOnSegment);
-    if (distSq > thresholdSq) return;
-    _intersectPointOnRay.applyMatrix4(object.matrixWorld);
-    const distance = raycaster.ray.origin.distanceTo(_intersectPointOnRay);
-    if (distance < raycaster.near || distance > raycaster.far) return;
-    return {
-      distance,
-      // What do we want? intersection point on the ray or on the segment??
-      // point: raycaster.ray.at( distance ),
-      point: _intersectPointOnSegment.clone().applyMatrix4(object.matrixWorld),
-      index: i,
-      face: null,
-      faceIndex: null,
-      barycoord: null,
-      object
-    };
-  }
-  var _start = /* @__PURE__ */ new Vector3();
-  var _end = /* @__PURE__ */ new Vector3();
-  var LineSegments = class extends Line {
-    /**
-     * Constructs a new line segments.
-     *
-     * @param {BufferGeometry} [geometry] - The line geometry.
-     * @param {Material|Array<Material>} [material] - The line material.
-     */
-    constructor(geometry, material2) {
-      super(geometry, material2);
-      this.isLineSegments = true;
-      this.type = "LineSegments";
-    }
-    computeLineDistances() {
-      const geometry = this.geometry;
-      if (geometry.index === null) {
-        const positionAttribute = geometry.attributes.position;
-        const lineDistances = [];
-        for (let i = 0, l = positionAttribute.count; i < l; i += 2) {
-          _start.fromBufferAttribute(positionAttribute, i);
-          _end.fromBufferAttribute(positionAttribute, i + 1);
-          lineDistances[i] = i === 0 ? 0 : lineDistances[i - 1];
-          lineDistances[i + 1] = lineDistances[i] + _start.distanceTo(_end);
-        }
-        geometry.setAttribute("lineDistance", new Float32BufferAttribute(lineDistances, 1));
-      } else {
-        warn("LineSegments.computeLineDistances(): Computation only possible with non-indexed BufferGeometry.");
-      }
-      return this;
-    }
-  };
   var PointsMaterial = class extends Material {
     /**
      * Constructs a new points material.
@@ -31469,14 +31238,14 @@ void main() {
   // src/js/store3d/engine/quality.js
   var LEVELS = ["low", "mid", "high"];
   var CITY = {
-    low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], fogNear: 34, fogFar: 56 },
-    mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], fogNear: 36, fogFar: 58 },
-    high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], fogNear: 38, fogFar: 58 }
+    low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], precip: [260, 180], fogNear: 34, fogFar: 56 },
+    mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
+    high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 }
   };
   function city(lv, phone) {
     const c = CITY[lv];
     const k = phone ? 1 : 0;
-    return { npcMax: c.npcMax[k], carsMax: c.carsMax[k], propsMax: c.propsMax[k], birds: c.birds[k], rainLines: c.rainLines[k], fogNear: c.fogNear, fogFar: c.fogFar };
+    return { npcMax: c.npcMax[k], carsMax: c.carsMax[k], propsMax: c.propsMax[k], birds: c.birds[k], rainLines: c.rainLines[k], precip: c.precip[k], fogNear: c.fogNear, fogFar: c.fogFar };
   }
   function presetFor(level, phone = false) {
     const lv = LEVELS.includes(level) ? level : "mid";
@@ -38451,6 +38220,7 @@ void main() {
       let noiseBuf = null;
       let hum = null;
       let rain = null;
+      let offWeather = null;
       let ambientWanted = false;
       const duckKeys = /* @__PURE__ */ new Set();
       let ambientRunning = false;
@@ -38835,9 +38605,31 @@ void main() {
         o2.start();
         hum = { g, o1, o2 };
       }
-      function startRain() {
+      function rainWanted() {
         const w = ctx.use("weather");
-        if (rain || !w || !w.raining) return;
+        if (!w || !w.raining) return 0;
+        const p = w.precip;
+        if (p && p.kind === "snow") return 0;
+        const i = p && p.kind === "rain" && Number.isFinite(p.i) ? Math.min(1, Math.max(0, p.i)) : 0.6;
+        return i > 0 ? 0.025 * i : 0;
+      }
+      function syncRain() {
+        if (!ac || !ambientRunning) return;
+        const gain = rainWanted();
+        if (gain > 0 && !rain) startRain();
+        else if (gain > 0 && rain) {
+          try {
+            rain.g.gain.setTargetAtTime(gain, ac.currentTime, 1.2);
+          } catch {
+          }
+        } else if (gain === 0 && rain) {
+          stopNodes(rain, (n) => n.s.stop());
+          rain = null;
+        }
+      }
+      function startRain() {
+        const gain = rainWanted();
+        if (rain || !gain) return;
         const s = ac.createBufferSource();
         s.buffer = noiseBuf;
         s.loop = true;
@@ -38849,7 +38641,7 @@ void main() {
         lp.frequency.value = 2600;
         const g = ac.createGain();
         g.gain.value = 1e-4;
-        g.gain.setTargetAtTime(0.015, ac.currentTime, 1.2);
+        g.gain.setTargetAtTime(gain, ac.currentTime, 1.2);
         s.connect(hp);
         hp.connect(lp);
         lp.connect(g);
@@ -38877,9 +38669,17 @@ void main() {
         stepIdx = 0;
         startHum();
         startRain();
+        if (!offWeather) {
+          const w = ctx.use("weather");
+          if (w && typeof w.onChange === "function") offWeather = w.onChange(syncRain);
+        }
       }
       function stopAmbient() {
         ambientRunning = false;
+        if (offWeather) {
+          offWeather();
+          offWeather = null;
+        }
         stopNodes(hum, (n) => {
           n.o1.stop();
           n.o2.stop();
@@ -39031,6 +38831,10 @@ void main() {
           for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
           offs.forEach((o) => o());
           ambientRunning = false;
+          if (offWeather) {
+            offWeather();
+            offWeather = null;
+          }
           if (ac) laserLoop(false);
           if (ac) {
             try {
@@ -40767,6 +40571,317 @@ void main() {
     }
   };
 
+  // src/js/store3d/weather/precip-logic.js
+  var HALF2 = 12;
+  var Y_BELOW = 6;
+  var Y_ABOVE = 10;
+  var FADE_S = 15;
+  var MAX_BOXES = 6;
+  var KINDS = {
+    rain: { id: 0, fallMin: 9, fallMax: 13, alpha: 0.8 },
+    snow: { id: 1, fallMin: 1, fallMax: 1.5, alpha: 0.9 }
+  };
+  var clamp01 = (v) => v > 1 ? 1 : v > 0 ? v : 0;
+  function normalizeWeather(w) {
+    const kind = w && (w.kind === "rain" || w.kind === "snow") ? w.kind : null;
+    const i = kind && Number.isFinite(w.i) ? clamp01(w.i) : 0;
+    return kind && i > 0 ? { kind, i } : { kind: null, i: 0 };
+  }
+  function countFor(max, i) {
+    const m = Math.max(0, Math.floor(max || 0));
+    const k = clamp01(i);
+    if (m === 0 || k <= 0) return 0;
+    return Math.min(m, Math.max(Math.ceil(m * 0.08), Math.round(m * k)));
+  }
+  function stepBlend(st, want, dt, fadeS = FADE_S) {
+    const rate = Math.max(0, dt) / Math.max(1e-3, fadeS);
+    if (want.kind !== st.kind && st.a > 0) {
+      st.a = Math.max(0, st.a - rate);
+      if (st.a <= 0) {
+        st.a = 0;
+        st.kind = want.kind;
+      }
+      return st;
+    }
+    if (want.kind !== st.kind) st.kind = want.kind;
+    const to = want.kind ? want.i : 0;
+    st.a = st.a < to ? Math.min(to, st.a + rate) : Math.max(to, st.a - rate);
+    return st;
+  }
+  function shelterBoxes(layout) {
+    const out = [];
+    if (!layout) return out;
+    const push = (b) => {
+      if (b && [b.x0, b.z0, b.x1, b.z1, b.y1].every(Number.isFinite) && out.length < MAX_BOXES) out.push({ x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1, y1: b.y1 });
+    };
+    const W2 = layout.w;
+    const D2 = layout.d;
+    push({ x0: 0, z0: 0, x1: W2, z1: D2, y1: 3 });
+    const c = layout.city;
+    if (c) {
+      const p = c.palast;
+      if (p) {
+        if (p.foyer) push({ x0: p.foyer.x0, z0: p.foyer.z0, x1: p.foyer.x1, z1: p.hall ? p.hall.z0 : p.foyer.z1, y1: p.foyer.ceil || 4 });
+        if (p.hall) push({ x0: p.hall.x0, z0: p.hall.z0, x1: p.hall.x1, z1: p.hall.z1, y1: p.hall.ceil || 7.5 });
+        if (p.canopy) push({ x0: p.canopy.x0, z0: p.canopy.z0, x1: p.canopy.x1, z1: p.canopy.z1, y1: p.canopy.y });
+      }
+      const zs = c.zones && c.zones.salon && c.zones.salon.rect;
+      if (zs) push({ x0: zs.x0, z0: zs.z0, x1: zs.x1, z1: zs.z1, y1: 3 });
+      const k = c.kiosk;
+      if (k && k.hut && k.awning) {
+        const h3 = k.hut;
+        const a = k.awning;
+        push({ x0: Math.min(h3.x0, a.x0), z0: Math.min(h3.z0, a.z0), x1: Math.max(h3.x1, a.x1), z1: Math.max(h3.z1, a.z1), y1: a.y1 });
+      }
+    }
+    return out;
+  }
+  function packBoxes(boxes) {
+    const xz = new Float32Array(MAX_BOXES * 4);
+    const y = new Float32Array(MAX_BOXES);
+    boxes.slice(0, MAX_BOXES).forEach((b, i) => {
+      xz.set([b.x0, b.z0, b.x1, b.z1], i * 4);
+      y[i] = b.y1;
+    });
+    return { xz, y };
+  }
+
+  // src/js/store3d/modules/precip.js
+  var VERT = (
+    /* glsl */
+    `
+uniform float uTime;
+uniform float uHalf;
+uniform float uYLo;
+uniform float uYSpan;
+uniform vec2 uWind;
+uniform vec2 uFall;
+uniform float uLen;
+uniform float uWidth;
+uniform float uSize;
+uniform float uKind;
+uniform float uAlpha;
+uniform vec3 uCam;
+uniform vec4 uBoxA[${MAX_BOXES}];
+uniform float uBoxY[${MAX_BOXES}];
+attribute vec4 aSeed;
+attribute vec2 aCorner;
+varying vec2 vC;
+varying float vA;
+void main() {
+  float span = 2.0 * uHalf;
+  float fall = mix(uFall.x, uFall.y, aSeed.w);
+  vec3 vel = vec3(uWind.x, -fall, uWind.y);
+  vec3 raw = aSeed.xyz * vec3(span, uYSpan, span) + vel * uTime;
+  vec3 rel = vec3(
+    mod(raw.x - uCam.x + uHalf, span) - uHalf,
+    mod(raw.y - (uCam.y + uYLo), uYSpan),
+    mod(raw.z - uCam.z + uHalf, span) - uHalf);
+  vec3 p = vec3(uCam.x + rel.x, uCam.y + uYLo + rel.y, uCam.z + rel.z);
+  if (uKind > 0.5) {
+    p.x += sin(uTime * 0.8 + aSeed.x * 40.0) * 0.25;
+    p.z += cos(uTime * 0.6 + aSeed.z * 40.0) * 0.25;
+  }
+  // Schutz: unter Dach (Box) verschwindet das Partikel (alle vier Ecken au\xDFerhalb des Clip-Raums)
+  for (int i = 0; i < ${MAX_BOXES}; i++) {
+    vec4 b = uBoxA[i];
+    if (p.x > b.x && p.x < b.z && p.z > b.y && p.z < b.w && p.y < uBoxY[i]) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      vA = 0.0;
+      vC = vec2(0.0);
+      return;
+    }
+  }
+  float dxz = length(rel.xz);
+  float edge = 1.0 - smoothstep(uHalf * 0.55, uHalf, dxz);
+  float yEdge = smoothstep(0.0, 1.0, rel.y) * (1.0 - smoothstep(uYSpan - 1.5, uYSpan, rel.y));
+  vec3 toP = p - cameraPosition;
+  float dist = length(toP);
+  float nearF = smoothstep(0.3, 1.1, dist);
+  float bright = 0.6 + 0.4 * fract(aSeed.w * 7.31 + aSeed.x * 3.7);
+  vA = uAlpha * edge * yEdge * nearF * bright;
+  if (uKind < 0.5) {
+    vec3 axis = normalize(vel);
+    vec3 cr = cross(axis, toP / max(dist, 0.001));
+    vec3 side = length(cr) > 0.001 ? normalize(cr) : vec3(1.0, 0.0, 0.0);
+    float w = max(uWidth, dist * 0.0026);
+    float along = (aCorner.y + 1.0) * 0.5;
+    vec3 wp = p + side * (aCorner.x * w * 0.5) - axis * (along * uLen);
+    vA *= clamp(uWidth / w, 0.45, 1.0);
+    vC = vec2(aCorner.x, along);
+    gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
+  } else {
+    vec4 mv = viewMatrix * vec4(p, 1.0);
+    float s = max(uSize, dist * 0.0025) * (0.7 + 0.6 * bright);
+    mv.xy += aCorner * s;
+    vC = aCorner;
+    gl_Position = projectionMatrix * mv;
+  }
+}
+`
+  );
+  var FRAG = (
+    /* glsl */
+    `
+uniform float uKind;
+varying vec2 vC;
+varying float vA;
+void main() {
+  float a;
+  vec3 col;
+  if (uKind < 0.5) {
+    float tail = 1.0 - vC.y;
+    a = smoothstep(0.0, 0.12, vC.y) * tail * tail * (1.0 - vC.x * vC.x);
+    col = vec3(0.70, 0.80, 1.0);
+  } else {
+    a = 1.0 - smoothstep(0.35, 1.0, length(vC));
+    col = vec3(0.96, 0.98, 1.0);
+  }
+  float o = a * vA;
+  if (o < 0.004) discard;
+  gl_FragColor = vec4(col, o);
+}
+`
+  );
+  function buildPrecipGeometry(n, seed = 77) {
+    const r = rng(seed);
+    const seeds = new Float32Array(n * 16);
+    const corners = new Float32Array(n * 8);
+    const index = new Uint16Array(n * 6);
+    const C = [-1, -1, 1, -1, 1, 1, -1, 1];
+    for (let i = 0; i < n; i++) {
+      const s = [r(), r(), r(), r()];
+      for (let c = 0; c < 4; c++) {
+        seeds.set(s, i * 16 + c * 4);
+        corners.set([C[c * 2], C[c * 2 + 1]], i * 8 + c * 2);
+      }
+      const b = i * 4;
+      index.set([b, b + 1, b + 2, b, b + 2, b + 3], i * 6);
+    }
+    const g = new BufferGeometry();
+    g.setAttribute("aSeed", new BufferAttribute(seeds, 4));
+    g.setAttribute("aCorner", new BufferAttribute(corners, 2));
+    g.setIndex(new BufferAttribute(index, 1));
+    g.setDrawRange(0, 0);
+    return g;
+  }
+  var precip_default = {
+    name: "precip",
+    init(ctx) {
+      const phone = !!ctx.isPhone;
+      const maxN = Math.max(...["low", "mid", "high", "ultra"].map((lv) => presetFor(lv, phone).precip || 0));
+      const geo = buildPrecipGeometry(maxN);
+      const boxes = shelterBoxes(ctx.layout);
+      const packed = packBoxes(boxes);
+      const boxA = Array.from({ length: MAX_BOXES }, (_, i) => new Vector4(packed.xz[i * 4], packed.xz[i * 4 + 1], packed.xz[i * 4 + 2], packed.xz[i * 4 + 3]));
+      const boxY = Array.from(packed.y);
+      const U = {
+        uTime: { value: 0 },
+        uHalf: { value: HALF2 },
+        uYLo: { value: -Y_BELOW },
+        uYSpan: { value: Y_BELOW + Y_ABOVE },
+        uWind: { value: new Vector2(1.1, 0.4) },
+        uFall: { value: new Vector2(KINDS.rain.fallMin, KINDS.rain.fallMax) },
+        uLen: { value: 0.5 },
+        uWidth: { value: 0.024 },
+        uSize: { value: 0.035 },
+        uKind: { value: 0 },
+        uAlpha: { value: 0 },
+        uCam: { value: new Vector3() },
+        uBoxA: { value: boxA },
+        uBoxY: { value: boxY }
+      };
+      const mat2 = new ShaderMaterial({ uniforms: U, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, side: DoubleSide, fog: false });
+      const mesh = new Mesh(geo, mat2);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 8;
+      mesh.matrixAutoUpdate = false;
+      mesh.visible = false;
+      ctx.scene.add(mesh);
+      ctx.track(mesh);
+      ctx.track(geo);
+      ctx.track(mat2);
+      const st = { kind: null, a: 0 };
+      let want = { kind: null, i: 0 };
+      let first = true;
+      let level = ctx.quality();
+      let near = false;
+      let suspended = false;
+      let checkT = 0;
+      const cam = ctx.camera;
+      const wp = new Vector3();
+      const D2 = ctx.layout.d;
+      function applyKind(k) {
+        const K = KINDS[k] || KINDS.rain;
+        U.uKind.value = K.id;
+        U.uFall.value.set(K.fallMin, K.fallMax);
+        if (k === "snow") {
+          U.uWind.value.set(0.35, 0.15);
+        } else {
+          U.uWind.value.set(1.1, 0.4);
+        }
+      }
+      function setWeather(w) {
+        want = normalizeWeather(w);
+        if (first) {
+          first = false;
+          st.kind = want.kind;
+          st.a = want.i;
+        }
+      }
+      const provider = {
+        setWeather,
+        /** Aktuell gezeigte Art/Stärke und das Ziel (Tests, Debug). */
+        current() {
+          return { kind: st.kind, a: st.a, want: { ...want }, near, visible: mesh.visible, count: geo.drawRange.count / 6 };
+        }
+      };
+      ctx.provide("precip", provider);
+      if (ctx.opts && ctx.opts.debug) window.__lfxM4 = { ...window.__lfxM4, precip: () => provider.current() };
+      function refresh(t) {
+        if (t - checkT > 0.4) {
+          checkT = t;
+          const areas = ctx.use("areas");
+          const a = areas ? areas.current() : "shop";
+          near = OUTDOOR_AREAS.includes(a) || a !== "palastHall" && a !== "palastFoyer" && a !== "salon" && cam.position.z > D2 + 0.3;
+        }
+      }
+      return {
+        update(dt, t) {
+          refresh(t);
+          stepBlend(st, want, clamp2(dt, 0, 0.25));
+          const vis = st.kind !== null && st.a > 1e-3 && near && !suspended;
+          if (!vis) {
+            if (mesh.visible) mesh.visible = false;
+            return;
+          }
+          const n = countFor(presetFor(level, phone).precip, st.a);
+          if (!n) {
+            mesh.visible = false;
+            return;
+          }
+          if (U.uKind.value !== KINDS[st.kind].id) applyKind(st.kind);
+          cam.getWorldPosition(wp);
+          U.uCam.value.copy(wp);
+          U.uTime.value = t;
+          U.uAlpha.value = KINDS[st.kind].alpha * (0.5 + 0.5 * Math.min(1, st.a));
+          geo.setDrawRange(0, n * 6);
+          mesh.visible = true;
+        },
+        onQuality(lv) {
+          level = lv;
+        },
+        onSuspend() {
+          suspended = true;
+          mesh.visible = false;
+        },
+        onResume() {
+          suspended = false;
+        }
+      };
+    }
+  };
+
   // src/js/store3d/modules/daytime.js
   var COOL = new Color(0.72, 0.82, 1.08);
   function dropsCanvas() {
@@ -40813,6 +40928,27 @@ void main() {
     });
     return c;
   }
+  function trailCanvas() {
+    const S = 256;
+    const c = makeCanvas(S, S);
+    const x = c.getContext("2d");
+    const rt = rng(21);
+    for (let i = 0; i < 9; i++) {
+      const px = rt() * S;
+      const py = rt() * S;
+      const len = 50 + rt() * 110;
+      const w = 1.4 + rt() * 1.6;
+      for (const dy of [-S, 0, S]) {
+        const g = x.createLinearGradient(0, py + dy, 0, py + dy + len);
+        g.addColorStop(0, "rgba(210,225,255,0)");
+        g.addColorStop(0.75, "rgba(210,225,255,0.3)");
+        g.addColorStop(1, "rgba(240,248,255,0.65)");
+        x.fillStyle = g;
+        x.fillRect(px, py + dy, w, len);
+      }
+    }
+    return c;
+  }
   var daytime_default = {
     name: "daytime",
     init(ctx) {
@@ -40832,6 +40968,8 @@ void main() {
         tod,
         raining,
         hour: hourOpt,
+        /** Niederschlag für das Modul precip: { kind: 'rain'|'snow'|null, i: 0..1 }. */
+        precip: raining ? { kind: "rain", i: 0.6 } : { kind: null, i: 0 },
         /** Laternen/Neon an (nicht am Tag). */
         get lampsOn() {
           return this.tod !== "day";
@@ -40849,11 +40987,31 @@ void main() {
         const want = on === true || on === false ? on : localRaining;
         if (want === weather.raining) return;
         weather.raining = want;
+        weather.precip = want ? { kind: "rain", i: 0.6 } : { kind: null, i: 0 };
         if (ready) {
           apply();
           syncVisible();
+          emit();
         }
       };
+      const listeners = /* @__PURE__ */ new Set();
+      weather.onChange = (fn) => {
+        if (typeof fn !== "function") return () => {
+        };
+        listeners.add(fn);
+        return () => {
+          listeners.delete(fn);
+        };
+      };
+      function emit() {
+        for (const fn of [...listeners]) {
+          try {
+            fn(weather);
+          } catch (e) {
+            console.warn("[store3d] weather.onChange", e);
+          }
+        }
+      }
       let ready = false;
       ctx.provide("weather", weather);
       out.setPalette(tod, raining);
@@ -40886,34 +41044,10 @@ void main() {
         applyMood(pal);
       }
       apply();
-      const N2 = ctx.isPhone ? 260 : 520;
-      const HALF2 = 12;
-      const pos = new Float32Array(N2 * 6);
-      const vel = new Float32Array(N2);
-      const rr = rng(33);
-      const LEN2 = 0.55;
-      const SLANT = 0.06;
-      for (let i = 0; i < N2; i++) {
-        const x = (rr() * 2 - 1) * HALF2;
-        const y = rr() * 9;
-        const z = (rr() * 2 - 1) * HALF2;
-        pos.set([x, y, z, x + SLANT, y + LEN2, z], i * 6);
-        vel[i] = 9 + rr() * 4;
-      }
-      const rainGeo = new BufferGeometry();
-      rainGeo.setAttribute("position", new Float32BufferAttribute(pos, 3));
-      const rainMat = new LineBasicMaterial({ color: 12571391, transparent: true, opacity: 0.38, depthWrite: false, fog: false });
-      const rain = new LineSegments(rainGeo, rainMat);
-      rain.frustumCulled = false;
-      rain.renderOrder = 8;
-      rain.visible = false;
-      out.group.add(rain);
-      let nLines = N2;
-      const setLines = (lv) => {
-        nLines = Math.min(N2, presetFor(lv, ctx.isPhone).rainLines || 0);
-        rainGeo.setDrawRange(0, nLines * 2);
-      };
       const dropTex = toTexture(dropsCanvas(), { repeat: true, aniso: 2 });
+      const trailTex = toTexture(trailCanvas(), { repeat: true, aniso: 2 });
+      const timeU = { value: 0 };
+      const trailU = { value: trailTex };
       const f = L2.facade || {};
       const glassQuads = [];
       for (const wd of f.windows || []) glassQuads.push(quad({ w: wd.x1 - wd.x0, h: wd.y1 - wd.y0, x: (wd.x0 + wd.x1) / 2, y: (wd.y0 + wd.y1) / 2, z: D2 + 0.078, tile: 1 }));
@@ -40921,6 +41055,17 @@ void main() {
       let drops = null;
       if (glassQuads.length) {
         const dMat = new MeshBasicMaterial({ map: dropTex, transparent: true, depthWrite: false, side: DoubleSide, opacity: 0.8 });
+        dMat.onBeforeCompile = (sh) => {
+          sh.uniforms.uTrail = trailU;
+          sh.uniforms.uTime = timeU;
+          sh.fragmentShader = sh.fragmentShader.replace("#include <common>", `#include <common>
+uniform sampler2D uTrail;
+uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragment>
+  vec4 trl = texture2D(uTrail, vec2(vMapUv.x * 1.3 + 0.37, vMapUv.y * 0.9 + uTime * 0.045));
+  diffuseColor.rgb = mix(diffuseColor.rgb, trl.rgb, trl.a * (1.0 - diffuseColor.a));
+  diffuseColor.a = diffuseColor.a + trl.a * (1.0 - diffuseColor.a);`);
+        };
+        dMat.customProgramCacheKey = () => "lfx-drops-trail";
         drops = new Mesh(merge(glassQuads), dMat);
         drops.renderOrder = 6;
         drops.matrixAutoUpdate = false;
@@ -40929,23 +41074,20 @@ void main() {
         ctx.track(drops);
       }
       ctx.track(dropTex);
-      ctx.track(rainGeo);
-      ctx.track(rainMat);
-      ctx.track(rain);
-      let level = ctx.quality();
-      setLines(level);
+      ctx.track(trailTex);
       let near = false;
-      let suspended = false;
+      function pushPrecip() {
+        const pr = ctx.use("precip");
+        if (pr && typeof pr.setWeather === "function") pr.setWeather(weather.precip);
+      }
       function syncVisible() {
-        const r = weather.raining;
-        rain.visible = r && level !== "low" && nLines > 0 && near && !suspended;
-        if (drops) drops.visible = r;
+        if (drops) drops.visible = weather.raining;
+        pushPrecip();
       }
       syncVisible();
       ready = true;
       const cam = ctx.camera;
       let checkT = 0;
-      const speed = reduced2 ? 0.012 : 0.03;
       return {
         update(dt, t) {
           out.follow(cam);
@@ -40957,31 +41099,12 @@ void main() {
             near = OUTDOOR_AREAS.includes(a) || a !== "palastHall" && a !== "palastFoyer" && a !== "salon" && cam.position.z > D2 + 0.3;
             if (was !== near) syncVisible();
           }
-          if (drops && weather.raining && near) dropTex.offset.y += dt * speed;
-          if (rain.visible) {
-            rain.position.set(cam.position.x, 0, cam.position.z);
-            const dd = clamp2(dt, 0, 0.05);
-            for (let i = 0; i < nLines; i++) {
-              const k = i * 6;
-              let y = pos[k + 1] - vel[i] * dd;
-              if (y < 0) y += 9;
-              pos[k + 1] = y;
-              pos[k + 4] = y + LEN2;
-            }
-            rainGeo.attributes.position.needsUpdate = true;
-          }
-        },
-        onQuality(lv) {
-          level = lv;
-          setLines(lv);
-          syncVisible();
+          if (drops && weather.raining && near && !reduced2) timeU.value = t;
         },
         onSuspend() {
-          suspended = true;
-          syncVisible();
+          if (drops) drops.visible = false;
         },
         onResume() {
-          suspended = false;
           const now = timeOfDay(hourOpt);
           if (now !== tod) {
             tod = now;
@@ -40991,6 +41114,9 @@ void main() {
           syncVisible();
         },
         dispose() {
+          listeners.clear();
+          const pr = ctx.use("precip");
+          if (pr && typeof pr.setWeather === "function") pr.setWeather(null);
           for (const l of lights) {
             l.o.intensity = l.i;
             l.o.color.copy(l.c);
@@ -41007,7 +41133,7 @@ void main() {
   };
 
   // src/js/store3d/physics/kinds.js
-  var KINDS = {
+  var KINDS2 = {
     basketball: { shape: "sphere", size: 0.12, mass: 0.6, e: 0.78, mu: 0.25, throwable: true, label: "Basketball" },
     soccer: { shape: "sphere", size: 0.11, mass: 0.45, e: 0.72, mu: 0.3, throwable: true, label: "Fu\xDFball" },
     can: { shape: "box", size: [0.08, 0.12, 0.08], mass: 0.15, e: 0.3, mu: 5, throwable: true, label: "Dose" },
@@ -41019,7 +41145,7 @@ void main() {
     tape: { shape: "box", size: [0.14, 0.2, 0.03], rr: 0.1, mass: 0.2, e: 0.3, mu: 5, label: "Kassette" }
   };
   function dimsOf(spec) {
-    const k = KINDS[spec.kind] || {};
+    const k = KINDS2[spec.kind] || {};
     const shape = spec.shape || k.shape || "box";
     let hx;
     let hy;
@@ -41816,8 +41942,8 @@ void main() {
     return g;
   }
   var BUILD = {
-    basketball: () => ball(KINDS.basketball.size, [0.95, 0.45, 0.12], [0.22, 0.1, 0.05], null),
-    soccer: () => ball(KINDS.soccer.size, [0.96, 0.96, 0.96], null, [0.12, 0.12, 0.14]),
+    basketball: () => ball(KINDS2.basketball.size, [0.95, 0.45, 0.12], [0.22, 0.1, 0.05], null),
+    soccer: () => ball(KINDS2.soccer.size, [0.96, 0.96, 0.96], null, [0.12, 0.12, 0.14]),
     can: () => merge([cyl2(0.04, 0.04, 0.12, 0, [0.85, 0.2, 0.22]), cyl2(0.041, 0.041, 0.04, 0.01, [0.95, 0.95, 0.95]), cyl2(0.036, 0.036, 4e-3, 0.062, [0.75, 0.75, 0.8])]),
     cone: () => merge([bx(0.3, 0.03, 0.3, 0, -0.21, 0, [0.95, 0.45, 0.1]), cyl2(0.03, 0.13, 0.42, 0.015, [1, 0.5, 0.08]), cyl2(0.065, 0.085, 0.07, 0.03, [0.96, 0.96, 0.96])]),
     crate: () => merge([bx(0.5, 0.3, 0.36, 0, 0, 0, [0.2, 0.42, 0.78]), bx(0.46, 0.04, 0.02, 0, 0.05, 0.181, [0.1, 0.2, 0.45]), bx(0.46, 0.04, 0.02, 0, 0.05, -0.181, [0.1, 0.2, 0.45]), bx(0.12, 0.1, 0.02, 0, -0.02, 0.182, [0.95, 0.85, 0.3])]),
@@ -42131,7 +42257,7 @@ void main() {
     const W2 = layout.w;
     const D2 = layout.d;
     const add = (kind, id, x, z, y, yaw = 0, group = "misc") => {
-      const k = KINDS[kind];
+      const k = KINDS2[kind];
       const r = k.shape === "sphere" ? k.size : k.rr || Math.max(k.size[0], k.size[2]) / 2;
       const hh = k.shape === "sphere" ? k.size * 2 : k.size[1];
       const s = findSpot(src, x, z, r + 0.05, y, hh);
@@ -42142,7 +42268,7 @@ void main() {
       let ballN = 0;
       for (const s of city2.propSlots || []) {
         const kind = s.kind === "ball" ? ballN++ % 2 === 0 ? "soccer" : "basketball" : s.kind;
-        if (!KINDS[kind]) continue;
+        if (!KINDS2[kind]) continue;
         add(kind, s.id, s.x, s.z, s.y || 0, (s.x * 7 + s.z * 3) % 6.28, "slot");
       }
       add("bin", "binL", W2 * 0.12, D2 + 0.6, 0, 0.3, "bin");
@@ -42157,7 +42283,7 @@ void main() {
         const cx = (crate.x0 + crate.x1) / 2;
         const cz = (crate.z0 + crate.z1) / 2;
         const top = crate.y1;
-        const hy = KINDS.can.size[1] / 2;
+        const hy = KINDS2.can.size[1] / 2;
         const rows = [[-0.11, 0, 0], [0, 0, 0], [0.11, 0, 0], [-0.055, 1, 0], [0.055, 1, 0], [0, 2, 0]];
         rows.forEach((r, i) => out.push({ kind: "can", id: `pyr${i}`, x: cx + r[0], z: cz, y: top + r[1] * (hy * 2 + 2e-3), yaw: 0, group: "pyramid" }));
       }
@@ -42220,7 +42346,7 @@ void main() {
       const cleanups = [];
       const homes = [];
       for (const p of plan) {
-        const k = KINDS[p.kind];
+        const k = KINDS2[p.kind];
         const b = world.spawn({ kind: p.kind, pos: { x: p.x, y: p.y + (k.shape === "sphere" ? k.size : k.size[1] / 2) + 1e-3, z: p.z }, yaw: p.yaw, sleeping: true, owner: "world", data: { id: p.id, group: p.group } });
         world.setHome(b, b.pos.x, b.pos.y, b.pos.z, p.yaw);
         b.inst = instancer.alloc(p.kind);
@@ -42406,7 +42532,7 @@ void main() {
         count: () => world.count(),
         /** Aufhebbares kleines Ding (throwable) im Kegel vor dem Spieler. */
         pickable(pose, dir) {
-          const list = world.bodies.filter((b) => KINDS[b.kind] && KINDS[b.kind].throwable);
+          const list = world.bodies.filter((b) => KINDS2[b.kind] && KINDS2[b.kind].throwable);
           return pickInCone(list, { x: pose.x, z: pose.z, dx: dir.x, dz: dir.z, y: pose.y || 0, range: GRAB_RANGE, deg: 40 });
         },
         hold(b, on) {
@@ -46238,7 +46364,7 @@ void main() {
         ph[i * 3 + 2] = rp() * 6.28;
       }
       const pg = new BufferGeometry();
-      pg.setAttribute("position", new Float32BufferAttribute(pp, 3));
+      pg.setAttribute("position", new BufferAttribute(pp, 3).setUsage(DynamicDrawUsage));
       const pm = new PointsMaterial({ color: 16773316, size: ctx.isPhone ? 4 : 5, sizeAttenuation: false, depthWrite: false });
       const pts = new Points(pg, pm);
       pts.frustumCulled = false;
@@ -48334,18 +48460,29 @@ void main() {
         const pt = (k) => [Math.sin(k / N2 * Math.PI * 2) * R2, cy + Math.cos(k / N2 * Math.PI * 2) * R2];
         const LA = [0.5, 0.31, 0.17];
         const LB = sc(LA, 0.82);
+        const LC = [0.78, 0.6, 0.36];
+        const LD = [0.17, 0.1, 0.06];
         const loop = [];
-        const l = (w, h3, d, lx, ly, color2, rz = 0) => loop.push(box({ w, h: h3, d, x: lx, y: ly, z: 0, rz, color: color2 }));
+        const l = (w, h3, d, lx, ly, color2, rz = 0, lz = 0) => loop.push(box({ w, h: h3, d, x: lx, y: ly, z: lz, rz, color: color2 }));
         for (let k = 0; k < N2; k++) {
           const [x0, y0] = pt(k);
           const [x1, y1] = pt(k + 1);
-          l(Math.hypot(x1 - x0, y1 - y0) + 4e-3, 0.012, 0.036, (x0 + x1) / 2, (y0 + y1) / 2, k % 2 ? LB : LA, Math.atan2(y1 - y0, x1 - x0));
+          const mx = (x0 + x1) / 2;
+          const my = (y0 + y1) / 2;
+          const len = Math.hypot(x1 - x0, y1 - y0) + 4e-3;
+          const rz = Math.atan2(y1 - y0, x1 - x0);
+          l(len, 0.012, 0.036, mx, my, k % 2 ? LB : LA, rz);
+          const nl = Math.hypot(mx, my - cy) || 1;
+          l(len - 8e-3, 3e-3, 8e-3, mx + mx / nl * 75e-4, my + (my - cy) / nl * 75e-4, LC, rz);
+          if (k >= 3 && k <= 7 && k % 2) l(7e-3, 0.0145, 9e-3, mx, my, LD, rz + Math.PI / 2);
+          if (k === 1) l(0.013, 0.018, 0.04, mx, my, LB, rz);
         }
         l(0.062, 0.012, 0.044, 0, 0, STEEL);
         l(0.062, 0.012, 0.044, 0, -0.05, STEEL);
         l(0.012, 0.062, 0.044, -0.025, -0.025, STEEL);
         l(0.012, 0.062, 0.044, 0.025, -0.025, STEEL);
         l(7e-3, 0.05, 0.03, 0, -0.025, [0.95, 0.96, 0.98]);
+        l(0.024, 7e-3, 0.014, 8e-3, 0, [0.95, 0.96, 0.98], 0, 0.02);
         l(0.035, 0.1, 0.012, 0.05, -0.075, LA, 0.35);
         _p3.set(x, 0.78, -0.04);
         _q3.setFromEuler(_e3.set(0, 0.7, 0));
@@ -48358,19 +48495,23 @@ void main() {
       }
       case "whip": {
         b(0.035, 0.2, 0.035, 0, 0.76, -0.04, [0.2, 0.13, 0.09]);
+        for (let k = 0; k < 5; k++) b(0.04, 0.013, 0.04, 0, 0.855 - k * 0.04, -0.04, k % 2 ? [0.12, 0.08, 0.05] : [0.58, 0.42, 0.27]);
+        b(0.046, 0.03, 0.046, 0, 0.87, -0.04, STEEL);
         b(0.042, 0.03, 0.042, 0, 0.67, -0.04, STEEL);
-        let y = 0.65;
+        b(0.07, 0.012, 0.05, 0, 0.652, -0.04, [0.64, 0.67, 0.72]);
+        let y = 0.64;
         let z = -0.04;
         let a = 0;
-        for (let i = 0; i < 6; i++) {
-          const len = 0.14 - i * 8e-3;
-          const t = 0.016 - i * 13e-4;
-          a += 0.2;
-          out.push(box({ w: t, h: len, d: t, x, y: y - Math.cos(a) * len / 2, z: z + Math.sin(a) * len / 2, rx: -a, color: LEATHER }));
+        for (let i = 0; i < 10; i++) {
+          const len = 0.095 - i * 45e-4;
+          const t = Math.max(6e-3, 0.016 - i * 1e-3);
+          a += 0.12;
+          out.push(box({ w: t, h: len, d: t, x, y: y - Math.cos(a) * len / 2, z: z + Math.sin(a) * len / 2, rx: -a, color: i % 2 ? sc(LEATHER, 0.8) : LEATHER }));
           y -= Math.cos(a) * len;
           z += Math.sin(a) * len;
         }
         b(0.026, 0.026, 0.026, 0, y, z, sc(LEATHER, 0.6));
+        for (const [dx, dz] of [[-0.012, -4e-3], [0, 8e-3], [0.012, -6e-3]]) b(6e-3, 0.045, 6e-3, dx, y - 0.03, z + dz, [0.85, 0.77, 0.64], -a);
         break;
       }
       case "laser":
@@ -48378,6 +48519,10 @@ void main() {
         b(0.034, 0.03, 0.034, 0, 0.84, -0.04, [0.8, 0.12, 0.14]);
         b(0.022, 0.03, 0.022, 0, 0.64, -0.04, [1, 0.35, 0.3]);
         b(0.012, 0.02, 0.012, 0, 0.8, -0.058, STEEL);
+        for (const dy of [0.7, 0.73, 0.76]) b(0.034, 8e-3, 0.034, 0, dy, -0.04, [0.11, 0.12, 0.17]);
+        b(8e-3, 0.09, 0.012, 0, 0.77, -0.06, [0.62, 0.65, 0.7]);
+        b(0.012, 0.014, 0.01, 0, 0.8, -0.022, [0.9, 0.88, 0.8]);
+        b(0.03, 0.01, 0.03, 0, 0.655, -0.04, [0.44, 0.47, 0.55]);
         break;
       case "bag":
         b(0.026, 0.1, 0.026, 0, 0.72, -0.04, sc(bagCol, 0.6));
@@ -58449,7 +58594,7 @@ void main() {
     HUBS.set(key2, h3);
     return h3;
   }
-  var VERT = (
+  var VERT2 = (
     /* glsl */
     `
 uniform mat4 textureMatrix;
@@ -58461,7 +58606,7 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`
   );
-  var FRAG = (
+  var FRAG2 = (
     /* glsl */
     `
 uniform sampler2D tDiffuse;
@@ -58488,8 +58633,8 @@ void main() {
         uMatteA: { value: new Vector3(0.52, 0.6, 0.66) },
         uMatteB: { value: new Vector3(0.22, 0.26, 0.31) }
       },
-      vertexShader: VERT,
-      fragmentShader: FRAG
+      vertexShader: VERT2,
+      fragmentShader: FRAG2
     });
   }
   function renderToTarget(renderer, scene, cam, rt, hide = []) {
@@ -58699,7 +58844,7 @@ void main() {
   var DOME_R = 0.17;
   var DOME_MAX_DIST = 10;
   var DOME_FOV = 110;
-  var VERT2 = (
+  var VERT3 = (
     /* glsl */
     `
 attribute float aMir;
@@ -58715,7 +58860,7 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`
   );
-  var FRAG2 = (
+  var FRAG3 = (
     /* glsl */
     `
 uniform sampler2D tDiffuse;
@@ -58780,8 +58925,8 @@ void main() {
       group.name = "m3-shopmirror";
       const mat2 = new ShaderMaterial({
         uniforms: { tDiffuse: { value: null }, uLive: { value: 0 } },
-        vertexShader: VERT2,
-        fragmentShader: FRAG2,
+        vertexShader: VERT3,
+        fragmentShader: FRAG3,
         vertexColors: true
       });
       const mesh = new Mesh(domeGeometry(), mat2);
@@ -68159,6 +68304,8 @@ void main() {
     city_default,
     door_default,
     intro_default,
+    precip_default,
+    // vor daytime: liefert den Provider 'precip'
     daytime_default,
     // --- Welle 2 physics (props: Provider 'physics' vor allen Nutzern) ---
     props_default,
@@ -70435,7 +70582,12 @@ void main() {
   var BELT_A = 9067056;
   var BELT_B = 7620650;
   var STEEL2 = 14936046;
-  var WHIP_SEGS = 7;
+  var WHIP_SEGS = 12;
+  var WHIP_ROT = -0.08;
+  var WHIP_LEN = (i) => 0.068 - i * 28e-4;
+  var BELT_C = 13081180;
+  var BELT_D = 2759182;
+  var STEEL_D = 10989243;
   var THROW_DUR = 0.35;
   var CARRY_POS = [0.24, -0.2, -0.42];
   var SIDE2 = { vhs: 14866621, dvd: 1916828, box: 13214247 };
@@ -70458,6 +70610,41 @@ void main() {
     }
     g.setAttribute("color", new Float32BufferAttribute(c, 3));
   }
+  function boxPart(list, w, h3, d, x, y, z, color2, o = {}) {
+    const g = new BoxGeometry(w, h3, d);
+    g.deleteAttribute("uv");
+    g.deleteAttribute("normal");
+    if (o.rx || o.ry || o.rz) {
+      _e6.set(o.rx || 0, o.ry || 0, o.rz || 0, "YXZ");
+      _q7.setFromEuler(_e6);
+      g.applyQuaternion(_q7);
+    }
+    g.translate(x, y, z);
+    paintGeo(g, color2);
+    list.push({ g, n: g.attributes.position.count, seg: o.seg === void 0 ? -1 : o.seg, lens: !!o.lens });
+  }
+  function mergeList(list) {
+    const geo = mergeGeometries(list.map((q) => q.g), false);
+    list.forEach((q) => q.g.dispose());
+    return geo;
+  }
+  function buildFistGeometry() {
+    const list = [];
+    const p = (w, h3, d, x, y, z, c) => boxPart(list, w, h3, d, x, y, z, c);
+    p(0.09, 0.07, 0.09, 0, 5e-3, 0.04, 15515035);
+    p(0.07, 0.06, 0.04, 0, 0, 0.085, 14657925);
+    const stag = [0, 4e-3, 5e-3, 1e-3];
+    for (let i = 0; i < 4; i++) {
+      const x = -0.03375 + i * 0.0225;
+      const L2 = [0.044, 0.05, 0.047, 0.04][i];
+      p(0.022, 0.022, 0.024, x, 0.044 + stag[i], -8e-3, i % 2 ? 14394752 : 14921354);
+      p(0.02, 0.026, L2, x, 0.031 + stag[i] * 0.5, -8e-3 - L2 / 2 - 6e-3, i % 2 ? 15119504 : 15448983);
+      p(0.019, 0.042 - i % 2 * 3e-3, 0.02, x, 8e-3, -8e-3 - L2 - 0.016, 14263422);
+    }
+    p(0.026, 0.026, 0.05, -0.05, 0, 0.012, 14855818);
+    p(0.062, 0.022, 0.026, -0.016, -0.012, -0.066, 15118990);
+    return mergeList(list);
+  }
   var LENS_ON = new Color(16734790).toArray();
   var LENS_OFF = new Color(6955554).toArray();
   var sin01 = (p) => Math.sin(Math.PI * Math.min(1, Math.max(0, p)));
@@ -70465,8 +70652,8 @@ void main() {
     const quality = typeof opts.quality === "function" ? opts.quality : () => "mid";
     const group = new Group();
     group.name = "lfx-hands";
-    const fistMat = new MeshBasicMaterial({ color: 15251604, depthTest: false, transparent: true });
-    const fist = new Mesh(new BoxGeometry(0.09, 0.09, 0.17), fistMat);
+    const fistMat = new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true });
+    const fist = new Mesh(buildFistGeometry(), fistMat);
     fist.renderOrder = 998;
     fist.visible = false;
     group.add(fist);
@@ -70509,19 +70696,7 @@ void main() {
     }
     function buildWeapon(id) {
       const list = [];
-      const part = (w2, h3, d, x, y, z, color2, o = {}) => {
-        const g = new BoxGeometry(w2, h3, d);
-        g.deleteAttribute("uv");
-        g.deleteAttribute("normal");
-        if (o.rx || o.ry || o.rz) {
-          _e6.set(o.rx || 0, o.ry || 0, o.rz || 0, "YXZ");
-          _q7.setFromEuler(_e6);
-          g.applyQuaternion(_q7);
-        }
-        g.translate(x, y, z);
-        paintGeo(g, color2);
-        list.push({ g, seg: o.seg === void 0 ? -1 : o.seg, lens: !!o.lens });
-      };
+      const part = (w2, h3, d, x, y, z, color2, o = {}) => boxPart(list, w2, h3, d, x, y, z, color2, o);
       const w = { id, mesh: null, segs: null, lens: null, wave: null };
       if (id === "belt") {
         const R2 = 0.075;
@@ -70532,45 +70707,69 @@ void main() {
           const [x0, y0] = pt(k);
           const [x1, y1] = pt(k + 1);
           const len = Math.hypot(x1 - x0, y1 - y0) + 4e-3;
-          part(len, 0.012, 0.034, (x0 + x1) / 2, (y0 + y1) / 2, 0, k % 2 ? BELT_B : BELT_A, { rz: Math.atan2(y1 - y0, x1 - x0) });
+          const mx = (x0 + x1) / 2;
+          const my = (y0 + y1) / 2;
+          const rz = Math.atan2(y1 - y0, x1 - x0);
+          part(len, 0.012, 0.034, mx, my, 0, k % 2 ? BELT_B : BELT_A, { rz });
+          const nl = Math.hypot(mx, my - cy) || 1;
+          const ox = mx / nl * 66e-4;
+          const oy = (my - cy) / nl * 66e-4;
+          for (const sz of [-0.012, 0.012]) part(len - 6e-3, 25e-4, 35e-4, mx + ox, my + oy, sz, BELT_C, { rz });
+          if (k >= 3 && k <= 7) part(6e-3, 0.0145, 8e-3, mx, my, 0, BELT_D, { rz: rz + Math.PI / 2 });
+          if (k === 1) part(0.012, 0.017, 0.038, mx, my, 0, BELT_B, { rz });
         }
         part(0.06, 0.011, 0.042, 0, 0.032, 0, STEEL2);
         part(0.06, 0.011, 0.042, 0, -0.018, 0, STEEL2);
         part(0.011, 0.061, 0.042, -0.0245, 7e-3, 0, STEEL2);
         part(0.011, 0.061, 0.042, 0.0245, 7e-3, 0, STEEL2);
         part(6e-3, 0.05, 0.03, 0, 7e-3, 4e-3, 15659510);
+        part(0.022, 6e-3, 0.012, 8e-3, 0.032, 0.02, 15659510);
+        part(7e-3, 0.012, 0.012, 0, 0.02, 0.02, STEEL_D);
         part(0.034, 0.1, 0.012, 0.04, -0.06, 0, BELT_A, { rz: 0.35 });
         part(0.034, 0.05, 0.012, 0.07, -0.135, 0, BELT_B, { rz: 0.6 });
+        part(0.02, 0.026, 0.012, 0.094, -0.168, 0, BELT_A, { rz: 0.8 });
       } else if (id === "whip") {
         part(0.03, 0.03, 0.17, 0, 0, 0.02, 4862758);
-        part(0.036, 0.036, 0.02, 0, 0, -0.07, STEEL2);
+        for (let k = 0; k < 8; k++) part(0.034, 0.034, 0.011, 0, 0, -0.056 + k * 0.021, k % 2 ? 2890770 : 9398853);
+        part(0.042, 0.042, 0.026, 0, 0, 0.115, STEEL2);
+        part(0.06, 0.016, 0.012, 0, 0, -0.07, STEEL2);
+        part(0.016, 0.06, 0.012, 0, 0, -0.07, STEEL_D);
         w.segs = [];
         w.segM = [];
         for (let i = 0; i < WHIP_SEGS; i++) {
-          const len = 0.11 - i * 6e-3;
-          const t = 0.014 - i * 13e-4;
+          const len = WHIP_LEN(i);
+          const t = Math.max(42e-4, 0.014 - i * 9e-4);
           part(t, t, len, 0, 0, -len / 2, i % 2 ? BELT_B : BELT_A, { seg: i });
-          w.segs.push({ rot: -0.14, z: i === 0 ? -0.08 : -(0.11 - (i - 1) * 6e-3) });
+          w.segs.push({ rot: WHIP_ROT, z: i === 0 ? -0.08 : -WHIP_LEN(i - 1) });
           w.segM.push(new Matrix4());
         }
+        const last = WHIP_SEGS - 1;
+        const ll = WHIP_LEN(last);
+        part(8e-3, 8e-3, 0.02, 0, 0, -ll - 8e-3, 2890770, { seg: last });
+        part(5e-3, 5e-3, 0.026, 6e-3, 3e-3, -ll - 0.024, 14206628, { seg: last, ry: 0.25 });
+        part(5e-3, 5e-3, 0.03, -6e-3, -3e-3, -ll - 0.026, 14206628, { seg: last, ry: -0.25 });
       } else if (id === "laser") {
         part(0.026, 0.026, 0.15, 0, 0, 0, 2895936);
+        for (const z of [0, 0.016, 0.032]) part(0.03, 0.03, 7e-3, 0, 0, z, 1909037);
         part(0.03, 0.03, 0.03, 0, 0, 0.055, 13377572);
+        part(8e-3, 0.012, 0.07, 0, 0.019, 0.02, STEEL_D);
+        part(8e-3, 8e-3, 6e-3, 0, 0.019, -0.016, STEEL_D);
+        part(0.012, 0.01, 0.016, 0, -0.016, -0.03, 15262416);
         part(0.02, 0.02, 0.02, 0, 0, -0.082, 11449538);
+        part(0.028, 0.028, 6e-3, 0, 0, -0.092, 7370634);
         part(0.016, 0.016, 0.016, 0, 0, -0.098, 16726832, { lens: true });
       }
-      const geo = mergeGeometries(list.map((q) => q.g), false);
-      list.forEach((q) => q.g.dispose());
+      const geo = mergeList(list);
       const n = geo.attributes.position.count;
-      const per = n / list.length;
       w.segOf = new Int8Array(n);
       w.lensAt = [];
-      list.forEach((q, i) => {
-        for (let v = 0; v < per; v++) {
-          w.segOf[i * per + v] = q.seg;
-          if (q.lens) w.lensAt.push(i * per + v);
+      let at = 0;
+      for (const q of list) {
+        for (let v = 0; v < q.n; v++, at++) {
+          w.segOf[at] = q.seg;
+          if (q.lens) w.lensAt.push(at);
         }
-      });
+      }
       w.base = new Float32Array(geo.attributes.position.array);
       w.colorBase = new Float32Array(geo.attributes.color.array);
       geo.attributes.position.setUsage(DynamicDrawUsage);
@@ -70655,10 +70854,10 @@ void main() {
         const rx = p === 0 ? 0.2 : p < 0.35 ? 0.2 + 1.1 * (p / 0.35) : 1.3 - 2 * Math.sin(Math.min(1, slash * 1.2) * Math.PI * 0.5) + 0.5 * slash;
         wg.position.set(WEAPON_POS[0] - 0.12 * sin01(p), WEAPON_POS[1] + 0.2 * sin01(p) + breathe, WEAPON_POS[2] - 0.05 * sin01(slash));
         wg.rotation.set(rx, -0.15, 0.1);
-        const crack = p > 0 ? 0.55 : 0.04;
+        const crack = p > 0 ? 0.4 : 0.03;
         weapon.segs.forEach((sg, i) => {
-          const lag = Math.max(0, slash * 1.4 - i * 0.11);
-          sg.rot = -0.14 + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : reduced2() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3);
+          const lag = Math.max(0, slash * 1.4 - i * 0.065);
+          sg.rot = WHIP_ROT + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : reduced2() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3);
         });
         skinWhip(weapon);
       } else if (id === "laser") {

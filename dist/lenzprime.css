@@ -306,12 +306,13 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header button:focus-visib
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout {
   z-index: 2;
   box-sizing: border-box;
-  background: var(--lfx-prime-glass);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
   width: min(1011px, 52.7vw, 100vw - 48px);
   min-height: 120px;
   max-height: min(482px, 100vh - 100px);
+  background: var(--lfx-prime-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  max-height: min(482px, 100dvh - 100px);
   box-shadow: var(--lfx-prime-shadow);
   color: var(--lfx-text);
   border-radius: 12px;
@@ -497,13 +498,14 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search {
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search__panel {
   box-sizing: border-box;
+  width: min(1475px, 76.8vw, 100vw - 32px);
+  max-height: calc(100vh - 110px);
   overscroll-behavior: contain;
   background: var(--lfx-prime-glass);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  width: min(1475px, 76.8vw, 100vw - 32px);
   min-height: 160px;
-  max-height: calc(100vh - 110px);
+  max-height: calc(100dvh - 110px);
   box-shadow: var(--lfx-prime-shadow);
   border-radius: 12px;
   margin: 0 auto;
@@ -1928,16 +1930,18 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt {
   --pt-gutter: clamp(24px, 3.75vw, 72px);
   --pt-header: var(--lfx-prime-header-h, 80px);
   z-index: 1;
+  min-height: 100vh;
   background: var(--pt-bg);
   color: #fff;
-  min-height: 100vh;
+  min-height: 100dvh;
   font-family: var(--lfx-font);
   position: relative;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt__stage {
-  align-items: flex-end;
   height: max(560px, min(56.25vw, 100vh));
+  align-items: flex-end;
+  height: max(560px, min(56.25vw, 100dvh));
   display: flex;
   position: relative;
   overflow: hidden;

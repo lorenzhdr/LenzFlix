@@ -3104,6 +3104,7 @@ html.lfx-js {
 }
 
 html.lfx-js #lfx-ambient {
+  height: min(820px, 100vh);
   z-index: 0;
   pointer-events: none;
   background: linear-gradient(180deg,
@@ -3111,7 +3112,7 @@ html.lfx-js #lfx-ambient {
     rgb(var(--lfx-ambient-r) var(--lfx-ambient-g) var(--lfx-ambient-b) / .85) 170px,
     rgb(var(--lfx-ambient-r) var(--lfx-ambient-g) var(--lfx-ambient-b) / .7) 55%,
     transparent 100%);
-  height: min(820px, 100vh);
+  height: min(820px, 100dvh);
   transition: opacity .3s var(--lfx-ease);
   position: absolute;
   top: 0;
@@ -5399,6 +5400,7 @@ html.lfx-js.lfx-menu-open .dialog.actionSheet, html.lfx-js .lfx-sheet {
   min-width: var(--lfx-menu-w-min);
   max-width: var(--lfx-menu-w-max);
   max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   color: var(--lfx-text-body);
   font-family: var(--lfx-font);
   background: var(--lfx-surface-2);
@@ -7980,9 +7982,10 @@ html.lfx-js:not(.layout-tv) .lfx-secret {
 }
 
 html.lfx-js:not(.layout-tv) .lfx-secret__panel {
-  background: var(--lfx-surface);
   width: min(520px, 100%);
   max-height: calc(100vh - 32px);
+  background: var(--lfx-surface);
+  max-height: calc(100dvh - 32px);
   color: var(--lfx-text-body);
   border: 1px solid var(--lfx-border);
   border-radius: var(--lfx-modal-radius);
@@ -8855,6 +8858,54 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
   left: 14px;
 }
 
+html.lfx-js .lfx-tp__online {
+  z-index: 5;
+  border: 1px solid var(--lfx-green);
+  color: #fff;
+  font: 700 11px / 1.4 var(--lfx-font);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  pointer-events: none;
+  background: rgba(13, 19, 48, .85);
+  border-radius: 999px;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px 2px 8px;
+  display: inline-flex;
+  position: absolute;
+  top: 20px;
+  left: 72px;
+}
+
+html.lfx-js .lfx-tp__online-dot {
+  background: var(--lfx-green);
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 6px var(--lfx-green);
+  border-radius: 50%;
+}
+
+html.lfx-js .lfx-tp--sheet .lfx-tp__online {
+  top: 54px;
+  left: 70px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.lfx-js .lfx-tp__online-dot {
+    animation: 2.4s ease-in-out infinite lfx-tp-online-pulse;
+  }
+}
+
+@keyframes lfx-tp-online-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .35;
+  }
+}
+
 html.lfx-js .lfx-tp--sheet .lfx-tp__preview--store .lfx-tp__shopsign {
   left: 59%;
 }
@@ -8943,6 +8994,7 @@ html.lfx-js .lfx-popover {
   min-width: 200px;
   max-width: min(320px, 100vw - 16px);
   max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   color: var(--lfx-text-body);
   font-family: var(--lfx-font);
   background: var(--lfx-surface-2);
@@ -9222,6 +9274,58 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
   html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
     right: calc(max(4vw, env(safe-area-inset-right, 0px)) + 124px);
   }
+}
+
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back {
+  z-index: 1090;
+  left: max(14px, calc(env(safe-area-inset-left, 0px) + 10px));
+  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px));
+  box-sizing: border-box;
+  border: 1px solid var(--lfx-pill-soft);
+  background: var(--lfx-surface-2);
+  width: 46px;
+  height: 46px;
+  color: var(--lfx-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform var(--lfx-dur-fast) var(--lfx-ease), background-color var(--lfx-dur-fast) var(--lfx-ease);
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  position: fixed;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
+}
+
+html.lfx-js.lfx-standalone.lfx-theme-retro.lfx-retro-tabbar-on:not(.layout-tv) #lfx-sab-back {
+  bottom: calc(var(--lfx-retro-fh, calc(58px + env(safe-area-inset-bottom, 0px))) + 12px);
+}
+
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back:active {
+  background: var(--lfx-pill-active);
+  transform: scale(.94);
+}
+
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: 2px;
+}
+
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+html.lfx-js.lfx-standalone:not(.layout-tv):-webkit-any(.lfx-modal-open, .lfx-sheet-open, .lfx-popover-open, .lfx-themepicker-open, .lfx-retro-kb) #lfx-sab-back {
+  display: none;
+}
+
+html.lfx-js.lfx-standalone:not(.layout-tv):is(.lfx-modal-open, .lfx-sheet-open, .lfx-popover-open, .lfx-themepicker-open, .lfx-retro-kb) #lfx-sab-back {
+  display: none;
 }
 
 html.lfx-theme-loading:not(.layout-tv) body {

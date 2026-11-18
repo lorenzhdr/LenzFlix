@@ -2654,6 +2654,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-page {
   z-index: 1;
   box-sizing: border-box;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: var(--rt-top) var(--lfx-retro-gutter) 96px;
   color: var(--lfx-retro-amber);
   font-family: var(--lfx-retro-font-mono);

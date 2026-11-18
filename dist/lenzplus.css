@@ -1504,6 +1504,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-page {
   z-index: 1;
   box-sizing: border-box;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: calc(var(--lfx-plus-top) + 24px) var(--lfx-plus-side) 64px;
   color: var(--lfx-text);
   font-family: var(--lfx-font);
@@ -1850,6 +1851,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title {
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__skeleton {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__backdrop {
