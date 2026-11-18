@@ -22,6 +22,14 @@ export const LIMITS = {
   ki: { n: 1, per: 5000, burst: 1, fail: 'perm' },
   lk: { n: 1, per: 2000, burst: 3 },
   mc: { n: 1, per: 5000, burst: 2 },
+  wp: { n: 2, per: 1000, burst: 2 },
+  fh: { n: 3, per: 1000, burst: 3 },
+  lz: { n: 4, per: 1000, burst: 4 },
+  lb: { n: 2, per: 1000, burst: 2 }, // je Ziel zusätzlich 1 je 4 s (fight.js)
+  gc: { n: 1, per: 1000, burst: 1, fail: 'deny' },
+  gs: { n: 6, per: 1000, burst: 6 },
+  gr: { n: 2, per: 1000, burst: 2 },
+  gh: { n: 4, per: 1000, burst: 4 },
 };
 export const FRAME_OVER_MS = 3000; // so lange darüber -> 4429
 

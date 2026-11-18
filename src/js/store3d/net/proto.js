@@ -5,7 +5,7 @@
 
 export const SUB = 'lfx-mp.1';
 export const PV = 1;
-export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'];
+export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'];
 
 /** Flag-Bits `f`. */
 export const F = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
@@ -34,6 +34,7 @@ export const CAP_OF = {
   hi: null, ck: null, rn: null, p: 'pres', hd: 'pres', f: 'pres', e: 'emote', m: 'chat', ki: 'admin',
   pu: 'push', pc: 'phys', ps: 'phys', pn: 'phys', px: 'phys', rc: 'rich', rs: 'rich', rr: 'rich',
   ks: 'kino', kj: 'kino', kl: 'kino', kc: 'kino', kb: 'kino', lk: 'look', mc: 'look',
+  wp: 'fight', fh: 'fight', lz: 'fight', lb: 'fight', gc: 'fight', gs: 'fight', gr: 'fight', gh: 'fight',
 };
 
 /** Klemmen im Netzrahmen (cm, cRad, cm/s). */
@@ -225,6 +226,44 @@ const NORM = {
     if (!Array.isArray(a) || a.length < 2 || a.length > 12 || !a.every((v) => num(v) && Number.isInteger(v) && v >= 0 && v <= 0x7fffffff)) return null;
     return { t: 'mc', m: a.slice() };
   },
+  // --- 1.18.0 Fähigkeit fight (wie fight.js des Workers) ---
+  wp(m) { const w = Number.isInteger(m.w) ? m.w : null; return w !== null && w >= 0 && w <= 3 ? { t: 'wp', w } : null; },
+  fh(m) {
+    const c = Number.isInteger(m.c) ? m.c : null;
+    const w = Number.isInteger(m.w) ? m.w : null;
+    if (c === null || c < 1 || c > 65535 || w === null || w < 0 || w > 3) return null;
+    if (!Array.isArray(m.d) || m.d.length !== 2) return null;
+    const dx = ci(m.d[0], -100, 100); const dz = ci(m.d[1], -100, 100);
+    if (dx === null || dz === null || (dx === 0 && dz === 0)) return null;
+    if (m.src !== undefined && m.src !== 0 && m.src !== 1) return null;
+    return { t: 'fh', c, w, d: [dx, dz], src: m.src === 1 ? 1 : 0 };
+  },
+  lz(m) {
+    if ((m.on !== 0 && m.on !== 1) || !Array.isArray(m.q) || m.q.length !== 3) return null;
+    const pos = posQ(m.q, 0);
+    return pos ? { t: 'lz', on: m.on, q: pos } : null;
+  },
+  lb(m) { const c = Number.isInteger(m.c) ? m.c : null; return c !== null && c >= 1 && c <= 65535 ? { t: 'lb', c } : null; },
+  gc() { return { t: 'gc' }; },
+  gr() { return { t: 'gr' }; },
+  gs(m) {
+    const q = m.q;
+    if (!Number.isInteger(m.g) || m.g < 0 || m.g > 0x7fffffff || !Array.isArray(q) || q.length < 3 || !q.every(num)) return null;
+    const n = q[2];
+    if (!Number.isInteger(n) || n < 0 || n > 3 || q.length !== 3 + 8 * n) return null;
+    const out = [clampN(Math.round(q[0]), 0, 255) + 0, clampN(Math.round(q[1]), 0, 0xffffff) + 0, n];
+    for (let i = 0; i < n; i++) {
+      const o = 3 + 8 * i;
+      const pos = posQ(q, o + 1);
+      out.push(clampN(Math.round(q[o]), 0, 9) + 0, pos[0], pos[1], pos[2], yawI(q[o + 4]), clampN(Math.round(q[o + 5]), 0, 15) + 0,
+        clampN(Math.round(q[o + 6]), 0, 65535) + 0, clampN(Math.round(q[o + 7]), 0, 100) + 0);
+    }
+    return { t: 'gs', g: m.g, q: out };
+  },
+  gh(m) {
+    const i = Number.isInteger(m.i) ? m.i : null; const w = Number.isInteger(m.w) ? m.w : null;
+    return i !== null && i >= 0 && i <= 2 && w !== null && w >= 0 && w <= 3 ? { t: 'gh', i, w } : null;
+  },
   ki(m) { const c = intIn(m.c, 1, 65535); return c === null ? null : { t: 'ki', c }; },
   ck(m) { return num(m.a) ? { t: 'ck', a: m.a } : null; },
   rn(m) { return typeof m.tk === 'string' && TK_RE.test(m.tk) ? { t: 'rn', tk: m.tk } : null; },
@@ -262,4 +301,12 @@ export const build = {
   ki: (c) => NORM.ki({ c }),
   ck: (a) => NORM.ck({ a }),
   rn: (tk) => NORM.rn({ tk }),
+  wp: (w) => NORM.wp({ w }),
+  fh: (c, w, d, src) => NORM.fh({ c, w, d, src: src ? 1 : 0 }),
+  lz: (on, q) => NORM.lz({ on, q }),
+  lb: (c) => NORM.lb({ c }),
+  gc: () => NORM.gc({}),
+  gs: (g, q) => NORM.gs({ g, q }),
+  gr: () => NORM.gr({}),
+  gh: (i, w) => NORM.gh({ i, w }),
 };

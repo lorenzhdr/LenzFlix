@@ -174,3 +174,26 @@ describe('Sprecher-Regie', () => {
     expect(synth.speak).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Sprecher-Regie 1.18.0: Passanten ohne eigene Werte', () => {
+  it('Seed färbt pitch/rate deterministisch (voiceFor), explizite Werte gewinnen', async () => {
+    const { voiceFor: vf } = await import('../src/js/store3d/modules/voice.js');
+    const { synth, dir } = setup();
+    const sp = dir.speaker({ id: 'p9', voiceSeed: 4, prio: 20, pos: at(3) });
+    sp.say('Hallo');
+    await flush();
+    const u = synth.spoken[0];
+    const f = vf(4, 3);
+    expect(u.rate).toBeCloseTo(f.rate);
+    expect(u.pitch).toBeGreaterThanOrEqual(0.5);
+  });
+  it('Richard hat Vorrang, ferne Person (>10 m) bekommt bubble', async () => {
+    const { dir } = setup();
+    const far = dir.speaker({ id: 'far', voiceSeed: 2, prio: 20, pos: at(12) });
+    expect(await far.say('Weit weg')).toBe('bubble');
+    const rich = dir.speaker({ id: 'richard', voiceSeed: 'r', prio: RICHARD_PRIO, pos: at(2) });
+    rich.say('Hallo');
+    const near = dir.speaker({ id: 'near', voiceSeed: 3, prio: 20, pos: at(4) });
+    expect(await near.say('Ich auch')).toBe('bubble');
+  });
+});

@@ -41,7 +41,7 @@ function world(st0) {
 describe('mp-look: Vertrag', () => {
   it('Server kuendigt look an, Tabellen stimmen', () => {
     expect(SERVER_CAPS).toContain('look');
-    expect(CAPS[CAPS.length - 1]).toBe('look');
+    expect(CAPS).toContain('look');
     expect(T_CAP.lk).toBe('look');
     expect(T_CAP.mc).toBe('look');
     expect(STORE_PREFIXES).toContain('lk:');

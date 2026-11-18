@@ -86,7 +86,17 @@ export function stepWalker(w, dt, env) {
   if (w.state === 'stagger') {
     w.timer -= dt;
     w.anim = 'stagger';
-    if (w.timer <= 0) { w.state = 'flee'; w.fleeT = 6; w.rush = 1.9; w.anim = 'run'; }
+    if (w.timer <= 0) {
+      if (w.after === 'walk') { w.state = 'walk'; w.after = null; w.rush = 1; } else if (w.after === 'hold') { w.state = 'hold'; w.timer = 4; w.after = null; } else { w.state = 'flee'; w.fleeT = 6; w.rush = 1.9; w.anim = 'run'; }
+    }
+    place(w, g);
+    return ev;
+  }
+  if (w.state === 'hold') { // hitzköpfig: steht und droht, der Aufrufer übernimmt per w.react; danach weiter
+    w.timer -= dt;
+    w.anim = 'idle';
+    w.v = 0;
+    if (w.timer <= 0) { w.state = 'walk'; w.rush = 1; }
     place(w, g);
     return ev;
   }
@@ -180,17 +190,25 @@ export function stepWalker(w, dt, env) {
   return ev;
 }
 
-/** Treffer: Walker taumelt, danach eilig weg. dir = Schlagrichtung (xz), wird als Rückstoß genutzt. */
-export function hitWalker(w, dir, rand) {
+/**
+ * Treffer: Walker taumelt. dir = Schlagrichtung (xz), wird als Rückstoß genutzt.
+ * Temperament (4. Arg. oder w.temper, 'shy'|'normal'|'hot'): ohne Angabe/shy wie bisher (danach eilig weg, Rückgabe nur say).
+ * normal → danach weiterlaufen (action 'scold'); hot → danach stehen ('hold', action 'threat'/'attack'; Angriff steuert der Aufrufer über w.react).
+ */
+export function hitWalker(w, dir, rand, temper = w.temper) {
+  const mode = temper === 'normal' || temper === 'hot' ? temper : 'shy';
   w.state = 'stagger';
-  w.timer = 1.0;
-  w.rush = 1.9;
-  w.fleeT = 6;
+  w.timer = mode === 'shy' ? 1.0 : 0.6;
+  w.rush = mode === 'shy' ? 1.9 : 1;
+  w.fleeT = mode === 'shy' ? 6 : 0;
+  w.after = mode === 'shy' ? null : mode === 'normal' ? 'walk' : 'hold';
   w.hitCount++;
   const l = Math.hypot(dir.x, dir.z) || 1;
   w.recoil.x = (dir.x / l) * 2.2;
   w.recoil.z = (dir.z / l) * 2.2;
   w.speakCool = 0;
+  if (mode === 'normal') return { type: 'say', cat: 'bumped', action: 'scold' };
+  if (mode === 'hot') return { type: 'say', cat: 'threat', action: w.hitCount > 1 ? 'attack' : 'threat' };
   return { type: 'say', cat: rand() < 0.35 && w.hitCount > 1 ? 'flee' : 'bumped' };
 }
 

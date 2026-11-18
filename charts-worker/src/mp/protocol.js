@@ -6,7 +6,7 @@ export const MIN_PV = 1;
 export const SUB = 'lfx-mp.1';
 export const MAX_FRAME = 2048;
 export const MAX_MSGS = 32;
-export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'];
+export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'];
 export const FLAG = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
 
 // Nachrichtentyp -> benötigte Fähigkeit (Client -> Server, nur Nicht-Kern).
@@ -16,6 +16,7 @@ export const T_CAP = Object.assign(Object.create(null), {
   rc: 'rich', rs: 'rich', rr: 'rich',
   ks: 'kino', kj: 'kino', kl: 'kino', kc: 'kino', kb: 'kino',
   lk: 'look', mc: 'look',
+  wp: 'fight', fh: 'fight', lz: 'fight', lb: 'fight', gc: 'fight', gs: 'fight', gr: 'fight', gh: 'fight',
 });
 export const CORE_T = ['hi', 'p', 'hd', 'f', 'ck', 'rn'];
 

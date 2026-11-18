@@ -56,9 +56,36 @@ export function pickVoiceSeeded(voices, seed, opts = {}) {
   const all = Array.from(voices || []).filter((v) => v && isDe(v));
   const list = (opts.online ? all : all.filter((v) => v.localService === true)).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de') || 0);
   if (!list.length) return null;
-  const s = Number.isFinite(Number(seed)) ? Math.abs(Math.floor(Number(seed))) : 0;
-  const v = list[s % list.length];
+  const v = list[seedHash(seed) % list.length];
   return { voice: v, pitch: 1.0, online: v.localService !== true };
+}
+
+/** Seed → nichtnegative Ganzzahl: Zahlen bleiben (abs, floor), Texte (z. B. 'gabi-haarscharf') werden per FNV-1a gehasht. */
+export function seedHash(seed) {
+  const n = Number(seed);
+  if (typeof seed !== 'string' && Number.isFinite(n)) return Math.abs(Math.floor(n));
+  if (typeof seed === 'string' && seed.trim() !== '' && Number.isFinite(n)) return Math.abs(Math.floor(n));
+  let h = 0x811c9dc5;
+  const str = String(seed === undefined || seed === null ? '' : seed);
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
+}
+
+/**
+ * Stimmfärbung je Seed (rein, deterministisch): { pitch 0.7..1.4, rate 0.85..1.15 }. Bei wenigen Stimmen (nVoices < 4) volle
+ * Spreizung, damit Personen trotzdem verschieden klingen; bei vielen Stimmen enger (die Stimme selbst unterscheidet schon).
+ */
+export function voiceFor(seed, nVoices = 1) {
+  const h = seedHash(seed);
+  const a = ((Math.imul(h, 2654435761) >>> 0) % 1000) / 999; // 0..1
+  const b = ((Math.imul(h ^ 0x9e3779b9, 2246822519) >>> 0) % 1000) / 999;
+  const wide = !(nVoices >= 4);
+  const pLo = wide ? 0.7 : 0.9;
+  const pHi = wide ? 1.4 : 1.15;
+  const rLo = wide ? 0.85 : 0.92;
+  const rHi = wide ? 1.15 : 1.08;
+  const r2 = (x) => Math.round(x * 100) / 100;
+  return { pitch: r2(pLo + a * (pHi - pLo)), rate: r2(rLo + b * (rHi - rLo)) };
 }
 
 /** Tonlagen-Faktoren (mit dem Grund-pitch aus pickVoice multipliziert, Ergebnis auf [0.5, 2] begrenzt). */
@@ -154,23 +181,29 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
   /** Stimme für eine Äußerung: mit voiceSeed die Personenstimme (gecacht), sonst die Hauptstimme. */
   function pickFor(ex) {
     if (!ex || ex.voiceSeed === undefined || ex.voiceSeed === null) return picked;
-    const k = Math.floor(Number(ex.voiceSeed)) || 0;
+    const k = typeof ex.voiceSeed === 'string' ? ex.voiceSeed : seedHash(ex.voiceSeed);
     if (seeded.has(k)) return seeded.get(k);
     let r;
     try { r = pickVoiceSeeded(S.getVoices ? S.getVoices() : [], k, { online: prefs().online }); } catch { r = null; }
     r = r || picked;
+    if (r) r = { ...r, nVoices: seedVoiceCount() };
     seeded.set(k, r);
     return r;
+  }
+  function seedVoiceCount() {
+    try { const o = prefs().online; return Array.from((S.getVoices ? S.getVoices() : []) || []).filter((v) => v && isDe(v) && (o || v.localService === true)).length; } catch { return 1; }
   }
   function mkUtt(str, volume, ex) {
     const u = new U(str);
     const pk = pickFor(ex) || picked;
     u.voice = pk.voice;
     u.lang = pk.voice.lang || 'de-DE';
-    u.rate = ex && Number.isFinite(ex.rate) ? Math.max(0.5, Math.min(2, ex.rate)) : 1.0;
+    const seededEx = !!ex && ex.voiceSeed !== undefined && ex.voiceSeed !== null;
+    const vf = seededEx ? voiceFor(ex.voiceSeed, pk.nVoices || 1) : null; // Personen ohne eigene Werte: Färbung aus dem Seed
+    u.rate = ex && Number.isFinite(ex.rate) ? Math.max(0.5, Math.min(2, ex.rate)) : (vf ? vf.rate : 1.0);
     // Personen: pitch ist absolut (Personenstimme hat Grund-pitch 1.0); Hauptstimme: Grund-pitch × Pref-Faktor
     u.pitch = ex && ex.voiceSeed !== undefined && ex.voiceSeed !== null
-      ? clampPitch((Number.isFinite(ex.pitch) ? ex.pitch : 1) * pk.pitch)
+      ? clampPitch((Number.isFinite(ex.pitch) ? ex.pitch : vf.pitch) * pk.pitch)
       : clampPitch(picked.pitch * prefs().pf * (ex && Number.isFinite(ex.pitch) ? ex.pitch : 1));
     u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
     return u;

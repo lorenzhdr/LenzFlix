@@ -14,8 +14,9 @@ import phys from './phys.js';
 import rich from './rich.js';
 import kino from './kino.js';
 import look from './look.js';
+import fight from './fight.js';
 
-export const SUBS = [chat, phys, rich, kino, look];
+export const SUBS = [chat, phys, rich, kino, look, fight];
 const capsOf = (s) => (s.cap == null ? [] : Array.isArray(s.cap) ? s.cap : [s.cap]);
 export const SERVER_CAPS = ['pres', 'wx', ...SUBS.flatMap(capsOf)].filter((c, i, a) => CAPS.includes(c) && a.indexOf(c) === i);
 // Storage-Präfixe, die der Kaltstart lädt (Kern + Unter-Reducer).

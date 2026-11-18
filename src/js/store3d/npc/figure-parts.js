@@ -22,6 +22,7 @@ const pick = (list, id, def) => (list.includes(id) ? id : def);
 const WHITE = [0.93, 0.93, 0.95];
 const BLACK = [0.07, 0.07, 0.09];
 const GOLD = [0.95, 0.78, 0.22];
+const STEEL = [0.74, 0.76, 0.8]; // Nieten, Schnallen, Reißverschlüsse
 const HAT_GOLD = [0.86, 0.58, 0.08]; // Freischalt-Hüte (goldcap/crown): feste Goldfarbe, unabhängig von hat.color
 
 /** Kopf: Ellipsoid r 0,12, Skalierung 1/1,1/1 bei y 1,58, Vorderseite z ≈ −0,12 (Bind-Pose, vor der Kopf-Vergrößerung HEAD_K). */
@@ -51,6 +52,13 @@ function cone(r, h, seg, x, y, z, color, rx = 0, ry = 0, rz = 0) {
   const g = tint(new ConeGeometry(r, h, seg, 1), color);
   _e.set(rx, ry, rz, 'YXZ'); _q.setFromEuler(_e); _p.set(x, y, z);
   g.applyMatrix4(_m.compose(_p, _q, _s));
+  return g;
+}
+/** Walze mit waagrechter Achse (x) für Lockenwickler. */
+function roll(r, h, x, y, z, color) {
+  const g = tint(new CylinderGeometry(r, r, h, 7, 1), color);
+  g.rotateZ(Math.PI / 2);
+  g.translate(x, y, z);
   return g;
 }
 function drum(r, h, seg, x, y, z, color) {
@@ -137,7 +145,7 @@ function norm(look) {
   };
 }
 
-const COVER = new Set(['cap', 'beanie', 'hat', 'bucket', 'beret', 'goldcap', 'catears', 'canhat', 'usher']);
+const COVER = new Set(['cap', 'beanie', 'hat', 'bucket', 'beret', 'goldcap', 'catears', 'canhat', 'usher', 'curlers']);
 
 export function buildV2Parts(look, opts = {}) {
   const L = norm(look || {});
@@ -259,6 +267,7 @@ function buildTop(P, L, { sw, hw, ax, wAt, bx }) {
     case 'tank': torso(skin, 0, 0.22); sp.push(box({ w: sw - 0.1, h: 0.58, d: td + 0.012, y: 1.09, color: c })); up = skin; break;
     case 'sweater': torso(c); long(); aw = 0.105; alw = 0.1; break;
     case 'jacket': torso(c); long(); aw = 0.1; alw = 0.095; break;
+    case 'studjacket': torso(c); long(); aw = 0.1; alw = 0.095; break;
     case 'vest': torso(c2, 0, 0.23); up = c2; break;
     case 'dress': torso(c); break;
     case 'cape': torso(sc(c, 0.85)); up = c; lo = c; aw = 0.1; alw = 0.095; break;
@@ -279,6 +288,12 @@ function buildTop(P, L, { sw, hw, ax, wAt, bx }) {
     if (cut === 'tee' && L.topPat === 'twotone') a.push(box({ w: aw + 0.012, h: 0.12, d: aw + 0.012, x, y: 1.13, z: 0, color: c2 }));
     if (cut === 'hivis' || cut === 'vest') a.push(box({ w: aw + 0.01, h: 0.04, d: aw + 0.01, x, y: 1.09, z: 0, color: sc(c2, 0.8) }));
     if (cut === 'cape') a.push(box({ w: aw + 0.014, h: 0.03, d: aw + 0.014, x, y: 0.82, z: 0, color: sc(c, 0.7) }));
+    if (cut === 'studjacket') {
+      a.push(box({ w: alw + 0.014, h: 0.035, d: alw + 0.014, x, y: 0.815, z: 0, color: sc(c, 0.7) })); // Bündchen
+      for (const y of [0.9, 0.84]) a.push(box({ w: 0.02, h: 0.02, d: alw + 0.022, x, y, z: 0, color: STEEL })); // Nieten am Unterarm
+      for (const z of [-0.03, 0.03]) a.push(box({ w: 0.024, h: 0.024, d: 0.024, x: x + sx * 0.001, y: 1.355, z, color: STEEL })); // Schulternieten
+      a.push(box({ w: aw + 0.014, h: 0.03, d: aw + 0.014, x, y: 1.1, z: 0, color: sc(c, 0.75) }));
+    }
   }
   // Schnitt-Details
   if (cut === 'hoodie') {
@@ -302,6 +317,18 @@ function buildTop(P, L, { sw, hw, ax, wAt, bx }) {
     bx(sp, 0.05, 0.07, 0.06, 0.05, 1.415, fz + 0.03, sc(c, 0.85));
     bx(sp, 0.07, 0.05, 0.012, -0.12, 0.92, fz - 0.003, sc(c, 0.7));
     bx(sp, 0.07, 0.05, 0.012, 0.12, 0.92, fz - 0.003, sc(c, 0.7));
+  } else if (cut === 'studjacket') {
+    // Nietenjacke: schräge Kragen, durchgehender Reißverschluss, Schulterpasse mit Nieten, Taschen, Nietenreihe an der Brust
+    bx(sp, sw + 0.03, 0.04, td + 0.012, 0, 0.82, 0, sc(c, 0.7));
+    bx(sp, 0.014, 0.58, 0.006, 0, 1.09, fz - 0.003, STEEL);
+    bx(sp, 0.06, 0.07, 0.07, -0.06, 1.415, fz + 0.03, sc(c, 0.8), 0, 0, 0.5);
+    bx(sp, 0.06, 0.07, 0.07, 0.06, 1.415, fz + 0.03, sc(c, 0.8), 0, 0, -0.5);
+    bx(sp, 0.12, 0.05, 0.012, -0.12, 0.92, fz - 0.003, sc(c, 0.65));
+    bx(sp, 0.12, 0.05, 0.012, 0.12, 0.92, fz - 0.003, sc(c, 0.65));
+    bx(sp, sw + 0.03, 0.05, td + 0.014, 0, 1.345, 0, sc(c, 0.75));
+    for (const x of [-0.17, -0.12, -0.07, 0.07, 0.12, 0.17]) bx(sp, 0.022, 0.022, 0.014, x, 1.26, fz - 0.007, STEEL);
+    for (const x of [-0.15, 0.15]) bx(sp, 0.022, 0.022, 0.014, x, 0.92, fz - 0.011, STEEL);
+    for (const x of [-0.085, 0.085]) bx(sp, 0.022, 0.022, 0.014, x, 1.38, fz - 0.01, STEEL);
   } else if (cut === 'vest') {
     bx(sp, 0.02, 0.58, 0.012, 0, 1.09, fz - 0.005, sc(c, 0.7));
   } else if (cut === 'dress') {
@@ -473,6 +500,16 @@ function buildFace(P, L) {
 function buildGlasses(hd, L) {
   const g = L.glasses;
   if (g === 'none') return;
+  if (g === 'bandaid') {
+    // Pflaster-Veilchen: blau-violett geschwollenes Auge (x +) mit Schwellung, Pflaster quer über Wange und Nasenrücken
+    faceBox(hd, 0.062, 0.05, 0.012, 0.045, 1.598, mix(L.skin, [0.28, 0.24, 0.62], 0.62), 0.006);
+    faceBox(hd, 0.05, 0.016, 0.012, 0.045, 1.572, mix(L.skin, [0.4, 0.2, 0.5], 0.5), 0.006);
+    faceBox(hd, 0.026, 0.034, 0.012, 0.045, 1.6, BLACK, 0.0085);
+    const PL = [0.93, 0.78, 0.6];
+    faceBox(hd, 0.1, 0.026, 0.014, -0.012, 1.579, PL, 0.02, 0.5);
+    faceBox(hd, 0.036, 0.026, 0.014, -0.012, 1.579, sc(PL, 0.86), 0.0215, 0.5);
+    return;
+  }
   const bx = (w, h, d, x, y, z, color) => hd.push(box({ w, h, d, x, y, z, color }));
   const FR = [0.1, 0.1, 0.14];
   for (const sx of [-1, 1]) {
@@ -506,6 +543,16 @@ function buildHat(hd, L) {
       break;
     }
     case 'beanie': hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 1.45)); break;
+    case 'curlers': {
+      // Lockenwickler-Haube: lose Haube (Netzfarbe aus hat.color, aufgehellt) mit bunten Walzen quer auf dem Oberkopf
+      const net = mix(c, WHITE, 0.55);
+      hd.push(liftHairline(sph(0.141, 0, 1.612, 0.004, net, 1, 1, 1, 8, 5, 1.8), 0, 0.13));
+      hd.push(box({ w: 0.27, h: 0.012, d: 0.27, x: 0, y: 1.652, z: 0.006, color: sc(net, 0.85) })); // Gummizug
+      const COL = [[0.95, 0.5, 0.65], [0.35, 0.75, 0.8], [0.95, 0.8, 0.2]];
+      const rows = [[-0.065, 1.72, -0.055], [0.065, 1.72, -0.055], [0, 1.742, -0.01], [-0.065, 1.735, 0.04], [0.065, 1.735, 0.04], [0, 1.73, 0.075]];
+      rows.forEach(([x, y, z], i) => hd.push(roll(0.03, x === 0 ? 0.085 : 0.06, x, y, z, COL[i % 3])));
+      break;
+    }
     case 'catears':
       // Mütze auf dem Oberkopf (deckt die Haare oben ab, vorn auf den Haaransatz angehoben) + zwei dreieckige Ohren auf der Mütze, symmetrisch
       hd.push(liftHairline(sph(0.139, 0, 1.612, 0.004, c, 1, 1, 1, 8, 5, 1.75), 0, 0.13));
@@ -639,6 +686,117 @@ function buildBag(P, L, { ax, bx }) {
       bx(sp, 0.18, 0.06, 0.008, 0, 0.99, 0.288, [0.95, 0.8, 0.2]);
       for (const sx of [-1, 1]) bx(sp, 0.04, 0.3, 0.03, sx * 0.11, 1.17, -0.12, sc(c, 0.7));
       break;
+    case 'catpack': {
+      // Katzenkopf-Rucksack: breiter Kopf am Rücken (Gesicht zeigt nach hinten), Ohren oben, Schnurrhaare, Gurte
+      const ear = [0.95, 0.6, 0.7];
+      bx(sp, 0.34, 0.32, 0.15, 0, 1.1, 0.185, c);
+      bx(sp, 0.3, 0.1, 0.13, 0, 1.3, 0.185, c);
+      for (const sx of [-1, 1]) {
+        sp.push(cone(0.06, 0.1, 3, sx * 0.1, 1.4, 0.185, c, 0, 0, sx * -0.18));
+        sp.push(cone(0.034, 0.065, 3, sx * 0.1, 1.395, 0.172, ear, 0, 0, sx * -0.18));
+        bx(sp, 0.05, 0.065, 0.012, sx * 0.075, 1.17, 0.265, WHITE);
+        bx(sp, 0.022, 0.04, 0.014, sx * 0.075, 1.17, 0.268, BLACK);
+        for (const dy of [-0.02, 0.012]) bx(sp, 0.11, 0.006, 0.01, sx * 0.16, 1.07 + dy, 0.264, sc(WHITE, 0.95), 0, 0, sx * -0.1 + dy * 3);
+        bx(sp, 0.04, 0.3, 0.03, sx * 0.11, 1.17, -0.12, sc(c, 0.7));
+      }
+      bx(sp, 0.036, 0.026, 0.012, 0, 1.1, 0.267, ear);
+      bx(sp, 0.01, 0.025, 0.01, 0, 1.075, 0.266, BLACK);
+      bx(sp, 0.2, 0.1, 0.04, 0, 0.98, 0.275, sc(c, 0.8));
+      break;
+    }
     default:
   }
+}
+
+/* --------------------------------------------------------- Gegenstand in der rechten Hand */
+/** Ids, die setHandItem kennt (1.18.0). candy/popcorn: leere Wurfhand (das Wurfgut kommt aus dem Pool). */
+export const HAND_ITEMS = ['belt', 'whip', 'laser', 'bag', 'umbrella', 'shopping', 'dryer', 'hanger', 'candy', 'popcorn'];
+const LEATHER = [0.32, 0.2, 0.12];
+
+/**
+ * Teile für den rechten Arm-Bone (Bind-Pose, Hand bei x ≈ Schulterbreite, y 0,78, z −0,04); Gegenstände hängen entlang −y und zeigen mit
+ * gehobenem Arm nach vorn. Farben aus dem Look (bag/umbrella), look v2 oder alt. Leere Wurfhand (candy, popcorn) und unbekannte IDs → [].
+ */
+export function buildHandItem(look, id) {
+  if (!HAND_ITEMS.includes(id)) return [];
+  const v2 = !!look && look.v === 2;
+  const bagCol = v2 ? col(look.bag && look.bag.color, [0.5, 0.3, 0.2]) : col(look && look.bagColor, [0.5, 0.3, 0.2]);
+  const umbCol = col(look && look.umbrellaColor, [0.85, 0.2, 0.25]);
+  const x = (v2 ? { straight: 0.26, shoulders: 0.29, hips: 0.25 }[look.shape] || 0.26 : 0.26) + 0.02;
+  const out = [];
+  const b = (w, h, d, dx, y, z, color, rx = 0, ry = 0, rz = 0) => out.push(box({ w, h, d, x: x + dx, y, z, rx, ry, rz, color }));
+  const PINK = [0.95, 0.55, 0.75];
+  switch (id) {
+    case 'belt':
+      // Gürtel an der Schnalle gepackt, Riemen hängt als drei leicht geknickte Stücke nach unten
+      b(0.04, 0.2, 0.012, 0, 0.7, -0.04, LEATHER, 0.06);
+      b(0.04, 0.22, 0.012, 0.004, 0.5, -0.032, LEATHER, -0.12);
+      b(0.04, 0.12, 0.012, 0.012, 0.33, -0.02, LEATHER, -0.28);
+      b(0.07, 0.06, 0.02, 0, 0.8, -0.05, STEEL);
+      b(0.04, 0.035, 0.024, 0, 0.8, -0.052, sc(STEEL, 0.55));
+      break;
+    case 'whip': {
+      // Griff in der Faust, Schnur aus 6 Segmenten in leichtem Bogen nach hinten-unten, am Ende ein Knoten
+      b(0.035, 0.2, 0.035, 0, 0.76, -0.04, [0.2, 0.13, 0.09]);
+      b(0.042, 0.03, 0.042, 0, 0.67, -0.04, STEEL);
+      let y = 0.65;
+      let z = -0.04;
+      let a = 0;
+      for (let i = 0; i < 6; i++) {
+        const len = 0.14 - i * 0.008;
+        const t = 0.016 - i * 0.0013;
+        a += 0.2;
+        out.push(box({ w: t, h: len, d: t, x, y: y - Math.cos(a) * len / 2, z: z + Math.sin(a) * len / 2, rx: -a, color: LEATHER }));
+        y -= Math.cos(a) * len;
+        z += Math.sin(a) * len;
+      }
+      b(0.026, 0.026, 0.026, 0, y, z, sc(LEATHER, 0.6));
+      break;
+    }
+    case 'laser':
+      // kleiner Pointer (Stift) in der Faust, Spitze nach vorn (mit dem Arm), Leuchtfenster am Ende
+      b(0.03, 0.16, 0.03, 0, 0.74, -0.04, [0.18, 0.2, 0.26]);
+      b(0.034, 0.03, 0.034, 0, 0.84, -0.04, [0.8, 0.12, 0.14]);
+      b(0.022, 0.03, 0.022, 0, 0.64, -0.04, [1, 0.35, 0.3]);
+      b(0.012, 0.02, 0.012, 0, 0.8, -0.058, STEEL);
+      break;
+    case 'bag':
+      // Handtasche am kurzen Henkel
+      b(0.026, 0.1, 0.026, 0, 0.72, -0.04, sc(bagCol, 0.6));
+      b(0.2, 0.15, 0.07, 0, 0.6, -0.04, bagCol);
+      b(0.2, 0.025, 0.074, 0, 0.665, -0.04, sc(bagCol, 0.8));
+      b(0.03, 0.03, 0.01, 0, 0.64, -0.078, GOLD);
+      break;
+    case 'umbrella':
+      // zusammengeklappter Schirm: Krückgriff in der Faust, Stock nach unten, Bahn als Walze, Spitze
+      b(0.03, 0.03, 0.12, 0, 0.82, -0.08, [0.3, 0.2, 0.12]);
+      b(0.026, 0.6, 0.026, 0, 0.5, -0.04, [0.2, 0.2, 0.22]);
+      b(0.07, 0.3, 0.07, 0, 0.4, -0.04, umbCol);
+      b(0.04, 0.1, 0.04, 0, 0.2, -0.04, sc(umbCol, 0.8));
+      b(0.014, 0.05, 0.014, 0, 0.145, -0.04, STEEL);
+      break;
+    case 'shopping':
+      // Einkaufstüte am Henkel (Farbe aus dem Look)
+      b(0.02, 0.12, 0.02, 0, 0.72, -0.04, sc(bagCol, 0.6));
+      b(0.22, 0.3, 0.12, 0, 0.5, -0.04, bagCol);
+      b(0.14, 0.04, 0.124, 0, 0.64, -0.04, sc(bagCol, 1.15));
+      break;
+    case 'dryer':
+      // Föhn: Griff in der Faust, Gehäuse quer nach vorn, Düse mit dunkler Öffnung
+      b(0.036, 0.13, 0.036, 0, 0.75, -0.04, sc(PINK, 0.9));
+      b(0.07, 0.07, 0.17, 0, 0.84, -0.1, PINK);
+      b(0.085, 0.085, 0.03, 0, 0.84, -0.2, sc(PINK, 0.75));
+      b(0.05, 0.05, 0.01, 0, 0.84, -0.218, [0.1, 0.1, 0.12]);
+      break;
+    case 'hanger':
+      // Kleiderbügel (Draht): Haken oben in der Faust, zwei schräge Schenkel, Querstange
+      b(0.012, 0.07, 0.012, 0, 0.78, -0.04, STEEL);
+      b(0.04, 0.012, 0.012, 0.012, 0.82, -0.04, STEEL);
+      b(0.18, 0.012, 0.012, -0.075, 0.69, -0.04, STEEL, 0, 0, 0.42);
+      b(0.18, 0.012, 0.012, 0.075, 0.69, -0.04, STEEL, 0, 0, -0.42);
+      b(0.3, 0.014, 0.014, 0, 0.62, -0.04, [0.78, 0.6, 0.35]);
+      break;
+    default: // candy, popcorn: leere Wurfhand
+  }
+  return out;
 }

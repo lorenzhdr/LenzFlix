@@ -9,7 +9,7 @@
 export const ANIMS = ['idle', 'walk', 'run', 'sit', 'wave', 'hit', 'throw', 'stagger', 'point', 'cheer',
   // Welle b (Mehrspieler-Emotes): nur am Ende anhängen, Indizes 0..9 bleiben stabil
   'dance', 'clap', 'thumbs', 'bow',
-  // 1.18.0 (Welle 4, vorläufige Posen; Welle 5 verfeinert): nur am Ende anhängen, Indizes 0..13 bleiben stabil
+  // 1.18.0 (Welle 4 angelegt, Welle 5 ausgearbeitet): nur am Ende anhängen, Indizes 0..13 bleiben stabil
   'threat', 'sleeves', 'shake', 'cover', 'whip', 'belt', 'aim', 'ko', 'swing', 'toss'];
 /** Codes für das Netzformat (Index in ANIMS, stabil halten). */
 export const ANIM_CODE = Object.fromEntries(ANIMS.map((n, i) => [n, i]));
@@ -27,6 +27,7 @@ const MAX_RATE = 18;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const r2 = (v) => Math.round(v * 100) / 100;
 const r3 = (v) => Math.round(v * 1000) / 1000;
+const easeOut = (t) => 1 - (1 - clamp(t, 0, 1)) * (1 - clamp(t, 0, 1));
 
 function zeroPose() {
   const p = {};
@@ -126,42 +127,89 @@ export function targetPose(anim, phase, age, dur = 1) {
       p.lean = 1.0 * e; p.headX = 0.3 * e; p.armLx = -0.35 * e; p.armRx = -0.35 * e; p.armLz = 0.05; p.armRz = 0.05; p.hipDrop = 0.02 * e;
       break;
     }
-    case 'threat': // drohen: Faust vorn, Oberkörper vor
-      p.armRx = 1.2; p.armRz = 0.1; p.armLx = 0.4; p.lean = 0.15; p.headX = 0.12; p.bob = Math.sin(age * 5) * 0.006;
+    case 'threat': {
+      // drohen: Oberkörper vor, Fausthand vorn zeigt/schüttelt, andere Faust an der Hüfte, breiter Stand, Kopf gesenkt
+      const e = clamp(age / 0.22, 0, 1);
+      const sh = Math.sin(age * 13);
+      p.armRx = (1.3 + sh * 0.16) * e; p.armRz = (0.14 + Math.sin(age * 13 + 1.2) * 0.06) * e;
+      p.armLx = 0.35 * e; p.armLz = 0.32 * e;
+      p.lean = 0.2 * e; p.headX = 0.12 * e; p.headY = -0.08 * e + Math.sin(age * 3) * 0.04;
+      p.legLx = 0.14 * e; p.legRx = -0.12 * e; p.bob = Math.abs(Math.sin(age * 6.5)) * 0.008;
       break;
-    case 'sleeves': // Ärmel hochkrempeln
-      p.armLx = 1.1 + Math.sin(age * 8) * 0.1; p.armRx = 1.1 - Math.sin(age * 8) * 0.1; p.headX = 0.15; p.lean = 0.05;
+    }
+    case 'sleeves': {
+      // Ärmel hochkrempeln: beide Unterarme angewinkelt vor dem Körper, erst links, dann rechts ein kurzer Schub, Blick auf die Hände
+      const e = clamp(age / 0.2, 0, 1);
+      const wl = Math.max(0, Math.sin(age * 5));
+      const wr = Math.max(0, -Math.sin(age * 5));
+      p.armLx = (1.15 + wl * 0.22) * e; p.armRx = (1.15 + wr * 0.22) * e;
+      p.armLz = -0.28 * e; p.armRz = -0.28 * e;
+      p.headX = 0.26 * e; p.lean = 0.08 * e; p.roll = (wr - wl) * 0.02;
       break;
-    case 'shake': // Kopfschütteln
-      p.headY = Math.sin(age * 12) * 0.4; p.armLz = 0.05; p.armRz = 0.05;
+    }
+    case 'shake': {
+      // Kopfschütteln: Kopf dreht schnell hin und her (Anlauf und Auslauf weich), Schultern leicht hoch, Hände an der Hüfte
+      const e = clamp(Math.min(age / 0.15, (TIMED.shake - age) / 0.25), 0, 1);
+      p.headY = Math.sin(age * 11) * 0.5 * e; p.headX = 0.1 * e; p.roll = Math.sin(age * 11 + 1.6) * 0.018 * e;
+      p.armLz = 0.3 * e; p.armRz = 0.3 * e; p.armLx = 0.1 * e; p.armRx = 0.1 * e; p.lean = -0.03 * e;
       break;
-    case 'cover': // Hände vor den Augen
-      p.armLx = 2.2; p.armRx = 2.2; p.armLz = 0.1; p.armRz = 0.1; p.headX = 0.2; p.lean = 0.1; p.roll = Math.sin(age * 4) * 0.03;
+    }
+    case 'cover': {
+      // geblendet: beide Arme hoch vor das Gesicht (nach innen gekreuzt), Kopf gesenkt, taumelnd mit leichtem Beugen
+      const e = clamp(age / 0.15, 0, 1);
+      const w = Math.sin(age * 5);
+      p.armLx = 2.1 * e; p.armRx = 2.1 * e; p.armLz = -0.55 * e; p.armRz = -0.55 * e;
+      p.headX = 0.28 * e; p.lean = 0.14 * e + Math.abs(w) * 0.03; p.roll = w * 0.07 * e;
+      p.legLx = w * 0.22 * e; p.legRx = -w * 0.22 * e; p.hipDrop = 0.04 * e; p.headY = Math.sin(age * 7) * 0.12 * e;
       break;
+    }
     case 'whip': {
-      const e = Math.sin(k * Math.PI);
-      p.armRx = -1.5 + 3.3 * e; p.armRz = 0.3; p.lean = 0.2 * e;
+      // weiter Überkopf-Hieb: Arm hoch nach hinten ausholen (0–40 %), dann schnell in einem großen Bogen nach vorn unten durchziehen
+      let ax;
+      let ln;
+      let lg;
+      if (k < 0.4) { const w = easeOut(k / 0.4); ax = -2.85 * w; ln = -0.16 * w; lg = -0.3 * w; }
+      else { const s2 = (k - 0.4) / 0.6; ax = -2.85 + 4.7 * easeOut(Math.min(1, s2 / 0.55)) - 1.1 * clamp((s2 - 0.55) / 0.45, 0, 1); ln = -0.16 + 0.54 * easeOut(Math.min(1, s2 / 0.5)) - 0.2 * clamp((s2 - 0.6) / 0.4, 0, 1); lg = 0.5 * Math.sin(Math.min(1, s2 * 1.4) * Math.PI); }
+      p.armRx = ax; p.armRz = 0.34; p.lean = ln; p.armLx = -ax * 0.22; p.armLz = 0.35; p.legLx = lg * 0.7; p.legRx = -lg * 0.5; p.headX = 0.05;
       break;
     }
     case 'belt': {
+      // seitlicher Hieb: Arm weit seitlich, zuerst nach hinten gezogen, dann in flachem Bogen nach vorn gepeitscht; Hüfte dreht mit (Neigung)
+      let ax;
+      if (k < 0.3) ax = -1.3 * easeOut(k / 0.3);
+      else { const s2 = (k - 0.3) / 0.7; ax = -1.3 + 3.0 * easeOut(Math.min(1, s2 / 0.5)) - 1.4 * clamp((s2 - 0.5) / 0.5, 0, 1); }
       const e = Math.sin(k * Math.PI);
-      p.armRz = 2.0 * e; p.armRx = 0.6 * e; p.lean = 0.25 * e; p.roll = -0.12 * e;
+      p.armRx = ax; p.armRz = 1.15; p.lean = 0.22 * e; p.roll = -0.14 * e; p.armLx = -0.4 * e; p.armLz = 0.25; p.headY = 0.12 * e; p.legLx = 0.3 * e; p.legRx = -0.2 * e;
       break;
     }
-    case 'aim': // Laser zielen
-      p.armRx = 1.55; p.armRz = 0.05; p.armLx = 0.6; p.headX = 0.05;
+    case 'aim': {
+      // zielen: rechter Arm waagrecht ausgestreckt, linker Arm stützend davor, Kopf ruhig am Visier, kaum wahrnehmbares Zittern
+      const e = clamp(age / 0.18, 0, 1);
+      p.armRx = 1.55 * e + Math.sin(age * 17) * 0.008; p.armRz = -0.03 * e; p.armLx = 0.9 * e; p.armLz = -0.32 * e;
+      p.headX = 0.04 * e; p.headY = -0.06 * e; p.lean = 0.06 * e; p.legLx = 0.1 * e; p.legRx = -0.1 * e;
       break;
-    case 'ko': // liegt (vorläufig: Hüfte unten, Körper gekippt)
-      p.hipDrop = 0.6; p.lean = -1.2; p.roll = 0.2; p.armLz = 0.8; p.armRz = 0.8;
+    }
+    case 'ko': {
+      // am Boden: seitlich flach (roll ≈ 87°), Rig um die halbe Körperbreite angehoben (negatives hipDrop), Beine angewinkelt, Kopf schlaff
+      const e = clamp(age / 0.35, 0, 1);
+      const br = Math.sin(age * 2) * 0.004;
+      p.roll = 1.52 * e; p.hipDrop = -0.24 * e; p.bob = br; p.lean = -0.08 * e;
+      p.legLx = 0.7 * e; p.legRx = 0.25 * e; p.armRx = 0.8 * e; p.armRz = 0.25 * e; p.armLx = -0.35 * e; p.armLz = 0.1 * e;
+      p.headX = 0.2 * e; p.headY = 0.25 * e;
       break;
+    }
     case 'swing': {
+      // Tasche/Schirm schwingen: kurzes Ausholen nach hinten, Schwung nach vorn oben, Rücklauf
+      const ax = k < 0.3 ? -1.1 * easeOut(k / 0.3) : (k - 0.3) / 0.7 < 0.5 ? -1.1 + 3.0 * easeOut(((k - 0.3) / 0.7) / 0.5) : 1.9 - 1.7 * (((k - 0.3) / 0.7) - 0.5) / 0.5;
       const e = Math.sin(k * Math.PI);
-      p.armRx = 2.0 * e; p.armLx = -0.4 * e; p.lean = 0.3 * e;
+      p.armRx = ax; p.armRz = 0.18; p.armLx = -0.4 * e; p.lean = 0.28 * e; p.roll = -0.06 * e; p.headX = 0.06 * e;
       break;
     }
     case 'toss': {
+      // Wurf von unten: Arm nach hinten, dann schwungvoll nach vorn oben, Loslassen bei etwa 55 %
+      const ax = k < 0.3 ? -0.95 * easeOut(k / 0.3) : (k - 0.3) / 0.7 < 0.45 ? -0.95 + 3.0 * easeOut(((k - 0.3) / 0.7) / 0.45) : 2.05 - 1.75 * (((k - 0.3) / 0.7) - 0.45) / 0.55;
       const e = Math.sin(k * Math.PI);
-      p.armRx = -0.8 + 2.4 * e; p.lean = 0.12 * e;
+      p.armRx = ax; p.armRz = 0.12; p.armLx = 0.5 * e; p.lean = 0.14 * e - 0.1 * (k < 0.3 ? k / 0.3 : 0); p.headX = -0.05 * e; p.legLx = 0.25 * e; p.legRx = -0.2 * e;
       break;
     }
     default: { // idle: atmen, leichtes Schwanken, Kopf schaut sich um

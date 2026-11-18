@@ -38509,6 +38509,59 @@ void main() {
             noise(t + k * 0.09, 0.03, { type: "highpass", freq: 4200, q: 2, gain: 0.12 });
             tone(3600, t + k * 0.09, 0.04, { type: "square", gain: 0.02 });
           }
+        },
+        // --- Raufen (1.18.0): alles synthetisch, kurz und dezent ---
+        slap(t) {
+          noise(t, 0.05, { type: "bandpass", freq: 1900, q: 1.2, gain: 0.2 });
+          noise(t + 4e-3, 0.09, { type: "highpass", freq: 3200, q: 0.7, gain: 0.08 });
+          tone(210, t, 0.07, { type: "triangle", gain: 0.12, slide: 0.55 });
+        },
+        belt(t) {
+          noise(t, 0.07, { type: "highpass", freq: 3600, q: 0.8, gain: 0.16 });
+          noise(t + 0.06, 0.05, { type: "bandpass", freq: 1500, q: 2, gain: 0.18 });
+          tone(2400, t + 0.07, 0.1, { type: "square", gain: 0.03, slide: 0.7 });
+          tone(140, t + 0.06, 0.08, { type: "triangle", gain: 0.12, slide: 0.6 });
+        },
+        whip(t) {
+          const { f } = noise(t, 0.16, { type: "bandpass", freq: 1200, q: 0.9, gain: 0.07 });
+          f.frequency.setValueAtTime(900, t);
+          f.frequency.exponentialRampToValueAtTime(5200, t + 0.15);
+          noise(t + 0.15, 0.06, { type: "highpass", freq: 2500, q: 0.8, gain: 0.26 });
+          tone(1700, t + 0.15, 0.05, { type: "square", gain: 0.05, slide: 0.4 });
+        },
+        laser(t, o) {
+          const dur = o && o.dur > 0 ? Math.min(4, o.dur) : 0.7;
+          tone(118, t, dur, { type: "sawtooth", gain: 0.025, attack: 0.04 });
+          tone(236, t, dur, { type: "sine", gain: 0.02, attack: 0.04 });
+        },
+        ouch(t) {
+          const a = noise(t, 0.26, { type: "bandpass", freq: 800, q: 4, gain: 0.16 });
+          a.f.frequency.setValueAtTime(800, t);
+          a.f.frequency.exponentialRampToValueAtTime(420, t + 0.24);
+          const b = noise(t, 0.26, { type: "bandpass", freq: 1500, q: 5, gain: 0.08 });
+          b.f.frequency.setValueAtTime(1500, t);
+          b.f.frequency.exponentialRampToValueAtTime(900, t + 0.24);
+        },
+        candy(t) {
+          for (let i = 0; i < 4; i++) {
+            const d = i * 0.06 + i % 2 * 0.015;
+            noise(t + d, 0.025, { freq: 3400 - i * 300, q: 4, gain: 0.1 });
+            tone(2100 + i * 230, t + d, 0.04, { type: "triangle", gain: 0.04 });
+          }
+        },
+        pop(t) {
+          tone(420, t, 0.07, { type: "sine", gain: 0.16, slide: 0.35 });
+          noise(t, 0.04, { type: "highpass", freq: 2200, q: 0.8, gain: 0.12 });
+          noise(t + 0.05, 0.03, { freq: 1600, q: 3, gain: 0.05 });
+        },
+        ko(t) {
+          noise(t, 0.16, { freq: 240, q: 1, gain: 0.26 });
+          tone(85, t, 0.28, { type: "triangle", gain: 0.32, slide: 0.45 });
+          for (let i = 0; i < 4; i++) {
+            const s = t + 0.5 + i * 0.16;
+            tone(2400 + i % 2 * 500, s, 0.09, { type: "sine", gain: 0.03, slide: 1.35, send: 0.3 });
+            tone(3100, s + 0.07, 0.05, { type: "sine", gain: 0.02, slide: 0.8 });
+          }
         }
       };
       function play(name, opts) {
@@ -38518,6 +38571,47 @@ void main() {
         try {
           fn(ac.currentTime + 0.01, opts);
         } catch {
+        }
+      }
+      let laserNodes = null;
+      function laserLoop(on) {
+        if (!on) {
+          const n = laserNodes;
+          laserNodes = null;
+          if (n) {
+            try {
+              n.g.gain.setTargetAtTime(1e-4, ac.currentTime, 0.04);
+              setTimeout(() => {
+                try {
+                  n.o1.stop();
+                  n.o2.stop();
+                } catch {
+                }
+              }, 250);
+            } catch {
+            }
+          }
+          return;
+        }
+        if (laserNodes || !live()) return;
+        try {
+          const g = ac.createGain();
+          g.gain.value = 1e-4;
+          g.gain.setTargetAtTime(0.022, ac.currentTime, 0.05);
+          const o1 = ac.createOscillator();
+          o1.type = "sawtooth";
+          o1.frequency.value = 118;
+          const o2 = ac.createOscillator();
+          o2.type = "sine";
+          o2.frequency.value = 237;
+          o1.connect(g);
+          o2.connect(g);
+          g.connect(master);
+          o1.start();
+          o2.start();
+          laserNodes = { g, o1, o2 };
+        } catch {
+          laserNodes = null;
         }
       }
       function startHum() {
@@ -38658,6 +38752,10 @@ void main() {
       if (ctx.opts.debug) window.__lfxM4 = { ...window.__lfxM4, sound: () => ({ state: ac && ac.state, ambient: ambientRunning, wanted: ambientWanted, hum: !!hum, rain: !!rain, step: stepIdx }) };
       ctx.provide("sound", {
         play,
+        /** Laser-Summen als Schleife an/aus (1.18.0). */
+        laser(on) {
+          laserLoop(!!on);
+        },
         /** Audio freischalten (Nutzergeste, z. B. Klick auf „In VR betreten“). */
         unlock() {
           unlock();
@@ -38699,7 +38797,10 @@ void main() {
         onSound(on) {
           if (!on) {
             if (ac && master) master.gain.setTargetAtTime(0, ac.currentTime, 0.05);
-            if (ac) stopAmbient();
+            if (ac) {
+              stopAmbient();
+              laserLoop(false);
+            }
             return;
           }
           unlock();
@@ -38710,6 +38811,7 @@ void main() {
           suspended = true;
           if (ac) {
             stopAmbient();
+            laserLoop(false);
             try {
               ac.suspend();
             } catch {
@@ -38730,6 +38832,7 @@ void main() {
           for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
           offs.forEach((o) => o());
           ambientRunning = false;
+          if (ac) laserLoop(false);
           if (ac) {
             try {
               ac.close();
@@ -42731,6 +42834,51 @@ void main() {
       "Du wolltest es so! Achtung, R\xFCckspulgeschoss!",
       "Der Kassierer schl\xE4gt zur\xFCck, und zwar mit Filmkultur!"
     ],
+    // 1.18.0: Spieler wird K.O. geschlagen und vor die Tür gesetzt, Richard wird geblendet oder mit Gürtel/Peitsche getroffen
+    playerKO: [
+      "Na, aufgewacht, {name}? Ich habe dich vorsichtshalber vor die T\xFCr gestellt.",
+      "Frische Luft hilft bei Kopfweh. Ruh dich auf der Bank aus.",
+      "Du hast dich \xFCbernommen, {name}. Die Bank drau\xDFen ist kostenlos.",
+      "Ich habe dir einen Sitzplatz besorgt. Drau\xDFen. Mit Aussicht.",
+      "Das war ein Nickerchen auf Kosten des Hauses.",
+      "Sternchen gesehen? Die gibt es bei uns nur bei Bewertungen.",
+      "Rausgetragen habe ich dich nicht gern, aber ich hatte \xDCbung.",
+      "Eine kleine Pause hat noch keinem geschadet, {name}.",
+      "Zehn Sekunden Ruhe, dann gehen wir wieder freundlich miteinander um.",
+      "Ich sage nur: F\xE4uste sind kein Ausleihmodell.",
+      "Siehst du, so endet das, wenn man sich mit der Kundschaft anlegt. Oder mit dem Gehweg.",
+      "Tief durchatmen, {name}. Der Film l\xE4uft ohne dich weiter."
+    ],
+    laserHit: [
+      "Hey! Mein Auge! Das ist kein Zeigestock!",
+      "Ich sehe Punkte. Rote. Das ist keine Werbung.",
+      "Wer blendet hier den Kassierer? Das Licht geh\xF6rt in den Saal!",
+      "Aua, ich sehe nichts mehr! Ist das der neue Filmprojektor?",
+      "Mach das aus, {name}! Ich habe nur zwei Augen und beide brauche ich.",
+      "Ein Laserpointer im Laden. So weit ist es schon gekommen.",
+      "Das ist wirklich grell. Ich schreibe es in die Hausordnung.",
+      "Mein Blick ist gerade im Urlaub. Danke daf\xFCr."
+    ],
+    whipHit: [
+      "Autsch! Wir sind hier nicht im Zirkus, {name}!",
+      "Die Peitsche geh\xF6rt in den Abenteuerfilm, nicht an meinen Tresen.",
+      "Das hat geknallt! Und zwar nicht das Popcorn.",
+      "Aua, das hat gebrannt! Ich verlange Schmerzensgeld in Kassetten.",
+      "Hey, mit solchem Werkzeug schl\xE4gt man keine Kassierer!",
+      "Zack, und weg ist die Laune. Das war ein Fehler, {name}.",
+      "Das wird dir noch leidtun. Mindestens ein bisschen.",
+      "Hast du dir das aus einem Film abgeguckt? Dort ist es auch verboten."
+    ],
+    beltHit: [
+      "Mit dem G\xFCrtel? Der geh\xF6rt an die Hose, {name}!",
+      "Autsch! Das war ein Treffer unter dem G\xFCrtel. Also mit dem G\xFCrtel.",
+      "Mein R\xFCcken! Das war kein Leihgegenstand!",
+      "Hey, wer schl\xE4gt hier mit Kleidung zu?",
+      "Das tut weh, {name}. Und die Hose rutscht dir gleich.",
+      "G\xFCrtel sind zum Halten da, nicht zum Hauen.",
+      "Das gibt eine Mahnung. Mit Stempel.",
+      "Aua! So schnell habe ich meinen Tresen noch nie vermisst."
+    ],
     throwLine: [
       "Hier, ein Klassiker!",
       "Fang! Beziehungsweise nicht.",
@@ -42998,9 +43146,32 @@ void main() {
     const all = Array.from(voices || []).filter((v2) => v2 && isDe(v2));
     const list = (opts.online ? all : all.filter((v2) => v2.localService === true)).slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "de") || 0);
     if (!list.length) return null;
-    const s = Number.isFinite(Number(seed)) ? Math.abs(Math.floor(Number(seed))) : 0;
-    const v = list[s % list.length];
+    const v = list[seedHash(seed) % list.length];
     return { voice: v, pitch: 1, online: v.localService !== true };
+  }
+  function seedHash(seed) {
+    const n = Number(seed);
+    if (typeof seed !== "string" && Number.isFinite(n)) return Math.abs(Math.floor(n));
+    if (typeof seed === "string" && seed.trim() !== "" && Number.isFinite(n)) return Math.abs(Math.floor(n));
+    let h3 = 2166136261;
+    const str = String(seed === void 0 || seed === null ? "" : seed);
+    for (let i = 0; i < str.length; i++) {
+      h3 ^= str.charCodeAt(i);
+      h3 = Math.imul(h3, 16777619) >>> 0;
+    }
+    return h3 >>> 0;
+  }
+  function voiceFor(seed, nVoices = 1) {
+    const h3 = seedHash(seed);
+    const a = (Math.imul(h3, 2654435761) >>> 0) % 1e3 / 999;
+    const b = (Math.imul(h3 ^ 2654435769, 2246822519) >>> 0) % 1e3 / 999;
+    const wide = !(nVoices >= 4);
+    const pLo = wide ? 0.7 : 0.9;
+    const pHi = wide ? 1.4 : 1.15;
+    const rLo = wide ? 0.85 : 0.92;
+    const rHi = wide ? 1.15 : 1.08;
+    const r26 = (x) => Math.round(x * 100) / 100;
+    return { pitch: r26(pLo + a * (pHi - pLo)), rate: r26(rLo + b * (rHi - rLo)) };
   }
   var PITCH_FACTOR = { normal: 1, tief: 0.8, sehrtief: 0.65 };
   var clampPitch = (x) => Math.max(0.5, Math.min(2, x));
@@ -43109,7 +43280,7 @@ void main() {
     }
     function pickFor(ex) {
       if (!ex || ex.voiceSeed === void 0 || ex.voiceSeed === null) return picked;
-      const k = Math.floor(Number(ex.voiceSeed)) || 0;
+      const k = typeof ex.voiceSeed === "string" ? ex.voiceSeed : seedHash(ex.voiceSeed);
       if (seeded2.has(k)) return seeded2.get(k);
       let r;
       try {
@@ -43118,16 +43289,27 @@ void main() {
         r = null;
       }
       r = r || picked;
+      if (r) r = { ...r, nVoices: seedVoiceCount() };
       seeded2.set(k, r);
       return r;
+    }
+    function seedVoiceCount() {
+      try {
+        const o = prefs().online;
+        return Array.from((S.getVoices ? S.getVoices() : []) || []).filter((v) => v && isDe(v) && (o || v.localService === true)).length;
+      } catch {
+        return 1;
+      }
     }
     function mkUtt(str, volume, ex) {
       const u = new U(str);
       const pk = pickFor(ex) || picked;
       u.voice = pk.voice;
       u.lang = pk.voice.lang || "de-DE";
-      u.rate = ex && Number.isFinite(ex.rate) ? Math.max(0.5, Math.min(2, ex.rate)) : 1;
-      u.pitch = ex && ex.voiceSeed !== void 0 && ex.voiceSeed !== null ? clampPitch((Number.isFinite(ex.pitch) ? ex.pitch : 1) * pk.pitch) : clampPitch(picked.pitch * prefs().pf * (ex && Number.isFinite(ex.pitch) ? ex.pitch : 1));
+      const seededEx = !!ex && ex.voiceSeed !== void 0 && ex.voiceSeed !== null;
+      const vf = seededEx ? voiceFor(ex.voiceSeed, pk.nVoices || 1) : null;
+      u.rate = ex && Number.isFinite(ex.rate) ? Math.max(0.5, Math.min(2, ex.rate)) : vf ? vf.rate : 1;
+      u.pitch = ex && ex.voiceSeed !== void 0 && ex.voiceSeed !== null ? clampPitch((Number.isFinite(ex.pitch) ? ex.pitch : vf.pitch) * pk.pitch) : clampPitch(picked.pitch * prefs().pf * (ex && Number.isFinite(ex.pitch) ? ex.pitch : 1));
       u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
       return u;
     }
@@ -47084,6 +47266,7 @@ void main() {
   var WHITE = [0.93, 0.93, 0.95];
   var BLACK = [0.07, 0.07, 0.09];
   var GOLD = [0.95, 0.78, 0.22];
+  var STEEL = [0.74, 0.76, 0.8];
   var HAT_GOLD = [0.86, 0.58, 0.08];
   var HEAD = { r: 0.12, sy: 1.1, cy: 1.58 };
   var HEAD_WS = 12;
@@ -47113,6 +47296,12 @@ void main() {
     _q3.setFromEuler(_e3);
     _p3.set(x, y, z);
     g.applyMatrix4(_m5.compose(_p3, _q3, _s3));
+    return g;
+  }
+  function roll(r, h3, x, y, z, color2) {
+    const g = tint(new CylinderGeometry(r, r, h3, 7, 1), color2);
+    g.rotateZ(Math.PI / 2);
+    g.translate(x, y, z);
     return g;
   }
   function drum(r, h3, seg, x, y, z, color2) {
@@ -47194,7 +47383,7 @@ void main() {
       bagC: col(g.color, [0.3, 0.3, 0.4])
     };
   }
-  var COVER2 = /* @__PURE__ */ new Set(["cap", "beanie", "hat", "bucket", "beret", "goldcap", "catears", "canhat", "usher"]);
+  var COVER2 = /* @__PURE__ */ new Set(["cap", "beanie", "hat", "bucket", "beret", "goldcap", "catears", "canhat", "usher", "curlers"]);
   function buildV2Parts(look, opts = {}) {
     const L2 = norm2(look || {});
     const P = { [BONE.spine]: [], [BONE.head]: [], [BONE.armL]: [], [BONE.armR]: [], [BONE.legL]: [], [BONE.legR]: [] };
@@ -47346,6 +47535,12 @@ void main() {
         aw = 0.1;
         alw = 0.095;
         break;
+      case "studjacket":
+        torso(c);
+        long();
+        aw = 0.1;
+        alw = 0.095;
+        break;
       case "vest":
         torso(c2, 0, 0.23);
         up = c2;
@@ -47386,6 +47581,12 @@ void main() {
       if (cut === "tee" && L2.topPat === "twotone") a.push(box({ w: aw + 0.012, h: 0.12, d: aw + 0.012, x, y: 1.13, z: 0, color: c2 }));
       if (cut === "hivis" || cut === "vest") a.push(box({ w: aw + 0.01, h: 0.04, d: aw + 0.01, x, y: 1.09, z: 0, color: sc(c2, 0.8) }));
       if (cut === "cape") a.push(box({ w: aw + 0.014, h: 0.03, d: aw + 0.014, x, y: 0.82, z: 0, color: sc(c, 0.7) }));
+      if (cut === "studjacket") {
+        a.push(box({ w: alw + 0.014, h: 0.035, d: alw + 0.014, x, y: 0.815, z: 0, color: sc(c, 0.7) }));
+        for (const y of [0.9, 0.84]) a.push(box({ w: 0.02, h: 0.02, d: alw + 0.022, x, y, z: 0, color: STEEL }));
+        for (const z of [-0.03, 0.03]) a.push(box({ w: 0.024, h: 0.024, d: 0.024, x: x + sx * 1e-3, y: 1.355, z, color: STEEL }));
+        a.push(box({ w: aw + 0.014, h: 0.03, d: aw + 0.014, x, y: 1.1, z: 0, color: sc(c, 0.75) }));
+      }
     }
     if (cut === "hoodie") {
       bx3(sp, 0.2, 0.12, 0.1, 0, 1.44, bz - 0.01, c);
@@ -47408,6 +47609,17 @@ void main() {
       bx3(sp, 0.05, 0.07, 0.06, 0.05, 1.415, fz + 0.03, sc(c, 0.85));
       bx3(sp, 0.07, 0.05, 0.012, -0.12, 0.92, fz - 3e-3, sc(c, 0.7));
       bx3(sp, 0.07, 0.05, 0.012, 0.12, 0.92, fz - 3e-3, sc(c, 0.7));
+    } else if (cut === "studjacket") {
+      bx3(sp, sw + 0.03, 0.04, td + 0.012, 0, 0.82, 0, sc(c, 0.7));
+      bx3(sp, 0.014, 0.58, 6e-3, 0, 1.09, fz - 3e-3, STEEL);
+      bx3(sp, 0.06, 0.07, 0.07, -0.06, 1.415, fz + 0.03, sc(c, 0.8), 0, 0, 0.5);
+      bx3(sp, 0.06, 0.07, 0.07, 0.06, 1.415, fz + 0.03, sc(c, 0.8), 0, 0, -0.5);
+      bx3(sp, 0.12, 0.05, 0.012, -0.12, 0.92, fz - 3e-3, sc(c, 0.65));
+      bx3(sp, 0.12, 0.05, 0.012, 0.12, 0.92, fz - 3e-3, sc(c, 0.65));
+      bx3(sp, sw + 0.03, 0.05, td + 0.014, 0, 1.345, 0, sc(c, 0.75));
+      for (const x of [-0.17, -0.12, -0.07, 0.07, 0.12, 0.17]) bx3(sp, 0.022, 0.022, 0.014, x, 1.26, fz - 7e-3, STEEL);
+      for (const x of [-0.15, 0.15]) bx3(sp, 0.022, 0.022, 0.014, x, 0.92, fz - 0.011, STEEL);
+      for (const x of [-0.085, 0.085]) bx3(sp, 0.022, 0.022, 0.014, x, 1.38, fz - 0.01, STEEL);
     } else if (cut === "vest") {
       bx3(sp, 0.02, 0.58, 0.012, 0, 1.09, fz - 5e-3, sc(c, 0.7));
     } else if (cut === "dress") {
@@ -47645,6 +47857,15 @@ void main() {
   function buildGlasses(hd, L2) {
     const g = L2.glasses;
     if (g === "none") return;
+    if (g === "bandaid") {
+      faceBox(hd, 0.062, 0.05, 0.012, 0.045, 1.598, mix(L2.skin, [0.28, 0.24, 0.62], 0.62), 6e-3);
+      faceBox(hd, 0.05, 0.016, 0.012, 0.045, 1.572, mix(L2.skin, [0.4, 0.2, 0.5], 0.5), 6e-3);
+      faceBox(hd, 0.026, 0.034, 0.012, 0.045, 1.6, BLACK, 85e-4);
+      const PL = [0.93, 0.78, 0.6];
+      faceBox(hd, 0.1, 0.026, 0.014, -0.012, 1.579, PL, 0.02, 0.5);
+      faceBox(hd, 0.036, 0.026, 0.014, -0.012, 1.579, sc(PL, 0.86), 0.0215, 0.5);
+      return;
+    }
     const bx3 = (w, h3, d, x, y, z, color2) => hd.push(box({ w, h: h3, d, x, y, z, color: color2 }));
     const FR = [0.1, 0.1, 0.14];
     for (const sx of [-1, 1]) {
@@ -47690,6 +47911,15 @@ void main() {
       case "beanie":
         hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 1.45));
         break;
+      case "curlers": {
+        const net = mix(c, WHITE, 0.55);
+        hd.push(liftHairline(sph(0.141, 0, 1.612, 4e-3, net, 1, 1, 1, 8, 5, 1.8), 0, 0.13));
+        hd.push(box({ w: 0.27, h: 0.012, d: 0.27, x: 0, y: 1.652, z: 6e-3, color: sc(net, 0.85) }));
+        const COL = [[0.95, 0.5, 0.65], [0.35, 0.75, 0.8], [0.95, 0.8, 0.2]];
+        const rows = [[-0.065, 1.72, -0.055], [0.065, 1.72, -0.055], [0, 1.742, -0.01], [-0.065, 1.735, 0.04], [0.065, 1.735, 0.04], [0, 1.73, 0.075]];
+        rows.forEach(([x, y, z], i) => hd.push(roll(0.03, x === 0 ? 0.085 : 0.06, x, y, z, COL[i % 3])));
+        break;
+      }
       case "catears":
         hd.push(liftHairline(sph(0.139, 0, 1.612, 4e-3, c, 1, 1, 1, 8, 5, 1.75), 0, 0.13));
         for (const sx of [-1, 1]) {
@@ -47824,8 +48054,102 @@ void main() {
         bx3(sp, 0.18, 0.06, 8e-3, 0, 0.99, 0.288, [0.95, 0.8, 0.2]);
         for (const sx of [-1, 1]) bx3(sp, 0.04, 0.3, 0.03, sx * 0.11, 1.17, -0.12, sc(c, 0.7));
         break;
+      case "catpack": {
+        const ear = [0.95, 0.6, 0.7];
+        bx3(sp, 0.34, 0.32, 0.15, 0, 1.1, 0.185, c);
+        bx3(sp, 0.3, 0.1, 0.13, 0, 1.3, 0.185, c);
+        for (const sx of [-1, 1]) {
+          sp.push(cone(0.06, 0.1, 3, sx * 0.1, 1.4, 0.185, c, 0, 0, sx * -0.18));
+          sp.push(cone(0.034, 0.065, 3, sx * 0.1, 1.395, 0.172, ear, 0, 0, sx * -0.18));
+          bx3(sp, 0.05, 0.065, 0.012, sx * 0.075, 1.17, 0.265, WHITE);
+          bx3(sp, 0.022, 0.04, 0.014, sx * 0.075, 1.17, 0.268, BLACK);
+          for (const dy of [-0.02, 0.012]) bx3(sp, 0.11, 6e-3, 0.01, sx * 0.16, 1.07 + dy, 0.264, sc(WHITE, 0.95), 0, 0, sx * -0.1 + dy * 3);
+          bx3(sp, 0.04, 0.3, 0.03, sx * 0.11, 1.17, -0.12, sc(c, 0.7));
+        }
+        bx3(sp, 0.036, 0.026, 0.012, 0, 1.1, 0.267, ear);
+        bx3(sp, 0.01, 0.025, 0.01, 0, 1.075, 0.266, BLACK);
+        bx3(sp, 0.2, 0.1, 0.04, 0, 0.98, 0.275, sc(c, 0.8));
+        break;
+      }
       default:
     }
+  }
+  var HAND_ITEMS = ["belt", "whip", "laser", "bag", "umbrella", "shopping", "dryer", "hanger", "candy", "popcorn"];
+  var LEATHER = [0.32, 0.2, 0.12];
+  function buildHandItem(look, id) {
+    if (!HAND_ITEMS.includes(id)) return [];
+    const v2 = !!look && look.v === 2;
+    const bagCol = v2 ? col(look.bag && look.bag.color, [0.5, 0.3, 0.2]) : col(look && look.bagColor, [0.5, 0.3, 0.2]);
+    const umbCol = col(look && look.umbrellaColor, [0.85, 0.2, 0.25]);
+    const x = (v2 ? { straight: 0.26, shoulders: 0.29, hips: 0.25 }[look.shape] || 0.26 : 0.26) + 0.02;
+    const out = [];
+    const b = (w, h3, d, dx, y, z, color2, rx = 0, ry = 0, rz = 0) => out.push(box({ w, h: h3, d, x: x + dx, y, z, rx, ry, rz, color: color2 }));
+    const PINK = [0.95, 0.55, 0.75];
+    switch (id) {
+      case "belt":
+        b(0.04, 0.2, 0.012, 0, 0.7, -0.04, LEATHER, 0.06);
+        b(0.04, 0.22, 0.012, 4e-3, 0.5, -0.032, LEATHER, -0.12);
+        b(0.04, 0.12, 0.012, 0.012, 0.33, -0.02, LEATHER, -0.28);
+        b(0.07, 0.06, 0.02, 0, 0.8, -0.05, STEEL);
+        b(0.04, 0.035, 0.024, 0, 0.8, -0.052, sc(STEEL, 0.55));
+        break;
+      case "whip": {
+        b(0.035, 0.2, 0.035, 0, 0.76, -0.04, [0.2, 0.13, 0.09]);
+        b(0.042, 0.03, 0.042, 0, 0.67, -0.04, STEEL);
+        let y = 0.65;
+        let z = -0.04;
+        let a = 0;
+        for (let i = 0; i < 6; i++) {
+          const len = 0.14 - i * 8e-3;
+          const t = 0.016 - i * 13e-4;
+          a += 0.2;
+          out.push(box({ w: t, h: len, d: t, x, y: y - Math.cos(a) * len / 2, z: z + Math.sin(a) * len / 2, rx: -a, color: LEATHER }));
+          y -= Math.cos(a) * len;
+          z += Math.sin(a) * len;
+        }
+        b(0.026, 0.026, 0.026, 0, y, z, sc(LEATHER, 0.6));
+        break;
+      }
+      case "laser":
+        b(0.03, 0.16, 0.03, 0, 0.74, -0.04, [0.18, 0.2, 0.26]);
+        b(0.034, 0.03, 0.034, 0, 0.84, -0.04, [0.8, 0.12, 0.14]);
+        b(0.022, 0.03, 0.022, 0, 0.64, -0.04, [1, 0.35, 0.3]);
+        b(0.012, 0.02, 0.012, 0, 0.8, -0.058, STEEL);
+        break;
+      case "bag":
+        b(0.026, 0.1, 0.026, 0, 0.72, -0.04, sc(bagCol, 0.6));
+        b(0.2, 0.15, 0.07, 0, 0.6, -0.04, bagCol);
+        b(0.2, 0.025, 0.074, 0, 0.665, -0.04, sc(bagCol, 0.8));
+        b(0.03, 0.03, 0.01, 0, 0.64, -0.078, GOLD);
+        break;
+      case "umbrella":
+        b(0.03, 0.03, 0.12, 0, 0.82, -0.08, [0.3, 0.2, 0.12]);
+        b(0.026, 0.6, 0.026, 0, 0.5, -0.04, [0.2, 0.2, 0.22]);
+        b(0.07, 0.3, 0.07, 0, 0.4, -0.04, umbCol);
+        b(0.04, 0.1, 0.04, 0, 0.2, -0.04, sc(umbCol, 0.8));
+        b(0.014, 0.05, 0.014, 0, 0.145, -0.04, STEEL);
+        break;
+      case "shopping":
+        b(0.02, 0.12, 0.02, 0, 0.72, -0.04, sc(bagCol, 0.6));
+        b(0.22, 0.3, 0.12, 0, 0.5, -0.04, bagCol);
+        b(0.14, 0.04, 0.124, 0, 0.64, -0.04, sc(bagCol, 1.15));
+        break;
+      case "dryer":
+        b(0.036, 0.13, 0.036, 0, 0.75, -0.04, sc(PINK, 0.9));
+        b(0.07, 0.07, 0.17, 0, 0.84, -0.1, PINK);
+        b(0.085, 0.085, 0.03, 0, 0.84, -0.2, sc(PINK, 0.75));
+        b(0.05, 0.05, 0.01, 0, 0.84, -0.218, [0.1, 0.1, 0.12]);
+        break;
+      case "hanger":
+        b(0.012, 0.07, 0.012, 0, 0.78, -0.04, STEEL);
+        b(0.04, 0.012, 0.012, 0.012, 0.82, -0.04, STEEL);
+        b(0.18, 0.012, 0.012, -0.075, 0.69, -0.04, STEEL, 0, 0, 0.42);
+        b(0.18, 0.012, 0.012, 0.075, 0.69, -0.04, STEEL, 0, 0, -0.42);
+        b(0.3, 0.014, 0.014, 0, 0.62, -0.04, [0.78, 0.6, 0.35]);
+        break;
+      default:
+    }
+    return out;
   }
 
   // src/js/store3d/npc/anim.js
@@ -47845,7 +48169,7 @@ void main() {
     "clap",
     "thumbs",
     "bow",
-    // 1.18.0 (Welle 4, vorläufige Posen; Welle 5 verfeinert): nur am Ende anhängen, Indizes 0..13 bleiben stabil
+    // 1.18.0 (Welle 4 angelegt, Welle 5 ausgearbeitet): nur am Ende anhängen, Indizes 0..13 bleiben stabil
     "threat",
     "sleeves",
     "shake",
@@ -47868,6 +48192,7 @@ void main() {
   var clamp5 = (v, a, b) => Math.min(b, Math.max(a, v));
   var r23 = (v) => Math.round(v * 100) / 100;
   var r32 = (v) => Math.round(v * 1e3) / 1e3;
+  var easeOut = (t) => 1 - (1 - clamp5(t, 0, 1)) * (1 - clamp5(t, 0, 1));
   function zeroPose() {
     const p = {};
     for (const k of POSE_KEYS) p[k] = 0;
@@ -48004,73 +48329,157 @@ void main() {
         p.hipDrop = 0.02 * e;
         break;
       }
-      case "threat":
-        p.armRx = 1.2;
-        p.armRz = 0.1;
-        p.armLx = 0.4;
-        p.lean = 0.15;
-        p.headX = 0.12;
-        p.bob = Math.sin(age * 5) * 6e-3;
-        break;
-      case "sleeves":
-        p.armLx = 1.1 + Math.sin(age * 8) * 0.1;
-        p.armRx = 1.1 - Math.sin(age * 8) * 0.1;
-        p.headX = 0.15;
-        p.lean = 0.05;
-        break;
-      case "shake":
-        p.headY = Math.sin(age * 12) * 0.4;
-        p.armLz = 0.05;
-        p.armRz = 0.05;
-        break;
-      case "cover":
-        p.armLx = 2.2;
-        p.armRx = 2.2;
-        p.armLz = 0.1;
-        p.armRz = 0.1;
-        p.headX = 0.2;
-        p.lean = 0.1;
-        p.roll = Math.sin(age * 4) * 0.03;
-        break;
-      case "whip": {
-        const e = Math.sin(k * Math.PI);
-        p.armRx = -1.5 + 3.3 * e;
-        p.armRz = 0.3;
+      case "threat": {
+        const e = clamp5(age / 0.22, 0, 1);
+        const sh = Math.sin(age * 13);
+        p.armRx = (1.3 + sh * 0.16) * e;
+        p.armRz = (0.14 + Math.sin(age * 13 + 1.2) * 0.06) * e;
+        p.armLx = 0.35 * e;
+        p.armLz = 0.32 * e;
         p.lean = 0.2 * e;
+        p.headX = 0.12 * e;
+        p.headY = -0.08 * e + Math.sin(age * 3) * 0.04;
+        p.legLx = 0.14 * e;
+        p.legRx = -0.12 * e;
+        p.bob = Math.abs(Math.sin(age * 6.5)) * 8e-3;
+        break;
+      }
+      case "sleeves": {
+        const e = clamp5(age / 0.2, 0, 1);
+        const wl = Math.max(0, Math.sin(age * 5));
+        const wr = Math.max(0, -Math.sin(age * 5));
+        p.armLx = (1.15 + wl * 0.22) * e;
+        p.armRx = (1.15 + wr * 0.22) * e;
+        p.armLz = -0.28 * e;
+        p.armRz = -0.28 * e;
+        p.headX = 0.26 * e;
+        p.lean = 0.08 * e;
+        p.roll = (wr - wl) * 0.02;
+        break;
+      }
+      case "shake": {
+        const e = clamp5(Math.min(age / 0.15, (TIMED.shake - age) / 0.25), 0, 1);
+        p.headY = Math.sin(age * 11) * 0.5 * e;
+        p.headX = 0.1 * e;
+        p.roll = Math.sin(age * 11 + 1.6) * 0.018 * e;
+        p.armLz = 0.3 * e;
+        p.armRz = 0.3 * e;
+        p.armLx = 0.1 * e;
+        p.armRx = 0.1 * e;
+        p.lean = -0.03 * e;
+        break;
+      }
+      case "cover": {
+        const e = clamp5(age / 0.15, 0, 1);
+        const w = Math.sin(age * 5);
+        p.armLx = 2.1 * e;
+        p.armRx = 2.1 * e;
+        p.armLz = -0.55 * e;
+        p.armRz = -0.55 * e;
+        p.headX = 0.28 * e;
+        p.lean = 0.14 * e + Math.abs(w) * 0.03;
+        p.roll = w * 0.07 * e;
+        p.legLx = w * 0.22 * e;
+        p.legRx = -w * 0.22 * e;
+        p.hipDrop = 0.04 * e;
+        p.headY = Math.sin(age * 7) * 0.12 * e;
+        break;
+      }
+      case "whip": {
+        let ax;
+        let ln;
+        let lg;
+        if (k < 0.4) {
+          const w = easeOut(k / 0.4);
+          ax = -2.85 * w;
+          ln = -0.16 * w;
+          lg = -0.3 * w;
+        } else {
+          const s2 = (k - 0.4) / 0.6;
+          ax = -2.85 + 4.7 * easeOut(Math.min(1, s2 / 0.55)) - 1.1 * clamp5((s2 - 0.55) / 0.45, 0, 1);
+          ln = -0.16 + 0.54 * easeOut(Math.min(1, s2 / 0.5)) - 0.2 * clamp5((s2 - 0.6) / 0.4, 0, 1);
+          lg = 0.5 * Math.sin(Math.min(1, s2 * 1.4) * Math.PI);
+        }
+        p.armRx = ax;
+        p.armRz = 0.34;
+        p.lean = ln;
+        p.armLx = -ax * 0.22;
+        p.armLz = 0.35;
+        p.legLx = lg * 0.7;
+        p.legRx = -lg * 0.5;
+        p.headX = 0.05;
         break;
       }
       case "belt": {
+        let ax;
+        if (k < 0.3) ax = -1.3 * easeOut(k / 0.3);
+        else {
+          const s2 = (k - 0.3) / 0.7;
+          ax = -1.3 + 3 * easeOut(Math.min(1, s2 / 0.5)) - 1.4 * clamp5((s2 - 0.5) / 0.5, 0, 1);
+        }
         const e = Math.sin(k * Math.PI);
-        p.armRz = 2 * e;
-        p.armRx = 0.6 * e;
-        p.lean = 0.25 * e;
-        p.roll = -0.12 * e;
+        p.armRx = ax;
+        p.armRz = 1.15;
+        p.lean = 0.22 * e;
+        p.roll = -0.14 * e;
+        p.armLx = -0.4 * e;
+        p.armLz = 0.25;
+        p.headY = 0.12 * e;
+        p.legLx = 0.3 * e;
+        p.legRx = -0.2 * e;
         break;
       }
-      case "aim":
-        p.armRx = 1.55;
-        p.armRz = 0.05;
-        p.armLx = 0.6;
-        p.headX = 0.05;
+      case "aim": {
+        const e = clamp5(age / 0.18, 0, 1);
+        p.armRx = 1.55 * e + Math.sin(age * 17) * 8e-3;
+        p.armRz = -0.03 * e;
+        p.armLx = 0.9 * e;
+        p.armLz = -0.32 * e;
+        p.headX = 0.04 * e;
+        p.headY = -0.06 * e;
+        p.lean = 0.06 * e;
+        p.legLx = 0.1 * e;
+        p.legRx = -0.1 * e;
         break;
-      case "ko":
-        p.hipDrop = 0.6;
-        p.lean = -1.2;
-        p.roll = 0.2;
-        p.armLz = 0.8;
-        p.armRz = 0.8;
+      }
+      case "ko": {
+        const e = clamp5(age / 0.35, 0, 1);
+        const br = Math.sin(age * 2) * 4e-3;
+        p.roll = 1.52 * e;
+        p.hipDrop = -0.24 * e;
+        p.bob = br;
+        p.lean = -0.08 * e;
+        p.legLx = 0.7 * e;
+        p.legRx = 0.25 * e;
+        p.armRx = 0.8 * e;
+        p.armRz = 0.25 * e;
+        p.armLx = -0.35 * e;
+        p.armLz = 0.1 * e;
+        p.headX = 0.2 * e;
+        p.headY = 0.25 * e;
         break;
+      }
       case "swing": {
+        const ax = k < 0.3 ? -1.1 * easeOut(k / 0.3) : (k - 0.3) / 0.7 < 0.5 ? -1.1 + 3 * easeOut((k - 0.3) / 0.7 / 0.5) : 1.9 - 1.7 * ((k - 0.3) / 0.7 - 0.5) / 0.5;
         const e = Math.sin(k * Math.PI);
-        p.armRx = 2 * e;
+        p.armRx = ax;
+        p.armRz = 0.18;
         p.armLx = -0.4 * e;
-        p.lean = 0.3 * e;
+        p.lean = 0.28 * e;
+        p.roll = -0.06 * e;
+        p.headX = 0.06 * e;
         break;
       }
       case "toss": {
+        const ax = k < 0.3 ? -0.95 * easeOut(k / 0.3) : (k - 0.3) / 0.7 < 0.45 ? -0.95 + 3 * easeOut((k - 0.3) / 0.7 / 0.45) : 2.05 - 1.75 * ((k - 0.3) / 0.7 - 0.45) / 0.55;
         const e = Math.sin(k * Math.PI);
-        p.armRx = -0.8 + 2.4 * e;
-        p.lean = 0.12 * e;
+        p.armRx = ax;
+        p.armRz = 0.12;
+        p.armLx = 0.5 * e;
+        p.lean = 0.14 * e - 0.1 * (k < 0.3 ? k / 0.3 : 0);
+        p.headX = -0.05 * e;
+        p.legLx = 0.25 * e;
+        p.legRx = -0.2 * e;
         break;
       }
       default: {
@@ -48191,12 +48600,13 @@ void main() {
     }
     return m;
   }
-  function acquire(look, ego = false) {
+  function acquire(look, ego = false, item = null) {
     const useEgo = !!ego && look.v === 2;
-    const key2 = lookKey(look) + (useEgo ? "|ego" : "");
+    const useItem = item && !ego && HAND_ITEMS.includes(item) ? item : null;
+    const key2 = lookKey(look) + (useEgo ? "|ego" : "") + (useItem ? "|h:" + useItem + (useItem === "umbrella" ? ":" + itemColorKey(look) : "") : "");
     let e = geoCache.get(key2);
     if (!e) {
-      const g = bodyGeometry(look, useEgo);
+      const g = bodyGeometry(look, useEgo, useItem);
       e = { key: key2, g, refs: 0, used: 0, topY: useEgo ? fullTopY(look) : maxY(g) };
       geoCache.set(key2, e);
     }
@@ -48215,8 +48625,12 @@ void main() {
       geoCache.delete(free[i].key);
     }
   }
-  function bodyGeometry(look, ego = false) {
+  function itemColorKey(look) {
+    return Array.isArray(look.umbrellaColor) ? look.umbrellaColor.map((v) => Math.round(v * 255)).join(".") : "-";
+  }
+  function bodyGeometry(look, ego = false, item = null) {
     const parts = look.v === 2 ? buildV2Parts(look, { ego }) : oldParts(look);
+    if (item) parts[B3.armR].push(...buildHandItem(look, item));
     const geos3 = Object.entries(parts).filter(([, list]) => list.length).map(([bi, list]) => skinned(list, Number(bi)));
     const g = merge(geos3);
     g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
@@ -48362,7 +48776,8 @@ void main() {
     const bArmR = mk4(0.26, 1.36 - SPINE_Y, 0, bSpine);
     const bLegL = mk4(-0.1, SPINE_Y, 0, bRoot);
     const bLegR = mk4(0.1, SPINE_Y, 0, bRoot);
-    let entry = acquire(look, ego);
+    let handItem = typeof look.handItem === "string" && HAND_ITEMS.includes(look.handItem) ? look.handItem : null;
+    let entry = acquire(look, ego, handItem);
     const mesh = new SkinnedMesh(entry.g, hooks.material || material());
     mesh.add(bRoot);
     rig.add(mesh);
@@ -48451,7 +48866,7 @@ void main() {
       setLook(next) {
         if (disposed || !next) return;
         const old = entry;
-        entry = acquire(next, ego);
+        entry = acquire(next, ego, handItem);
         handle.look = next;
         look = next;
         mesh.geometry = entry.g;
@@ -48462,7 +48877,7 @@ void main() {
       /** Ego-Variante (Ich-Sicht): Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel; v2: eigene Geometrie nur mit Beinen/Schuhen/Hüfte und gekippt, sonst Rig 0,12 m nach hinten. */
       setEgo(on) {
         ego = !!on;
-        const next = acquire(look, ego);
+        const next = acquire(look, ego, handItem);
         if (next === entry) release(next);
         else {
           const old = entry;
@@ -48479,14 +48894,28 @@ void main() {
       },
       isEgo: () => ego,
       /**
-       * 1.18-Naht: Gegenstand/Waffe an der rechten Hand (Ort: HAND_R). In 1.17 immer null; ohne Wirkung.
+       * Gegenstand/Waffe an der rechten Hand (Ort: HAND_R), im selben gemergten Mesh (kein zusätzlicher Draw-Call; eigener Cache-Zweig je Gegenstand).
+       * IDs: belt, whip, laser, bag, umbrella, shopping, dryer, hanger, candy, popcorn (die letzten zwei: leere Wurfhand). null/unbekannt = Hand leer.
+       * Der Gegenstand bleibt über setLook erhalten; in der Ich-Sicht (Arme ausgeblendet) wird er nicht gebaut.
        * @param {string|null} id Gegenstands-ID oder null
-       * @returns {null}
+       * @returns {string|null} die gesetzte ID, null wenn die Hand leer ist
        */
       setHandItem(id) {
-        void id;
-        return null;
+        if (disposed) return null;
+        const want = typeof id === "string" && HAND_ITEMS.includes(id) ? id : null;
+        if (want === handItem) return handItem;
+        handItem = want;
+        const next = acquire(look, ego, handItem);
+        if (next === entry) release(next);
+        else {
+          const old = entry;
+          entry = next;
+          mesh.geometry = entry.g;
+          release(old);
+        }
+        return handItem;
       },
+      getHandItem: () => handItem,
       show() {
         root.visible = true;
       },
@@ -48858,10 +49287,31 @@ void main() {
       w.timer -= dt;
       w.anim = "stagger";
       if (w.timer <= 0) {
-        w.state = "flee";
-        w.fleeT = 6;
-        w.rush = 1.9;
-        w.anim = "run";
+        if (w.after === "walk") {
+          w.state = "walk";
+          w.after = null;
+          w.rush = 1;
+        } else if (w.after === "hold") {
+          w.state = "hold";
+          w.timer = 4;
+          w.after = null;
+        } else {
+          w.state = "flee";
+          w.fleeT = 6;
+          w.rush = 1.9;
+          w.anim = "run";
+        }
+      }
+      place(w, g);
+      return ev;
+    }
+    if (w.state === "hold") {
+      w.timer -= dt;
+      w.anim = "idle";
+      w.v = 0;
+      if (w.timer <= 0) {
+        w.state = "walk";
+        w.rush = 1;
       }
       place(w, g);
       return ev;
@@ -48980,16 +49430,20 @@ void main() {
     }
     return ev;
   }
-  function hitWalker(w, dir, rand) {
+  function hitWalker(w, dir, rand, temper = w.temper) {
+    const mode = temper === "normal" || temper === "hot" ? temper : "shy";
     w.state = "stagger";
-    w.timer = 1;
-    w.rush = 1.9;
-    w.fleeT = 6;
+    w.timer = mode === "shy" ? 1 : 0.6;
+    w.rush = mode === "shy" ? 1.9 : 1;
+    w.fleeT = mode === "shy" ? 6 : 0;
+    w.after = mode === "shy" ? null : mode === "normal" ? "walk" : "hold";
     w.hitCount++;
     const l = Math.hypot(dir.x, dir.z) || 1;
     w.recoil.x = dir.x / l * 2.2;
     w.recoil.z = dir.z / l * 2.2;
     w.speakCool = 0;
+    if (mode === "normal") return { type: "say", cat: "bumped", action: "scold" };
+    if (mode === "hot") return { type: "say", cat: "threat", action: w.hitCount > 1 ? "attack" : "threat" };
     return { type: "say", cat: rand() < 0.35 && w.hitCount > 1 ? "flee" : "bumped" };
   }
   function pickInCone2(people, origin, dir, range3 = 1.6, coneDeg = 25) {
@@ -49757,6 +50211,343 @@ void main() {
       "Haare wie aus dem Film. Welcher, verrate ich nicht.",
       "Spiegel, Spiegel, an der Wand ... das war eine gute Entscheidung!",
       "Hui, da ist was passiert! Steht dir!"
+    ],
+    // --- 1.18.0: Passanten (Reaktionen, Alltag, Ereignisse, Provokation je Temperament, Treffer) ---
+    emoteDance: [
+      "Oh, Tanzstunde! Warte, ich mach mit!",
+      "Das gef\xE4llt mir! Zeig mir den Schritt nochmal!",
+      "Musik hab ich keine, aber Rhythmus schon!",
+      "Na los, die Stra\xDFe ist die Tanzfl\xE4che!",
+      "Ich hab zwei linke F\xFC\xDFe, aber heute ist es egal!",
+      "Gleich fliegt hier das Parkett! Also der Gehweg.",
+      "Tanz, tanz, tanz! Der Asphalt h\xE4lt das aus!",
+      "Hui, das steckt an! Ich wackle einfach mit!",
+      "Das war doch mal ein Auftritt! Ich tanze mit!",
+      "Mein R\xFCcken sagt nein, mein Herz sagt ja!",
+      "Ein T\xE4nzer! Dann bin ich eben die Backgroundtruppe!",
+      "Los, noch eine Runde! Ich bin gleich warm!"
+    ],
+    emoteWave: [
+      "Hallo! Ich winke zur\xFCck!",
+      "Na, du Winker! Hallo, hallo!",
+      "Oh, wie nett! Winke, winke!",
+      "Ich hab es gesehen! Hallo auch!",
+      "Moin, Fremder! Der Gru\xDF kommt an!",
+      "Hey, jemand winkt mir! Das passiert selten!",
+      "Winken ist die Sprache der Freundlichen!",
+      "Ja, ja, ich seh dich! Hallo!",
+      "Sch\xF6n, dass du winkst! Ich bin ganz ger\xFChrt!",
+      "Zur\xFCckgewunken! Das ist Ehrensache!",
+      "Hallo du! Hand hoch, Laune hoch!",
+      "Na, wen haben wir denn da? Hallo!"
+    ],
+    emoteBow: [
+      "Bravo! Das war eine Verbeugung wie im Theater!",
+      "Ich applaudiere! Applaus, Applaus!",
+      "Zugabe, Zugabe!",
+      "Welch ein Auftritt! Die Menge tobt!",
+      "So viel Anstand! Da klatsche ich doch gern!",
+      "Ein K\xFCnstler! Ich gebe Standing Ovations im Stehen!",
+      "Danke, danke! Ich bin auch ganz ger\xFChrt!",
+      "Verbeugung angenommen! Ich verbeuge mich zur\xFCck!",
+      "Das war formvollendet! Klatsch, klatsch!",
+      "Zugegeben, das war stilvoll!",
+      "Hut ab! Auch wenn ich keinen Hut trage!",
+      "Das verdient einen Applaus! Hier ist er!"
+    ],
+    greetKnown: [
+      "Ach, du schon wieder! Sch\xF6n, dich zu sehen!",
+      "Na, wen sieht man denn da? Lange nicht gesehen!",
+      "Hallo, alter Bekannter! Alles gut bei dir?",
+      "Mensch, dich kenne ich doch! Wie geht es dir?",
+      "Hey, du bist es! Ich hab dich schon vermisst!",
+      "Guten Abend, sch\xF6n, dass man sich trifft!",
+      "Da ist ja unser Stammgast! Sch\xF6n, dich zu treffen!",
+      "Na, auch noch unterwegs? Dir geht es gut, oder?",
+      "Ach, das Gesicht kenne ich! Hallo!",
+      "Tag, Nachbar! Wieder auf Streifzug?",
+      "Sch\xF6n, dass man sich hier immer wieder trifft!",
+      "Hallo, hallo! Die Stra\xDFe ist ein Dorf!"
+    ],
+    trafficLight: [
+      "Rot! Da warte ich lieber, wegen der Vorbilder.",
+      "Gr\xFCn! Wenn ich w\xFCsste, dass keiner kommt, w\xFCrde ich rennen.",
+      "Die Ampel dauert immer genau eine Ewigkeit.",
+      "Ich warte, ich warte, ich warte. Und warte.",
+      "Brav an der Ampel stehen, das ist B\xFCrgerpflicht!",
+      "Rot ist rot, auch wenn die Stra\xDFe leer ist.",
+      "Gleich wird es gr\xFCn, ich sp\xFCr es im Bein!",
+      "Fu\xDFg\xE4ngerampel, du Meisterwerk der Geduld.",
+      "Wer bei Rot geht, hat meistens Eile. Oder keinen Anstand.",
+      "Gr\xFCn, endlich! Wer zuerst kommt, geht zuerst!",
+      "Noch zwei Sekunden, dann geht es los!",
+      "So eine Ampel pr\xFCft einem den Charakter."
+    ],
+    cheerBasket: [
+      "Korb! Jawoll, das war ein Treffer!",
+      "Drin! Der Wurf war Weltklasse!",
+      "Zwei Punkte! Das nenne ich Treffsicherheit!",
+      "Der Ball ist drin! Tosender Applaus!",
+      "Das war ein Korb wie aus dem Lehrbuch!",
+      "Super Wurf! Den will ich nochmal sehen!",
+      "Treffer! Da kann die Profiliga einpacken!",
+      "Nur Netz, kein Rand! Spektakul\xE4r!",
+      "Das gibt Punkte und Respekt!",
+      "Wahnsinn, wie der reingefallen ist!",
+      "Bravo! Die Stra\xDFe hat einen neuen Star!",
+      "Korb, Korb, Korb! Jetzt wird gefeiert!"
+    ],
+    cheerCans: [
+      "Alle Dosen auf einmal! Das ist Kunst!",
+      "Volltreffer! Die Dosen haben es nicht kommen sehen!",
+      "Scheppern kann man das nennen, und zwar laut!",
+      "Strike! Das h\xE4tte ich nicht besser gekonnt!",
+      "Die Dosen sind erledigt! Applaus f\xFCr den Werfer!",
+      "Das war ein sauberer Wurf! Ich bin beeindruckt!",
+      "Dosenwerfen auf Profi-Niveau!",
+      "Klirr und klapper, alle Dosen runter!",
+      "Der Jahrmarkt hat sich verirrt, aber ich bin dabei!",
+      "Da haben wir einen Meistersch\xFCtzen!",
+      "Ein Dosen-Wunder! Zugabe!",
+      "Alles umgekippt! Hat jemand gez\xE4hlt?"
+    ],
+    cheerDiscover: [
+      "Oh, was hast du denn da gefunden? Toll!",
+      "Eine Entdeckung! Gratulation, das freut mich!",
+      "Na so was! Das h\xE4tte ich dir nicht zugetraut!",
+      "Gut gemacht! Hier gibt es mehr zu finden, als man denkt!",
+      "Bravo, Entdecker! Weiter so!",
+      "Das ist ja ein Fund! Ich bin ganz aus dem H\xE4uschen!",
+      "Respekt! Du hast ein Auge f\xFCr Geheimnisse!",
+      "Hast du das gesehen? Der hat es geschafft!",
+      "Jetzt gibt es einen Grund zum Feiern!",
+      "Toll! Und wir waren dabei!",
+      "Ein Entdeckergeist! Das gef\xE4llt mir!",
+      "Gl\xFCckwunsch! Das war nicht leicht zu finden!"
+    ],
+    headAlarm: [
+      "Oje, schon wieder Alarm! Das gibt \xC4rger.",
+      "Da ging was los! Tsss, tsss, tsss.",
+      "Dass die Leute nie lernen, mit dem Alarm zu leben.",
+      "Alarm im Laden! Das hat sich keiner gew\xFCnscht.",
+      "So eine Aufregung, und das am Abend!",
+      "Kopfsch\xFCtteln! Das h\xE4tte nicht sein m\xFCssen.",
+      "Naja, wer klaut, der fliegt. Das ist Naturgesetz.",
+      "Hoffentlich hat Richard die Nerven behalten.",
+      "So viel L\xE4rm f\xFCr so wenig Beute.",
+      "Ein Alarm weckt wirklich jeden auf.",
+      "Das war bestimmt ein Missverst\xE4ndnis. Hoffentlich.",
+      "Immer diese Unruhe. Fr\xFCher war es ruhiger."
+    ],
+    headBan: [
+      "Hausverbot! Das ist hart, aber gerecht.",
+      "Na, das hat er sich wohl verdient.",
+      "Hausverbot, das h\xF6rt man selten. Autsch.",
+      "Da hat Richard wohl die Geduld verloren.",
+      "Tja, wer nicht h\xF6ren will, muss drau\xDFen bleiben.",
+      "Das war es dann wohl mit dem Laden.",
+      "Das h\xE4tte nicht sein m\xFCssen. Aber Regeln sind Regeln.",
+      "Ein Hausverbot! Das macht keinen Spa\xDF.",
+      "Kopf hoch, es gibt andere L\xE4den. Naja, fast.",
+      "Jetzt aber schnell weg, bevor es noch schlimmer wird!",
+      "Ach du meine G\xFCte, das ist ein harter Abend.",
+      "Ich sag nichts. Ich sch\xFCttel nur den Kopf."
+    ],
+    // Provokation je Temperament: shy flieht, normal schimpft (ohne Beleidigung), hot droht
+    provokeShy: [
+      "Bitte nicht! Ich will keinen \xC4rger!",
+      "Hilfe! Lass mich in Ruhe!",
+      "Nein, nein, ich geh ja schon!",
+      "Ich hab nichts getan! Wirklich nicht!",
+      "Nicht schlagen! Ich bin ganz friedlich!",
+      "Au weia, blo\xDF weg hier!",
+      "Ich will nur nach Hause!",
+      "Bitte, ich hab doch nichts gesagt!",
+      "Hilfe, Hilfe! Der ist verr\xFCckt!",
+      "Ich bin schon weg, ich bin schon weg!",
+      "Ach du Schreck, lauf, lauf!",
+      "Ich tu keiner Fliege was! Bitte!"
+    ],
+    provokeNormal: [
+      "Na h\xF6r mal, was f\xE4llt dir ein?",
+      "So geht man nicht miteinander um!",
+      "Du hast wohl den Knigge verloren!",
+      "Ich verlange eine Entschuldigung, und zwar sofort!",
+      "Unglaublich, wie unversch\xE4mt du bist!",
+      "Benimm dich, hier gibt es Zeugen!",
+      "Das lass ich mir nicht bieten!",
+      "So ein ungezogenes Verhalten, ehrlich!",
+      "Das schreibe ich mir auf, mein Lieber!",
+      "Ich gebe dir gleich eine Lektion in Anstand!",
+      "Frechheit! Mit mir nicht!",
+      "Du solltest dich was sch\xE4men!"
+    ],
+    provokeHot: [
+      "Willst du \xC4rger? Den kannst du haben!",
+      "Das war ein Fehler, mein Freund!",
+      "Gleich knallt es, pass auf!",
+      "Komm her, wenn du dich traust!",
+      "Jetzt reicht es! Ich zeig dir, was ich kann!",
+      "Du hast mich an der falschen Stelle erwischt!",
+      "Ich werd dir Manieren beibringen!",
+      "Noch ein Wort und du kriegst es zu sp\xFCren!",
+      "Na warte, das gibt Rache!",
+      "Ich bin nicht aus Zucker, das wirst du merken!",
+      "Schlag mich und du bist dran!",
+      "Das hast du nicht umsonst gemacht!"
+    ],
+    attackHot: [
+      "Jetzt gibt es was auf die M\xFCtze!",
+      "Nimm das, du Frechdachs!",
+      "Ich hab gewarnt!",
+      "B\xE4mm, so geht das!",
+      "Da hast du es!",
+      "Los, F\xE4uste hoch!",
+      "Das war nur der Anfang!",
+      "Jetzt wirst du zittern!",
+      "Gleich ist Schluss mit lustig!",
+      "Auf in den Kampf!",
+      "Das hast du dir selbst eingebrockt!",
+      "Aus dem Weg, jetzt komme ich!"
+    ],
+    struck: [
+      "Autsch! Das hat gesessen!",
+      "Au, mein Kopf!",
+      "Ouh, das tut weh!",
+      "Hey, das reicht jetzt!",
+      "Aua, ich sp\xFCr meine Z\xE4hne!",
+      "Uff, das war hart!",
+      "Mein R\xFCcken, mein R\xFCcken!",
+      "Ach, das hat gebrannt!",
+      "Das war ein Treffer, ich geb es zu!",
+      "Ich seh Sternchen!",
+      "Ohh, die Knie werden weich!",
+      "Das geht auf deine Rechnung!"
+    ],
+    blinded: [
+      "Mein Auge! Ich seh nichts mehr!",
+      "Was war das? Ich bin geblendet!",
+      "Hilfe, alles ist wei\xDF!",
+      "Aua, das Licht! Mach das aus!",
+      "Ich seh nur noch Punkte!",
+      "Wer hat das Licht angemacht? Meine Augen!",
+      "Ich bin blind wie ein Maulwurf!",
+      "Au, die Augen! Das war grell!",
+      "Alles tanzt, alles flimmert!",
+      "Das Licht brennt! H\xF6r auf damit!",
+      "Ich tapse nur noch herum!",
+      "Mein Gott, wie hell war das denn?"
+    ],
+    koSeen: [
+      "Oh nein, der liegt da! Ist da jemand Arzt?",
+      "Das sieht \xFCbel aus! Alles in Ordnung?",
+      "Der Arme hat es erwischt!",
+      "Das war ein K.O.! Ob der wieder aufsteht?",
+      "Da liegt einer und r\xFChrt sich nicht!",
+      "Jemand sollte nach dem Rechten sehen!",
+      "Au weia, das war ein Schlag!",
+      "Der ist hin\xFCber! Hoffentlich nicht lange!",
+      "Das war ein Niederschlag, wie im Film!",
+      "Ach du liebe G\xFCte, der ist umgefallen!",
+      "So ein Ende hat keiner gewollt!",
+      "Ruft doch jemand einen Sani, aber schnell!"
+    ],
+    // --- Rowdys: derber, schwarzer Humor, Schimpfwörter; nie diskriminierend, nie sexuelle Gewalt, keine echten Personen ---
+    rowdyAccost: [
+      "Na, wen haben wir denn da? Verlaufen, du Vollidiot?",
+      "Hey, du! Ja, du, du Arschloch! Komm mal her!",
+      "Schau an, frisches Fleisch in meiner Gasse!",
+      "Du siehst aus wie jemand, der gleich \xC4rger kriegt.",
+      "Hast du dich verirrt, oder bist du nur bl\xF6d?",
+      "Na, Kleiner? Wolltest du heute noch heil nach Hause?",
+      "Du stehst auf meinem Gehweg, du Dreckskerl!",
+      "Hast du Feuer? Nein? Schade, dann brauchst du Verbandszeug!",
+      "Nettes Gesicht. W\xE4re schade drum.",
+      "He, Pisser! Taschen leeren, oder ist das hier ein Spaziergang?",
+      "Du riechst nach Streber. Streber mag ich nicht.",
+      "Willkommen in der Gasse! Hier zahlt man Eintritt in Z\xE4hnen.",
+      "Na, kein Anschluss unter dieser Hose, oder was?",
+      "Lauf nicht weg, ich will nur dein Gesicht kennenlernen. Mit der Faust."
+    ],
+    rowdyThreat: [
+      "Noch ein Schritt und du siehst deinen Zahnarzt \xF6fter als deine Familie!",
+      "Ich z\xE4hle bis drei, dann tut es weh. Eins!",
+      "Mach dein Testament, du Wichser!",
+      "Gleich liegst du so flach, dass man dich als Fu\xDFmatte verkauft!",
+      "Dich zerlege ich in Einzelteile, und zwar alphabetisch!",
+      "Hau ab oder ich helf nach, du Arschgeige!",
+      "Dein Gesicht gef\xE4llt mir nicht. Gleich hat es eine neue Form!",
+      "Du hast Mut oder keinen Verstand. Ich tippe auf Zweiteres!",
+      "Die H\xF6lle hat dir schon ein Zimmer reserviert, du Vollidiot!",
+      "Ich brech dir was, und du darfst dir aussuchen, was!",
+      "Mein Messer ist zu Hause, aber meine F\xE4uste kommen mit!",
+      "Letzte Warnung, Arschloch. Ich bin kein Freund von Warnungen!",
+      "Du bist ein toter Mann! Also fast. Mit blauen Flecken!",
+      "Gleich wirst du dich f\xFChlen wie ein Kuchen unter einer Walze!"
+    ],
+    rowdyAttack: [
+      "Jetzt gibt es auf die Fresse!",
+      "Stirb langsam, du Wichser!",
+      "Ich polier dir die Visage!",
+      "Komm her, Arschloch!",
+      "Los, Jungs, macht ihn fertig!",
+      "Du wolltest es so, du Vollidiot!",
+      "Nimm das, du Dreckskerl!",
+      "Zahn um Zahn, mein Freund!",
+      "Gleich bist du Matsch!",
+      "Zeit f\xFCr einen Ausflug ins Krankenhaus!",
+      "Heute gibt es keine Gnade!",
+      "Jetzt kriegst du, was du verdienst, du Pisser!",
+      "Schlaf sch\xF6n, du Arschgeige!",
+      "Das ist f\xFCr meine schlechte Laune!"
+    ],
+    rowdyHit: [
+      "Du Arschloch, das zahlst du mir heim!",
+      "Au, du Wichser! Das war ein Fehler!",
+      "Das hat gesessen, aber ich hab schon Schlimmeres \xFCberlebt!",
+      "Ich blute, na und? Dich erwischt es gleich noch h\xE4rter!",
+      "Autsch, verdammt! Jetzt bin ich richtig sauer!",
+      "Aua! Das gibt es doch nicht!",
+      "Der hat F\xE4uste! Das h\xE4tte ich nicht gedacht!",
+      "Mein Kiefer! Du Dreckskerl!",
+      "Verdammt, das ist kein Spa\xDF mehr!",
+      "Ha, das kitzelt nur! Nochmal!",
+      "Das merk ich mir, du Vollidiot!",
+      "Schei\xDFe, das hat wehgetan!",
+      "Na warte, du Arschgeige!",
+      "Ich hab Blut geleckt, und es ist meins!"
+    ],
+    rowdyFlee: [
+      "Schei\xDFe, der ist st\xE4rker als gedacht! Weg hier!",
+      "Ich bin raus, das war es nicht wert!",
+      "Verdammt, nichts wie weg!",
+      "Das ist nicht vorbei, du Arschloch! Aber jetzt muss ich gehen!",
+      "Ich hab noch einen Termin. Bei der Flucht!",
+      "R\xFCckzug, Jungs! Der ist ein Irrer!",
+      "Ich hau ab, aber ich komme wieder, du Wichser!",
+      "Lauf, lauf, lauf!",
+      "Das war mir zu hei\xDF, ich bin weg!",
+      "Ich muss dringend weit weg von hier!",
+      "Mein Anwalt kommt gleich. Also ich laufe zu ihm!",
+      "Leb wohl, du Vollidiot! Ich lebe auch lieber!",
+      "Der hat mich fertiggemacht, ich geb auf!",
+      "Soll er die Gasse haben! Mir egal!"
+    ],
+    rowdyWin: [
+      "Haha, das war wohl nichts, du Loser!",
+      "Wer liegt jetzt am Boden, du Arschloch?",
+      "Ruh dich aus, du Wichser, dein Gesicht hat es n\xF6tig!",
+      "Das hast du davon, Vollidiot!",
+      "Und der Gewinner steht, der Verlierer liegt!",
+      "Das war fast schon zu leicht!",
+      "Schlaf gut, du Dreckskerl, und tr\xE4um von mir!",
+      "Ich hab dir gesagt, du kommst nicht an mir vorbei!",
+      "Ha, und das ohne ins Schwitzen zu kommen!",
+      "N\xE4chstes Mal bringst du einen Helm mit, du Pisser!",
+      "Du bist die beste Fu\xDFmatte, die ich je hatte!",
+      "Jetzt hast du Platz f\xFCr die Zahnfee!",
+      "Der N\xE4chste, bitte! Oder auch nicht!",
+      "Das war ein Spa\xDF! Danke, du Arschgeige!"
     ],
     kioskBuy: ["Macht dann nix, geht aufs Haus \u2013 du siehst hungrig aus.", "Zack, bitte sehr! Wohl bekomms!", "Guter Griff! Den nehmen alle."]
   };
@@ -52562,7 +53353,11 @@ void main() {
     { id: "palast-film", title: "Kinog\xE4nger", desc: "Du hast im LENZ PALAST einen Film gesehen. Popcorn hast du bestimmt trotzdem vergessen.", hint: "Gegen\xFCber l\xE4uft etwas auf gro\xDFer Leinwand. Setz dich hin.", by: "B" },
     { id: "palast-tape", title: "Kassette im Gep\xE4ck", desc: "Du hast deine eigene Kassette mit ins Kino genommen. Das Personal tut so, als w\xE4re das normal.", hint: "Das Kino spielt auch Filme von zu Hause. Wenn man sie mitbringt.", by: "B" },
     { id: "zebra", title: "Verkehrsvorbild", desc: "Du hast bei Gr\xFCn die Stra\xDFe \xFCberquert. Ein Wunder, dass sich das herumspricht.", hint: "Auf der Stra\xDFe gibt es eine Regel, an die sich fast niemand h\xE4lt. Sei dieser eine.", by: "E" },
-    { id: "car-honk", title: "Hupkonzert", desc: "Du hast dich einem Auto in den Weg gestellt. Es hat gehupt. Ein klassischer Dialog.", hint: "Auf der Fahrbahn wird mit Lautst\xE4rke diskutiert.", by: "E" }
+    { id: "car-honk", title: "Hupkonzert", desc: "Du hast dich einem Auto in den Weg gestellt. Es hat gehupt. Ein klassischer Dialog.", hint: "Auf der Fahrbahn wird mit Lautst\xE4rke diskutiert.", by: "E" },
+    { id: "cat-laser", title: "Jagdfieber", desc: "Du hast der Katze einen roten Punkt spendiert. Sie hat dir ihre volle Aufmerksamkeit geschenkt. Kurz.", hint: "Manche Katzen jagen etwas, das gar nicht da ist. Gib ihr etwas Leuchtendes.", by: "G" },
+    { id: "gang-flee", title: "Haltung bewahrt", desc: "Die Bande hat die Flucht ergriffen. Du warst es, auch wenn du es nicht zugeben willst.", hint: "Wer sich auf der Stra\xDFe nicht einsch\xFCchtern l\xE4sst, wird bald allein sein.", by: "G" },
+    { id: "salon-first", title: "Neuer Schnitt", desc: "Frisch aus dem Salon. Der Spiegel und du, ihr seid euch einig.", hint: "Gegen\xFCber dreht sich ein Stuhl. Setz dich, die Schere wartet.", by: "G" },
+    { id: "knockout", title: "Lichter aus", desc: "Du bist umgefallen und im Laden wieder aufgewacht. Richard hat es nat\xFCrlich kommentiert.", hint: "Nicht jede Rauferei endet mit einem Handschlag. Manche enden auf dem Boden.", by: "G" }
   ];
   var TOTAL = CATALOG.length;
   var BY_ID = new Map(CATALOG.map((e) => [e.id, e]));
@@ -53436,7 +54231,11 @@ void main() {
     mk3("palast-film", "hat", "usher", "Platzanweiser-M\xFCtze"),
     mk3("palast-tape", "glasses", "3d", "Dreidimensionale Brille"),
     mk3("zebra", "bottom", "zebra", "Zebrastreifen-Hose"),
-    mk3("car-honk", "top", "hivis", "Warnweste-Shirt")
+    mk3("car-honk", "top", "hivis", "Warnweste-Shirt"),
+    mk3("cat-laser", "bag", "catpack", "Katzenkopf-Rucksack"),
+    mk3("gang-flee", "top", "studjacket", "Nietenjacke"),
+    mk3("salon-first", "hat", "curlers", "Lockenwickler-Haube"),
+    mk3("knockout", "glasses", "bandaid", "Pflaster-Veilchen")
   ];
   var asSet = (found) => found instanceof Set ? found : new Set(Array.isArray(found) ? found : found && typeof found === "object" ? Object.keys(found) : []);
   var key = (slot, code) => slot + ":" + code;
@@ -55335,7 +56134,7 @@ void main() {
   // src/js/store3d/net/proto.js
   var SUB = "lfx-mp.1";
   var PV = 1;
-  var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look"];
+  var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look", "fight"];
   var F2 = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
   var BODY_TO_NET = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
   var NET_A_ANIM = [
@@ -55384,7 +56183,15 @@ void main() {
     kc: "kino",
     kb: "kino",
     lk: "look",
-    mc: "look"
+    mc: "look",
+    wp: "fight",
+    fh: "fight",
+    lz: "fight",
+    lb: "fight",
+    gc: "fight",
+    gs: "fight",
+    gr: "fight",
+    gh: "fight"
   };
   var LIM = {
     x: [-3e3, 5e3],
@@ -55613,6 +56420,64 @@ void main() {
       if (!Array.isArray(a) || a.length < 2 || a.length > 12 || !a.every((v) => num2(v) && Number.isInteger(v) && v >= 0 && v <= 2147483647)) return null;
       return { t: "mc", m: a.slice() };
     },
+    // --- 1.18.0 Fähigkeit fight (wie fight.js des Workers) ---
+    wp(m) {
+      const w = Number.isInteger(m.w) ? m.w : null;
+      return w !== null && w >= 0 && w <= 3 ? { t: "wp", w } : null;
+    },
+    fh(m) {
+      const c = Number.isInteger(m.c) ? m.c : null;
+      const w = Number.isInteger(m.w) ? m.w : null;
+      if (c === null || c < 1 || c > 65535 || w === null || w < 0 || w > 3) return null;
+      if (!Array.isArray(m.d) || m.d.length !== 2) return null;
+      const dx = ci(m.d[0], -100, 100);
+      const dz = ci(m.d[1], -100, 100);
+      if (dx === null || dz === null || dx === 0 && dz === 0) return null;
+      if (m.src !== void 0 && m.src !== 0 && m.src !== 1) return null;
+      return { t: "fh", c, w, d: [dx, dz], src: m.src === 1 ? 1 : 0 };
+    },
+    lz(m) {
+      if (m.on !== 0 && m.on !== 1 || !Array.isArray(m.q) || m.q.length !== 3) return null;
+      const pos = posQ(m.q, 0);
+      return pos ? { t: "lz", on: m.on, q: pos } : null;
+    },
+    lb(m) {
+      const c = Number.isInteger(m.c) ? m.c : null;
+      return c !== null && c >= 1 && c <= 65535 ? { t: "lb", c } : null;
+    },
+    gc() {
+      return { t: "gc" };
+    },
+    gr() {
+      return { t: "gr" };
+    },
+    gs(m) {
+      const q = m.q;
+      if (!Number.isInteger(m.g) || m.g < 0 || m.g > 2147483647 || !Array.isArray(q) || q.length < 3 || !q.every(num2)) return null;
+      const n = q[2];
+      if (!Number.isInteger(n) || n < 0 || n > 3 || q.length !== 3 + 8 * n) return null;
+      const out = [clampN(Math.round(q[0]), 0, 255) + 0, clampN(Math.round(q[1]), 0, 16777215) + 0, n];
+      for (let i = 0; i < n; i++) {
+        const o = 3 + 8 * i;
+        const pos = posQ(q, o + 1);
+        out.push(
+          clampN(Math.round(q[o]), 0, 9) + 0,
+          pos[0],
+          pos[1],
+          pos[2],
+          yawI(q[o + 4]),
+          clampN(Math.round(q[o + 5]), 0, 15) + 0,
+          clampN(Math.round(q[o + 6]), 0, 65535) + 0,
+          clampN(Math.round(q[o + 7]), 0, 100) + 0
+        );
+      }
+      return { t: "gs", g: m.g, q: out };
+    },
+    gh(m) {
+      const i = Number.isInteger(m.i) ? m.i : null;
+      const w = Number.isInteger(m.w) ? m.w : null;
+      return i !== null && i >= 0 && i <= 2 && w !== null && w >= 0 && w <= 3 ? { t: "gh", i, w } : null;
+    },
     ki(m) {
       const c = intIn(m.c, 1, 65535);
       return c === null ? null : { t: "ki", c };
@@ -55653,7 +56518,15 @@ void main() {
     mc: (m) => NORM.mc({ m }),
     ki: (c) => NORM.ki({ c }),
     ck: (a) => NORM.ck({ a }),
-    rn: (tk) => NORM.rn({ tk })
+    rn: (tk) => NORM.rn({ tk }),
+    wp: (w) => NORM.wp({ w }),
+    fh: (c, w, d, src) => NORM.fh({ c, w, d, src: src ? 1 : 0 }),
+    lz: (on, q) => NORM.lz({ on, q }),
+    lb: (c) => NORM.lb({ c }),
+    gc: () => NORM.gc({}),
+    gs: (g, q) => NORM.gs({ g, q }),
+    gr: () => NORM.gr({}),
+    gh: (i, w) => NORM.gh({ i, w })
   };
 
   // src/js/store3d/net/peers-logic.js
@@ -56984,6 +57857,41 @@ void main() {
         "Na h\xF6r mal, ich arbeite hier!",
         "So wird das nichts mit dem Trinkgeld.",
         "Aua! Ich verlange eine Kurzhaarfrisur auf Kosten des Hauses. Deiner."
+      ],
+      // 1.18.0: Föhn als Waffe (frech, keine Beleidigung)
+      threat: [
+        "Siehst du den F\xF6hn? Der hat Stufe drei und schlechte Laune.",
+        "Noch ein Schritt und ich f\xF6hne dir die Frisur auf links!",
+        "Ich warne dich nur einmal: Hei\xDFluft!",
+        "Mit mir legt man sich nicht an. Ich habe einen F\xF6hn und keine Skrupel.",
+        "Gleich gibt es Dauerwelle im Schnelldurchlauf!",
+        "R\xFCck ab, sonst blase ich dir den Marsch!",
+        "Ich bin Friseurin. Ich kann Haare und Drohungen.",
+        "Zur\xFCck! Der F\xF6hn ist geladen."
+      ],
+      attack: [
+        "Hei\xDFluft-Attacke!",
+        "Das ist f\xFCr die Trockenhaube!",
+        "F\xF6hn-Schlag, Modell Meisterin!",
+        "Nimm das, du Zottelkopf!",
+        "Gleich knistert es!",
+        "So frisiert man Unruhestifter!"
+      ],
+      struck: [
+        "Aua! Meine Dauerwelle ist ganz platt!",
+        "Autsch! Das gibt Spliss im Selbstbewusstsein.",
+        "Hey! Ich bin nur die Haarfachkraft!",
+        "Das war nicht im Terminkalender!",
+        "Mein Haarspray! Ich bin ganz durcheinander!",
+        "Na super, jetzt muss ich mich neu frisieren."
+      ],
+      blinded: [
+        "Mein Auge! Ich sehe nur noch Wei\xDF wie Haarfarbe!",
+        "Wer macht das Licht an? Ich bin ganz geblendet!",
+        "Hilfe, alles flimmert! Das ist schlimmer als Blondierung!",
+        "Ich sehe nichts, aber ich schneide trotzdem!",
+        "Aua, das ist heller als der Spiegel!",
+        "Mach das aus, ich brauche meine Augen f\xFCr Spitzen!"
       ]
     },
     ronny: {
@@ -57044,6 +57952,41 @@ void main() {
         "Autsch! Das geht auf Rechnung des Hauses. Deines.",
         "Ey, ich bin Verk\xE4ufer, kein Boxsack.",
         "Na toll, jetzt ist die Frisur im Eimer. Naja, war sie vorher auch nicht."
+      ],
+      // 1.18.0: Kleiderbügel als Waffe (frech, keine Beleidigung)
+      threat: [
+        "Siehst du den B\xFCgel? Der ist aus Draht und hat Haltung.",
+        "Noch ein Schritt und du h\xE4ngst gleich im Schrank!",
+        "Ich habe einen Kleiderb\xFCgel und ich wei\xDF, wie man ihn benutzt.",
+        "Zur\xFCck, sonst gibt es Nachhilfe in Anstand, Marke Ronny!",
+        "B\xFCgel hoch, Stimmung runter. Verschwinde!",
+        "Das hier ist ein Laden, kein Ring. Aber ich kann beides.",
+        "Ich warne dich, ich habe Schulterpolster und Willen!",
+        "Gleich sitzt du auf dem Kleiderst\xE4nder!"
+      ],
+      attack: [
+        "B\xFCgel-Schlag!",
+        "Das ist f\xFCr den Kragen!",
+        "Zack, Kleiderb\xFCgel-Spezial!",
+        "Aufgeh\xE4ngt wird jetzt!",
+        "Mode tut weh, wenn man sie ignoriert!",
+        "Nimm das, du Stilmuffel!"
+      ],
+      struck: [
+        "Autsch! Meine Lederjacke, mein R\xFCcken!",
+        "Ey, das war Vintage-Haut!",
+        "Hey! Ich bin hier das Model!",
+        "Aua! So behandelt man keinen Verk\xE4ufer.",
+        "Das gibt einen blauen Fleck mit Karomuster.",
+        "Mein Vokuhila ist zerzaust, du R\xFCpel!"
+      ],
+      blinded: [
+        "Meine Sonnenbrille! Wo ist meine Sonnenbrille?",
+        "Ich sehe nur noch Neon, und zwar im falschen Ton!",
+        "Hilfe, alles ist wei\xDF! Das passt zu keiner Saison!",
+        "Aua, das ist heller als jeder Schlussverkauf!",
+        "Ich taste mich zum Kleiderst\xE4nder. Gleich bin ich da.",
+        "Mach das aus! Ich kann die Etiketten nicht lesen!"
       ]
     }
   };
@@ -64872,6 +65815,12 @@ void main() {
 
   // src/js/store3d/ui/hands.js
   var SWING_DUR = 0.28;
+  var SWING_DURS = { hand: SWING_DUR, belt: 0.36, whip: 0.55 };
+  var HELD_WEAPONS = ["belt", "whip", "laser"];
+  var WEAPON_POS = [0.27, -0.27, -0.44];
+  var LEATHER2 = 5387294;
+  var STEEL2 = 12370636;
+  var WHIP_SEGS = 7;
   var THROW_DUR = 0.35;
   var CARRY_POS = [0.24, -0.2, -0.42];
   var SIDE2 = { vhs: 14866621, dvd: 1916828, box: 13214247 };
@@ -64891,6 +65840,15 @@ void main() {
     group.add(carryGroup);
     camera.add(group);
     let swingT = 0;
+    let swingDur = SWING_DUR;
+    let swingKind = "hand";
+    let weapon = null;
+    let laserOn = false;
+    let clock = 0;
+    const weaponGroup = new Group();
+    weaponGroup.position.set(...WEAPON_POS);
+    weaponGroup.visible = false;
+    group.add(weaponGroup);
     let throwT = 0;
     let carried = null;
     let visible = true;
@@ -64903,6 +65861,106 @@ void main() {
       carried = null;
       carryGroup.visible = false;
     }
+    function clearWeapon() {
+      if (!weapon) return;
+      weaponGroup.remove(weapon.group);
+      for (const g of weapon.geos) g.dispose();
+      for (const m of weapon.mats) m.dispose();
+      weapon = null;
+      weaponGroup.visible = false;
+      weaponGroup.rotation.set(0, 0, 0);
+      weaponGroup.position.set(...WEAPON_POS);
+    }
+    function buildWeapon(id) {
+      const g = new Group();
+      const geos3 = [];
+      const mats = [];
+      const mat2 = (color2, op = 1) => {
+        const m = new MeshBasicMaterial({ color: color2, depthTest: false, transparent: true, opacity: op });
+        mats.push(m);
+        return m;
+      };
+      const part = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => {
+        geos3.push(geo);
+        const mesh = new Mesh(geo, m);
+        mesh.renderOrder = 998;
+        mesh.position.set(x, y, z);
+        mesh.rotation.set(rx, ry, rz);
+        g.add(mesh);
+        return mesh;
+      };
+      const w = { id, group: g, geos: geos3, mats };
+      if (id === "belt") {
+        const lm = mat2(LEATHER2);
+        part(new BoxGeometry(0.035, 0.012, 0.2), lm, 0, 0, 0.09, 0.15);
+        part(new BoxGeometry(0.035, 0.012, 0.16), lm, 0, -0.03, 0.24, 0.55);
+        part(new BoxGeometry(0.05, 0.04, 0.025), mat2(STEEL2), 0, 5e-3, -0.015);
+        part(new BoxGeometry(0.03, 0.025, 0.03), mat2(7304320), 0, 5e-3, -0.016);
+      } else if (id === "whip") {
+        part(new BoxGeometry(0.03, 0.03, 0.17), mat2(3088408), 0, 0, 0.02);
+        part(new BoxGeometry(0.036, 0.036, 0.02), mat2(STEEL2), 0, 0, -0.07);
+        const lm = mat2(LEATHER2);
+        const segs = [];
+        let parent = g;
+        for (let i = 0; i < WHIP_SEGS; i++) {
+          const sg = new Group();
+          sg.position.set(0, 0, i === 0 ? -0.08 : -(0.11 - (i - 1) * 6e-3));
+          parent.add(sg);
+          const len = 0.11 - i * 6e-3;
+          const t = 0.014 - i * 13e-4;
+          const bg = new BoxGeometry(t, t, len);
+          geos3.push(bg);
+          const m = new Mesh(bg, lm);
+          m.renderOrder = 998;
+          m.position.z = -len / 2;
+          sg.add(m);
+          sg.rotation.x = -0.14;
+          segs.push(sg);
+          parent = sg;
+        }
+        w.segs = segs;
+      } else if (id === "laser") {
+        part(new BoxGeometry(0.026, 0.026, 0.15), mat2(1842985), 0, 0, 0);
+        part(new BoxGeometry(0.03, 0.03, 0.03), mat2(13377572), 0, 0, 0.055);
+        part(new BoxGeometry(0.02, 0.02, 0.02), mat2(16738906), 0, 0, -0.082);
+        w.glow = part(new SphereGeometry(9e-3, 8, 6), mat2(16726832), 0, 0, -0.098);
+        w.halo = part(new SphereGeometry(0.02, 8, 6), mat2(16738906, 0.35), 0, 0, -0.098);
+        w.glow.visible = false;
+        w.halo.visible = false;
+      }
+      return w;
+    }
+    const reduced2 = () => typeof matchMedia === "function" && !!matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function updateWeapon() {
+      const id = weapon.id;
+      const wg = weaponGroup;
+      const breathe = reduced2() ? 0 : Math.sin(clock * 1.7) * 4e-3;
+      if (id === "belt") {
+        const p = swingT > 0 && swingKind === "belt" ? 1 - swingT / swingDur : 0;
+        const e = sin01(p);
+        wg.position.set(WEAPON_POS[0] - 0.5 * p + 0.1 * e, WEAPON_POS[1] + 0.1 * e + breathe, WEAPON_POS[2] - 0.12 * e);
+        wg.rotation.set(0.5 * (1 - e) - 0.2 * e, -0.2 - 1.5 * p + 0.5 * e, 0.4 * (1 - e));
+      } else if (id === "whip") {
+        const p = swingT > 0 && swingKind === "whip" ? 1 - swingT / swingDur : 0;
+        const slash = p < 0.35 ? 0 : (p - 0.35) / 0.65;
+        const rx = p === 0 ? 0.2 : p < 0.35 ? 0.2 + 1.1 * (p / 0.35) : 1.3 - 2 * Math.sin(Math.min(1, slash * 1.2) * Math.PI * 0.5) + 0.5 * slash;
+        wg.position.set(WEAPON_POS[0] - 0.12 * sin01(p), WEAPON_POS[1] + 0.2 * sin01(p) + breathe, WEAPON_POS[2] - 0.05 * sin01(slash));
+        wg.rotation.set(rx, -0.15, 0.1);
+        const crack = p > 0 ? 0.55 : 0.04;
+        weapon.segs.forEach((sg, i) => {
+          const lag = Math.max(0, slash * 1.4 - i * 0.11);
+          sg.rotation.x = -0.14 + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : reduced2() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3);
+        });
+      } else if (id === "laser") {
+        wg.position.set(WEAPON_POS[0] - 0.04, WEAPON_POS[1] + 0.05 + breathe, WEAPON_POS[2] + 0.02);
+        wg.rotation.set(0.1, 0.12, 0);
+        if (laserOn) {
+          const pulse = reduced2() ? 1 : 1 + Math.sin(clock * 14) * 0.18;
+          weapon.glow.scale.setScalar(pulse);
+          weapon.halo.scale.setScalar(pulse * 1.1);
+        }
+      }
+    }
     const api = {
       group,
       get swinging() {
@@ -64911,18 +65969,53 @@ void main() {
       get carrying() {
         return !!carried;
       },
-      swing() {
-        swingT = SWING_DUR;
+      /** Waffe in der Hand ('belt' | 'whip' | 'laser') oder null. */
+      get weapon() {
+        return weapon ? weapon.id : null;
+      },
+      get laserOn() {
+        return laserOn;
+      },
+      /** Hieb; w ('hand' | 'belt' | 'whip') überschreibt die gehaltene Waffe (Laser und Unbekanntes = Faust). */
+      swing(w) {
+        const held = weapon && (weapon.id === "belt" || weapon.id === "whip") ? weapon.id : "hand";
+        const kind = w === void 0 ? held : w === "belt" || w === "whip" ? w : "hand";
+        swingKind = kind;
+        swingDur = SWING_DURS[kind];
+        swingT = swingDur;
+      },
+      /** Laser an/aus (leuchtet nur mit gehaltenem Laser). */
+      setLaser(on) {
+        laserOn = !!on;
+        if (weapon && weapon.glow) {
+          weapon.glow.visible = laserOn;
+          weapon.halo.visible = laserOn;
+        }
       },
       throwAnim() {
         throwT = THROW_DUR;
       },
       /**
        * Gehaltener Gegenstand (1.17.0, allgemein; 1.18-Naht für Waffen/Gegenstände):
-       * spec { media: 'vhs'|'dvd'|'box', art?: Canvas } oder null (nichts in der Hand). Heute nur Hüllen.
+       * spec { media: 'vhs'|'dvd'|'box', art?: Canvas } oder { weapon: 'belt'|'whip'|'laser' } oder null (nichts in der Hand).
+       * Eine Hand: setHeld ersetzt alles bisher Gehaltene.
        */
       setHeld(spec) {
         clearCarried();
+        const wid = spec && HELD_WEAPONS.includes(spec.weapon) ? spec.weapon : null;
+        if (!wid || !weapon || weapon.id !== wid) clearWeapon();
+        if (wid) {
+          if (!weapon) {
+            weapon = buildWeapon(wid);
+            weaponGroup.add(weapon.group);
+          }
+          weaponGroup.visible = true;
+          if (weapon.glow) {
+            weapon.glow.visible = laserOn;
+            weapon.halo.visible = laserOn;
+          }
+          return;
+        }
         if (!spec) return;
         const media = SIDE2[spec.media] ? spec.media : "dvd";
         const [w, h3, d] = SIZE[media];
@@ -64950,9 +66043,12 @@ void main() {
       },
       update(dt) {
         if (!(dt > 0)) return;
+        clock += dt;
         if (swingT > 0) swingT = Math.max(0, swingT - dt);
         if (throwT > 0) throwT = Math.max(0, throwT - dt);
-        if (swingT > 0) {
+        if (weapon) updateWeapon();
+        if (swingT > 0 && swingKind !== "hand") fist.visible = false;
+        else if (swingT > 0) {
           const p = 1 - swingT / SWING_DUR;
           fist.visible = true;
           fist.position.set(0.3 - 0.36 * p, -0.32 + 0.2 * sin01(p) - 0.04 * p, -0.34 - 0.36 * sin01(p));
@@ -64967,6 +66063,7 @@ void main() {
       },
       dispose() {
         clearCarried();
+        clearWeapon();
         fist.geometry.dispose();
         fistMat.dispose();
         camera.remove(group);

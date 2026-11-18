@@ -5,7 +5,7 @@ import { entryOf, CATALOG } from '../src/js/store3d/discover/catalog.js';
 
 describe('unlocks', () => {
   it('15 Zuordnungen, Entdeckungen existieren, Codes eindeutig je Slot', () => {
-    expect(UNLOCKS).toHaveLength(15);
+    expect(UNLOCKS).toHaveLength(19);
     const seen = new Set();
     for (const u of UNLOCKS) {
       expect(entryOf(u.discover), u.discover).toBeTruthy();
@@ -15,7 +15,7 @@ describe('unlocks', () => {
       expect(seen.has(k)).toBe(false);
       seen.add(k);
     }
-    expect(new Set(UNLOCKS.map((u) => u.discover)).size).toBe(15);
+    expect(new Set(UNLOCKS.map((u) => u.discover)).size).toBe(19);
   });
 
   it('jedes Freischalt-Teil aus ids.js ist genau einmal vergeben', () => {

@@ -4866,3 +4866,398 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card.is-glitter:after {
     margin-top: 8px;
   }
 }
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy {
+  z-index: var(--lfx-store-z-hud, 1220);
+  box-sizing: border-box;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  width: 132px;
+  color: var(--lfx-store-muted, #aab4e8);
+  font-family: var(--lfx-store-neon-font, system-ui, sans-serif);
+  letter-spacing: .04em;
+  opacity: .85;
+  align-items: center;
+  gap: 8px;
+  font-size: .68rem;
+  transition: opacity .3s linear;
+  display: flex;
+  position: absolute;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy[hidden] {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-desk {
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) + 4px));
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-touch {
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 56px);
+  width: 108px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-track {
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
+  background: rgba(255, 255, 255, .16);
+  border-radius: 999px;
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-fill {
+  border-radius: inherit;
+  width: 100%;
+  height: 100%;
+  transition: width .2s linear, background-color .3s linear;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-low .lfx-store-fight-energy-track {
+  border-color: rgba(255, 120, 110, .7);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-touch {
+    top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 52px);
+    width: 88px;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-label {
+    display: none;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-shield {
+  z-index: var(--lfx-store-z-hud, 1220);
+  left: 50%;
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 12px);
+  box-sizing: border-box;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, .62));
+  color: var(--lfx-store-muted, #aab4e8);
+  font-family: var(--lfx-store-neon-font, system-ui, sans-serif);
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  opacity: .8;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: .72rem;
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-shield[hidden] {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-stars {
+  z-index: var(--lfx-store-z-hud, 1220);
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-star {
+  color: #ffd84a;
+  text-shadow: 0 0 6px rgba(255, 190, 40, .8);
+  font-size: 1.6rem;
+  line-height: 1;
+  animation: .8s ease-out forwards lfx-store-fight-star;
+  position: absolute;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-star.is-calm {
+  animation: .8s linear forwards lfx-store-fight-star-calm;
+}
+
+@keyframes lfx-store-fight-star {
+  0% {
+    opacity: 1;
+    transform: translate(0) scale(.6) rotate(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0), var(--dy, 0)) scale(1.1) rotate(180deg);
+  }
+}
+
+@keyframes lfx-store-fight-star-calm {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko {
+  z-index: calc(var(--lfx-store-z-bar, 1250) + 5);
+  color: #ffd84a;
+  opacity: 0;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: var(--lfx-store-neon-font, system-ui, sans-serif);
+  transition: opacity var(--lfx-fight-ko-fade, .7s) linear;
+  background: #000;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko[hidden] {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko.is-in {
+  opacity: 1;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko.is-out {
+  opacity: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko-stars {
+  width: 160px;
+  height: 60px;
+  position: relative;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko-star {
+  left: calc(8% + var(--i, 0) * 15%);
+  top: calc(30% + (var(--i, 0) - 3) * (var(--i, 0) - 3) * 1.5%);
+  text-shadow: 0 0 8px rgba(255, 190, 40, .7);
+  animation: 1.6s linear infinite lfx-store-fight-ko-orbit;
+  animation-delay: calc(var(--i, 0) * -.27s);
+  font-size: 1.6rem;
+  line-height: 1;
+  position: absolute;
+}
+
+@keyframes lfx-store-fight-ko-orbit {
+  0% {
+    transform: translateY(0) rotate(0);
+  }
+
+  50% {
+    transform: translateY(-8px) rotate(180deg);
+  }
+
+  100% {
+    transform: translateY(0) rotate(360deg);
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko-text {
+  letter-spacing: .3em;
+  color: var(--lfx-store-muted, #aab4e8);
+  font-size: 1.1rem;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wheel {
+  z-index: var(--lfx-store-z-bar, 1250);
+  color: var(--lfx-store-text, #f4f6ff);
+  font-family: var(--lfx-store-neon-font, system-ui, sans-serif);
+  -webkit-tap-highlight-color: transparent;
+  background: rgba(13, 19, 48, .45);
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wheel-ring {
+  width: min(70vmin, 400px);
+  height: min(70vmin, 400px);
+  position: relative;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wslot {
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
+  background: var(--lfx-store-night-2, #141c48);
+  width: 30%;
+  min-width: 44px;
+  min-height: 44px;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  border-radius: 50%;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  font-size: max(.66rem, min(2.4vmin, .9rem));
+  line-height: 1.15;
+  display: flex;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wslot.is-sel {
+  border-color: var(--lfx-store-accent, #ffd84a);
+  outline: 2px solid var(--lfx-store-accent, #ffd84a);
+  outline-offset: 2px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wslot:focus-visible {
+  border-color: var(--lfx-store-accent, #ffd84a);
+  outline: 2px solid var(--lfx-store-accent, #ffd84a);
+  outline-offset: 2px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wslot[aria-pressed="true"] {
+  background: var(--lfx-store-night-3, #1d2760);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wicon {
+  flex: none;
+  width: 38%;
+  height: 38%;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wkey {
+  color: var(--lfx-store-muted, #aab4e8);
+  font-size: .72em;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-whub {
+  box-sizing: border-box;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, .62));
+  min-width: 44px;
+  min-height: 44px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: .8rem;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wheel-ring {
+    width: min(86vh, 360px);
+    height: min(86vh, 360px);
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wslot {
+    width: 28%;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil {
+  z-index: calc(var(--lfx-store-z-bar, 1250) + 4);
+  opacity: 0;
+  pointer-events: none;
+  background: #fff;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil[hidden] {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil.is-on {
+  animation: lfx-store-fight-veil var(--lfx-fight-veil-ms, 2.5s) linear forwards;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil-spot {
+  opacity: 0;
+  background: radial-gradient(circle at 50% 46%, #fff 0, rgba(255, 244, 214, .95) 12%, rgba(255, 255, 255, 0) 38%);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil.is-on .lfx-store-fight-veil-spot {
+  animation: lfx-store-fight-veil-spot var(--lfx-fight-veil-ms, 2.5s) linear forwards;
+}
+
+@keyframes lfx-store-fight-veil {
+  0% {
+    opacity: 1;
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lfx-store-fight-veil-spot {
+  0% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-star {
+    animation: .8s linear forwards lfx-store-fight-star-calm;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko-star {
+    animation: none;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-ko, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-fill {
+    transition: none;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil.is-on .lfx-store-fight-veil-spot, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil.is-calm .lfx-store-fight-veil-spot {
+    opacity: 0;
+    animation: none;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-veil.is-calm .lfx-store-fight-veil-spot {
+  opacity: 0;
+  animation: none;
+}

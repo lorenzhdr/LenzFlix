@@ -183,6 +183,46 @@ export default {
         for (let i = 0; i < 4; i++) tone(3000 + i * 210, t + 0.05 + i * 0.09, 0.05, { type: 'sine', gain: 0.02 });
       },
       snip(t) { for (let k = 0; k < 2; k++) { noise(t + k * 0.09, 0.03, { type: 'highpass', freq: 4200, q: 2, gain: 0.12 }); tone(3600, t + k * 0.09, 0.04, { type: 'square', gain: 0.02 }); } },
+      // --- Raufen (1.18.0): alles synthetisch, kurz und dezent ---
+      slap(t) { noise(t, 0.05, { type: 'bandpass', freq: 1900, q: 1.2, gain: 0.2 }); noise(t + 0.004, 0.09, { type: 'highpass', freq: 3200, q: 0.7, gain: 0.08 }); tone(210, t, 0.07, { type: 'triangle', gain: 0.12, slide: 0.55 }); },
+      belt(t) {
+        noise(t, 0.07, { type: 'highpass', freq: 3600, q: 0.8, gain: 0.16 }); // Leder
+        noise(t + 0.06, 0.05, { type: 'bandpass', freq: 1500, q: 2, gain: 0.18 }); // Schnalle
+        tone(2400, t + 0.07, 0.1, { type: 'square', gain: 0.03, slide: 0.7 });
+        tone(140, t + 0.06, 0.08, { type: 'triangle', gain: 0.12, slide: 0.6 });
+      },
+      whip(t) {
+        const { f } = noise(t, 0.16, { type: 'bandpass', freq: 1200, q: 0.9, gain: 0.07 }); // Pfeifen im Schwung
+        f.frequency.setValueAtTime(900, t);
+        f.frequency.exponentialRampToValueAtTime(5200, t + 0.15);
+        noise(t + 0.15, 0.06, { type: 'highpass', freq: 2500, q: 0.8, gain: 0.26 }); // Knall
+        tone(1700, t + 0.15, 0.05, { type: 'square', gain: 0.05, slide: 0.4 });
+      },
+      laser(t, o) {
+        const dur = o && o.dur > 0 ? Math.min(4, o.dur) : 0.7;
+        tone(118, t, dur, { type: 'sawtooth', gain: 0.025, attack: 0.04 });
+        tone(236, t, dur, { type: 'sine', gain: 0.02, attack: 0.04 });
+      },
+      ouch(t) {
+        // stimmlos: gehauchtes „au“ aus zwei wandernden Rauschbändern
+        const a = noise(t, 0.26, { type: 'bandpass', freq: 800, q: 4, gain: 0.16 });
+        a.f.frequency.setValueAtTime(800, t);
+        a.f.frequency.exponentialRampToValueAtTime(420, t + 0.24);
+        const b = noise(t, 0.26, { type: 'bandpass', freq: 1500, q: 5, gain: 0.08 });
+        b.f.frequency.setValueAtTime(1500, t);
+        b.f.frequency.exponentialRampToValueAtTime(900, t + 0.24);
+      },
+      candy(t) { for (let i = 0; i < 4; i++) { const d = i * 0.06 + (i % 2) * 0.015; noise(t + d, 0.025, { freq: 3400 - i * 300, q: 4, gain: 0.1 }); tone(2100 + i * 230, t + d, 0.04, { type: 'triangle', gain: 0.04 }); } },
+      pop(t) { tone(420, t, 0.07, { type: 'sine', gain: 0.16, slide: 0.35 }); noise(t, 0.04, { type: 'highpass', freq: 2200, q: 0.8, gain: 0.12 }); noise(t + 0.05, 0.03, { freq: 1600, q: 3, gain: 0.05 }); },
+      ko(t) {
+        noise(t, 0.16, { freq: 240, q: 1, gain: 0.26 });
+        tone(85, t, 0.28, { type: 'triangle', gain: 0.32, slide: 0.45 });
+        for (let i = 0; i < 4; i++) { // Vogelgezwitscher
+          const s = t + 0.5 + i * 0.16;
+          tone(2400 + (i % 2) * 500, s, 0.09, { type: 'sine', gain: 0.03, slide: 1.35, send: 0.3 });
+          tone(3100, s + 0.07, 0.05, { type: 'sine', gain: 0.02, slide: 0.8 });
+        }
+      },
     };
 
     function play(name, opts) {
@@ -190,6 +230,28 @@ export default {
       const fn = SFX[name];
       if (!fn) return;
       try { fn(ac.currentTime + 0.01, opts); } catch { /* Ton ist optional */ }
+    }
+
+    // Laserpointer-Summen als Schleife (solange gehalten); laserLoop(true|false)
+    let laserNodes = null;
+    function laserLoop(on) {
+      if (!on) {
+        const n = laserNodes;
+        laserNodes = null;
+        if (n) { try { n.g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.04); setTimeout(() => { try { n.o1.stop(); n.o2.stop(); } catch { /* egal */ } }, 250); } catch { /* egal */ } }
+        return;
+      }
+      if (laserNodes || !live()) return;
+      try {
+        const g = ac.createGain();
+        g.gain.value = 0.0001;
+        g.gain.setTargetAtTime(0.022, ac.currentTime, 0.05);
+        const o1 = ac.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 118;
+        const o2 = ac.createOscillator(); o2.type = 'sine'; o2.frequency.value = 237;
+        o1.connect(g); o2.connect(g); g.connect(master);
+        o1.start(); o2.start();
+        laserNodes = { g, o1, o2 };
+      } catch { laserNodes = null; }
     }
 
     // --- Ambiente ---
@@ -297,6 +359,8 @@ export default {
 
     ctx.provide('sound', {
       play,
+      /** Laser-Summen als Schleife an/aus (1.18.0). */
+      laser(on) { laserLoop(!!on); },
       /** Audio freischalten (Nutzergeste, z. B. Klick auf „In VR betreten“). */
       unlock() { unlock(); },
       /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */
@@ -327,7 +391,7 @@ export default {
       onSound(on) {
         if (!on) {
           if (ac && master) master.gain.setTargetAtTime(0, ac.currentTime, 0.05);
-          if (ac) stopAmbient();
+          if (ac) { stopAmbient(); laserLoop(false); }
           return;
         }
         unlock();
@@ -336,7 +400,7 @@ export default {
       },
       onSuspend() {
         suspended = true;
-        if (ac) { stopAmbient(); try { ac.suspend(); } catch { /* egal */ } }
+        if (ac) { stopAmbient(); laserLoop(false); try { ac.suspend(); } catch { /* egal */ } }
       },
       onResume() {
         suspended = false;
@@ -346,6 +410,7 @@ export default {
         for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
         offs.forEach((o) => o());
         ambientRunning = false;
+        if (ac) laserLoop(false);
         if (ac) { try { ac.close(); } catch { /* egal */ } }
         ac = null; master = null; hum = null; rain = null;
         if (window.__lfxM4) delete window.__lfxM4.sound;

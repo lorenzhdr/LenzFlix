@@ -97,7 +97,7 @@ function checkTvModeBundle() {
 // 1.15.0: Open World (Stadt, LENZ PALAST, Richard, Physik, Figuren, Autos, Entdeckungen) → 1,16 MB (vorher ca. 0,90 MB); Richtwert 1,25 MB.
 // 1.16.0: Mehrspieler (Netz, Fremdfiguren, Chat) → Richtwert 1,35 MB (vom Nutzer freigegeben).
 // 1.17.0: eigene Figur (Editor, Ausweis, Außenansicht, Friseursalon) → Richtwert 1,45 MB (Nutzer-OK).
-const STORE_MIN_BUDGET = 1450 * 1000;
+const STORE_MIN_BUDGET = 1550 * 1000; // 1.18.0: NPCs und Raufen (Nutzer-OK bis 1,55 MB)
 function checkStoreBundle() {
   const code = readFileSync(resolve(dist, 'lenzstore.min.js'), 'utf8');
   // Das Jellyfin-Token erreicht das 3D-Bundle nie; nur das Ticket (docs/mp-api.md 11.1).

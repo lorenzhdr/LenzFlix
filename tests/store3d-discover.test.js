@@ -4,7 +4,7 @@ import { CATALOG, TOTAL, isKnownId, titleOf } from '../src/js/store3d/discover/c
 import { createDiscoverStore, parseFound, keyFor } from '../src/js/store3d/discover/storage.js';
 import { createGaze, isRoofRainNight } from '../src/js/store3d/discover/gaze.js';
 
-const IDS = ['golden-tape', 'graffiti', 'secret-door', 'roof-rain', 'roof', 'cat-pet', 'kiosk-snack', 'hoop-3', 'can-pyramid', 'richard-ban', 'richard-rent', 'palast-film', 'palast-tape', 'zebra', 'car-honk'];
+const IDS = ['golden-tape', 'graffiti', 'secret-door', 'roof-rain', 'roof', 'cat-pet', 'kiosk-snack', 'hoop-3', 'can-pyramid', 'richard-ban', 'richard-rent', 'palast-film', 'palast-tape', 'zebra', 'car-honk', 'cat-laser', 'gang-flee', 'salon-first', 'knockout'];
 
 function mem(initial = {}) {
   const d = { ...initial };
@@ -12,10 +12,10 @@ function mem(initial = {}) {
 }
 
 describe('Katalog', () => {
-  it('enthält genau die 15 verbindlichen IDs, eindeutig', () => {
-    expect(TOTAL).toBe(15);
+  it('enthält genau die 19 verbindlichen IDs, eindeutig', () => {
+    expect(TOTAL).toBe(19);
     expect(CATALOG.map((e) => e.id).sort()).toEqual([...IDS].sort());
-    expect(new Set(CATALOG.map((e) => e.id)).size).toBe(15);
+    expect(new Set(CATALOG.map((e) => e.id)).size).toBe(19);
   });
   it('jeder Eintrag hat Titel, Beschreibung und Hinweis', () => {
     for (const e of CATALOG) {

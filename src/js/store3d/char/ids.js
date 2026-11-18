@@ -30,8 +30,8 @@ export const UNLOCK_GLASSES = ['pilot', '3d', 'bandaid'];
 export const UNLOCK_HATS = ['goldcap', 'crown', 'catears', 'canhat', 'usher', 'curlers'];
 export const UNLOCK_BAGS = ['chips', 'vhspack', 'catpack'];
 
-/** 1.18.0 Welle 4: neue Codes ohne Geometrie/Freischaltung (Welle 5 füllt beides und leert diese Liste). Bis dahin zeichnen sie den Standard und bleiben gesperrt. */
-export const UNLOCK_PENDING = ['studjacket', 'bandaid', 'curlers', 'catpack'];
+/** 1.18.0: Freischalt-Teile ohne Geometrie (Welle 5 hat studjacket, bandaid, curlers, catpack gebaut; leer). Unbekannte Teile zeichnen den Standard und bleiben gesperrt. */
+export const UNLOCK_PENDING = [];
 
 /** Kuratierte Paletten (je 16 Töne, Index 0..15 = Farbcode; 0x1000000|rgb24 = eigene Farbe). Haut: 14 Töne, keine eigene Farbe. */
 export const SKIN = [

@@ -27,6 +27,10 @@ export const UNLOCKS = [
   mk('palast-tape', 'glasses', '3d', 'Dreidimensionale Brille'),
   mk('zebra', 'bottom', 'zebra', 'Zebrastreifen-Hose'),
   mk('car-honk', 'top', 'hivis', 'Warnweste-Shirt'),
+  mk('cat-laser', 'bag', 'catpack', 'Katzenkopf-Rucksack'),
+  mk('gang-flee', 'top', 'studjacket', 'Nietenjacke'),
+  mk('salon-first', 'hat', 'curlers', 'Lockenwickler-Haube'),
+  mk('knockout', 'glasses', 'bandaid', 'Pflaster-Veilchen'),
 ];
 
 const asSet = (found) => (found instanceof Set ? found : new Set(Array.isArray(found) ? found : found && typeof found === 'object' ? Object.keys(found) : []));

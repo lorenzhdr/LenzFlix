@@ -17,6 +17,10 @@ export const CATALOG = [
   { id: 'palast-tape', title: 'Kassette im Gepäck', desc: 'Du hast deine eigene Kassette mit ins Kino genommen. Das Personal tut so, als wäre das normal.', hint: 'Das Kino spielt auch Filme von zu Hause. Wenn man sie mitbringt.', by: 'B' },
   { id: 'zebra', title: 'Verkehrsvorbild', desc: 'Du hast bei Grün die Straße überquert. Ein Wunder, dass sich das herumspricht.', hint: 'Auf der Straße gibt es eine Regel, an die sich fast niemand hält. Sei dieser eine.', by: 'E' },
   { id: 'car-honk', title: 'Hupkonzert', desc: 'Du hast dich einem Auto in den Weg gestellt. Es hat gehupt. Ein klassischer Dialog.', hint: 'Auf der Fahrbahn wird mit Lautstärke diskutiert.', by: 'E' },
+  { id: 'cat-laser', title: 'Jagdfieber', desc: 'Du hast der Katze einen roten Punkt spendiert. Sie hat dir ihre volle Aufmerksamkeit geschenkt. Kurz.', hint: 'Manche Katzen jagen etwas, das gar nicht da ist. Gib ihr etwas Leuchtendes.', by: 'G' },
+  { id: 'gang-flee', title: 'Haltung bewahrt', desc: 'Die Bande hat die Flucht ergriffen. Du warst es, auch wenn du es nicht zugeben willst.', hint: 'Wer sich auf der Straße nicht einschüchtern lässt, wird bald allein sein.', by: 'G' },
+  { id: 'salon-first', title: 'Neuer Schnitt', desc: 'Frisch aus dem Salon. Der Spiegel und du, ihr seid euch einig.', hint: 'Gegenüber dreht sich ein Stuhl. Setz dich, die Schere wartet.', by: 'G' },
+  { id: 'knockout', title: 'Lichter aus', desc: 'Du bist umgefallen und im Laden wieder aufgewacht. Richard hat es natürlich kommentiert.', hint: 'Nicht jede Rauferei endet mit einem Handschlag. Manche enden auf dem Boden.', by: 'G' },
 ];
 
 export const TOTAL = CATALOG.length;

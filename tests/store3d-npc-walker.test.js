@@ -76,6 +76,21 @@ describe('Passanten-Zustandsautomat', () => {
     expect(w.state).not.toBe('flee');
   });
 
+  it('Treffer nach Temperament: normal schimpft und läuft weiter, hot hält und droht', () => {
+    const n = createWalker(g, seeded(8), { edge: walkEdge, dir: 1, s: 3 });
+    const ev = hitWalker(n, { x: 1, z: 0 }, seeded(1), 'normal');
+    expect(ev.action).toBe('scold');
+    const env = envOf({ signal: { walkMain: true, walkSide: true } });
+    run(n, 1, env);
+    expect(n.state).toBe('walk');
+    const h = createWalker(g, seeded(8), { edge: walkEdge, dir: 1, s: 3 });
+    expect(hitWalker(h, { x: 1, z: 0 }, seeded(1), 'hot').action).toBe('threat');
+    run(h, 1, env);
+    expect(h.state).toBe('hold');
+    run(h, 5, env);
+    expect(['walk', 'browse']).toContain(h.state);
+  });
+
   it('Kegel-Treffer: ±25°, 1,6 m, nächste Person gewinnt', () => {
     const people = [{ x: 1.2, z: 0 }, { x: 0.8, z: 0.2 }, { x: 0, z: 1.2 }, { x: 3, z: 0 }, { x: 1.4, z: 1.2 }];
     expect(pickInCone(people, { x: 0, z: 0 }, { x: 1, z: 0 }, 1.6, 25).index).toBe(1);

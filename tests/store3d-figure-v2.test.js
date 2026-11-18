@@ -266,12 +266,13 @@ describe('Figur v2: Handle', () => {
     mat.dispose();
   });
 
-  it('1.18-Naht: HAND_R und setHandItem (No-op)', () => {
+  it('HAND_R unverändert; setHandItem meldet die gesetzte ID (Gegenstände: store3d-figure-handitem.test.js)', () => {
     expect(HAND_R.bone).toBe('armR');
     expect(HAND_R.offset).toEqual([0.04, -0.5, -0.12]);
     const f = createFigure(baseLook());
     expect(f.setHandItem('x')).toBeNull();
     expect(f.setHandItem(null)).toBeNull();
+    expect(f.setHandItem('whip')).toBe('whip');
     f.dispose();
   });
 });

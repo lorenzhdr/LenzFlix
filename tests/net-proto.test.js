@@ -11,7 +11,7 @@ describe('eingefrorene Codes', () => {
   it('SUB, PV, CAPS, Flags', () => {
     expect(P.SUB).toBe('lfx-mp.1');
     expect(P.PV).toBe(1);
-    expect(P.CAPS).toEqual(['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look']);
+    expect(P.CAPS).toEqual(['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight']);
     expect(P.F).toEqual({ NAME: 1, FILM: 2, CHAT: 4, VR: 8 });
     expect(P.R).toEqual({ SHOP: 0, PALAST: 1, OUT: 2 });
   });
@@ -229,8 +229,8 @@ describe('Golden-Datei des Workers (chat.json)', () => {
   });
 });
 
-describe('Golden-Dateien des Workers (phys.json, rich.json, look.json)', () => {
-  for (const name of ['phys', 'rich', 'look']) {
+describe('Golden-Dateien des Workers (phys.json, rich.json, look.json, fight.json)', () => {
+  for (const name of ['phys', 'rich', 'look', 'fight']) {
     const file = new URL(`../charts-worker/test/fixtures/mp-golden/${name}.json`, import.meta.url);
     const exists = fs.existsSync(file);
     const cases = exists ? JSON.parse(fs.readFileSync(file, 'utf8')).c2s || [] : [];
@@ -244,6 +244,19 @@ describe('Golden-Dateien des Workers (phys.json, rich.json, look.json)', () => {
       expect(n).toBeGreaterThan(3);
     });
   }
+  it('fight.json: auch verworfene Fälle werden vom Client verworfen', () => {
+    const file = new URL('../charts-worker/test/fixtures/mp-golden/fight.json', import.meta.url);
+    const cases = JSON.parse(fs.readFileSync(file, 'utf8')).c2s;
+    for (const c of cases) expect(P.normalizeOut(c.in), c.name).toEqual(c.out);
+    expect(cases.length).toBeGreaterThan(20);
+  });
+  it('fight: CAPS/CAP_OF/Builder', () => {
+    expect(P.CAPS[P.CAPS.length - 1]).toBe('fight');
+    for (const t of ['wp', 'fh', 'lz', 'lb', 'gc', 'gs', 'gr', 'gh']) expect(P.CAP_OF[t]).toBe('fight');
+    expect(P.build.fh(3, 1, [100, 0], 1)).toEqual({ t: 'fh', c: 3, w: 1, d: [100, 0], src: 1 });
+    expect(P.build.wp(9)).toBeNull();
+    expect(P.build.gc()).toEqual({ t: 'gc' });
+  });
   it('look.json: auch verworfene Fälle werden vom Client verworfen', () => {
     const file = new URL('../charts-worker/test/fixtures/mp-golden/look.json', import.meta.url);
     const cases = JSON.parse(fs.readFileSync(file, 'utf8')).c2s;

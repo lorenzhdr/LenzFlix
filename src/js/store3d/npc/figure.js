@@ -12,7 +12,7 @@ import { box, quad, merge } from '../util/geo.js';
 import { sph } from '../modules/m4-geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { lookKey } from './looks.js';
-import { buildV2Parts } from './figure-parts.js';
+import { buildV2Parts, buildHandItem, HAND_ITEMS } from './figure-parts.js';
 import { Animator } from './anim.js';
 import { angDiff } from '../modules/m4-util.js';
 
@@ -70,12 +70,14 @@ function fullTopY(look) {
 }
 
 /** Cache-Eintrag für den Look holen (Referenz +1, ggf. bauen). ego (nur v2): Geometrie mit Beinen, Schuhen und Hüfte (Ich-Sicht). */
-function acquire(look, ego = false) {
+function acquire(look, ego = false, item = null) {
   const useEgo = !!ego && look.v === 2;
-  const key = lookKey(look) + (useEgo ? '|ego' : '');
+  // Gegenstand (1.18): eigener Cache-Zweig; in der Ich-Sicht (Arme weg) ohne Gegenstand. Ohne Gegenstand bleibt der Schlüssel unverändert (bitgleich).
+  const useItem = item && !ego && HAND_ITEMS.includes(item) ? item : null;
+  const key = lookKey(look) + (useEgo ? '|ego' : '') + (useItem ? '|h:' + useItem + (useItem === 'umbrella' ? ':' + itemColorKey(look) : '') : '');
   let e = geoCache.get(key);
   if (!e) {
-    const g = bodyGeometry(look, useEgo);
+    const g = bodyGeometry(look, useEgo, useItem);
     e = { key, g, refs: 0, used: 0, topY: useEgo ? fullTopY(look) : maxY(g) };
     geoCache.set(key, e);
   }
@@ -102,9 +104,15 @@ export function figureCacheInfo() {
   return { size: geoCache.size, free, refs };
 }
 
-/** Geometrie je Look (gemergt, mit Skin-Attributen), ungecacht. */
-function bodyGeometry(look, ego = false) {
+/** Farbanteil des Cache-Schlüssels für Gegenstände, deren Farbe nicht in lookKey steckt (Schirm). */
+function itemColorKey(look) {
+  return Array.isArray(look.umbrellaColor) ? look.umbrellaColor.map((v) => Math.round(v * 255)).join('.') : '-';
+}
+
+/** Geometrie je Look (gemergt, mit Skin-Attributen), ungecacht. item: Gegenstand an der rechten Hand (im selben Mesh, Bone armR). */
+function bodyGeometry(look, ego = false, item = null) {
   const parts = look.v === 2 ? buildV2Parts(look, { ego }) : oldParts(look);
+  if (item) parts[B.armR].push(...buildHandItem(look, item));
   const geos = Object.entries(parts).filter(([, list]) => list.length).map(([bi, list]) => skinned(list, Number(bi)));
   const g = merge(geos);
   g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
@@ -232,7 +240,8 @@ export function createFigure(look, hooks = {}) {
   const bArmR = mk(0.26, 1.36 - SPINE_Y, 0, bSpine);
   const bLegL = mk(-0.1, SPINE_Y, 0, bRoot);
   const bLegR = mk(0.1, SPINE_Y, 0, bRoot);
-  let entry = acquire(look, ego);
+  let handItem = typeof look.handItem === 'string' && HAND_ITEMS.includes(look.handItem) ? look.handItem : null;
+  let entry = acquire(look, ego, handItem);
   const mesh = new SkinnedMesh(entry.g, hooks.material || material());
   mesh.add(bRoot);
   rig.add(mesh);
@@ -293,7 +302,7 @@ export function createFigure(look, hooks = {}) {
     setLook(next) {
       if (disposed || !next) return;
       const old = entry;
-      entry = acquire(next, ego);
+      entry = acquire(next, ego, handItem);
       handle.look = next;
       look = next;
       mesh.geometry = entry.g;
@@ -305,7 +314,7 @@ export function createFigure(look, hooks = {}) {
     setEgo(on) {
       ego = !!on;
       // v2: nur Beine, Schuhe und Hüfte (eigene Geometrie); alter Pfad: Kopf/Arme per Bone-Skalierung weg (unverändert)
-      const next = acquire(look, ego);
+      const next = acquire(look, ego, handItem);
       if (next === entry) release(next);
       else { const old = entry; entry = next; mesh.geometry = entry.g; release(old); }
       const s = ego ? 0 : 1;
@@ -317,11 +326,23 @@ export function createFigure(look, hooks = {}) {
     },
     isEgo: () => ego,
     /**
-     * 1.18-Naht: Gegenstand/Waffe an der rechten Hand (Ort: HAND_R). In 1.17 immer null; ohne Wirkung.
+     * Gegenstand/Waffe an der rechten Hand (Ort: HAND_R), im selben gemergten Mesh (kein zusätzlicher Draw-Call; eigener Cache-Zweig je Gegenstand).
+     * IDs: belt, whip, laser, bag, umbrella, shopping, dryer, hanger, candy, popcorn (die letzten zwei: leere Wurfhand). null/unbekannt = Hand leer.
+     * Der Gegenstand bleibt über setLook erhalten; in der Ich-Sicht (Arme ausgeblendet) wird er nicht gebaut.
      * @param {string|null} id Gegenstands-ID oder null
-     * @returns {null}
+     * @returns {string|null} die gesetzte ID, null wenn die Hand leer ist
      */
-    setHandItem(id) { void id; return null; },
+    setHandItem(id) {
+      if (disposed) return null;
+      const want = typeof id === 'string' && HAND_ITEMS.includes(id) ? id : null;
+      if (want === handItem) return handItem;
+      handItem = want;
+      const next = acquire(look, ego, handItem);
+      if (next === entry) release(next);
+      else { const old = entry; entry = next; mesh.geometry = entry.g; release(old); }
+      return handItem;
+    },
+    getHandItem: () => handItem,
     show() { root.visible = true; },
     hide() { root.visible = false; },
     /** Netzzustand { x, y, z (mm), yaw (0,01), v, a, p, s, t }. */
