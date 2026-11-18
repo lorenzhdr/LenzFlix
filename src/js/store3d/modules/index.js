@@ -56,6 +56,7 @@ import member from './member.js';
 import selfview from './selfview.js';
 import shopmirror from './shopmirror.js';
 import salon from './salon.js';
+import xrchar from './xrchar.js';
 // --- Mehrspieler (1.16): imports ---
 import net from './net.js';
 
@@ -94,6 +95,7 @@ export const MODULES = [
   selfview,
   shopmirror,
   salon,
+  xrchar,
   // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
   net,
 ];

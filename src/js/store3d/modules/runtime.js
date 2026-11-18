@@ -52,6 +52,11 @@ export class ModuleHost {
       scene: app.engine.scene, camera: app.engine.camera, renderer: app.engine.renderer, layout: app.layout,
       catalog: app.deps.catalog, deps: app.deps, opts: app.opts, isPhone: app.phone, isTouch: app.touch,
       quality: () => app.engine.preset.level,
+      /** 1.17.0: Szenenwechsel der Bühne (Studio für Editor/Ausweisfoto); null = zurück zur Laden-Szene. Muster: VR-Kino (cinema.js). */
+      stage: {
+        setScene: (s) => { if (app.engine && typeof app.engine.setScene === 'function') app.engine.setScene(s || app.engine.storeScene); },
+        isStore: () => !app.engine || !app.engine.storeScene || app.engine.scene === app.engine.storeScene,
+      },
       soundOn: () => app.sound,
       /** Aussetzung läuft (Hülle unmount): im VR-Kino bleibt das false, obwohl onSuspend gerufen wird. */
       suspended: () => !!app.suspended,
