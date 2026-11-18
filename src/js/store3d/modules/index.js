@@ -50,6 +50,12 @@ import kiosk from './kiosk.js';
 import palast from './palast.js';
 // --- Welle 2 discover: imports ---
 import discover from './discover.js';
+// --- Figur (1.17): imports ---
+import avatar from './avatar.js';
+import member from './member.js';
+import selfview from './selfview.js';
+import shopmirror from './shopmirror.js';
+import salon from './salon.js';
 // --- Mehrspieler (1.16): imports ---
 import net from './net.js';
 
@@ -82,6 +88,12 @@ export const MODULES = [
   showcase,
   // --- Welle 2 discover (nach city/daytime: braucht Dachgruppe und Wetter) ---
   discover,
+  // --- Figur (1.17, Stubs aus Welle 0; vor net) ---
+  avatar,
+  member,
+  selfview,
+  shopmirror,
+  salon,
   // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
   net,
 ];

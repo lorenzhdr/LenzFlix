@@ -9,6 +9,7 @@
 //   Debug: window.__devMp = Fake-Welt (stats(), bots.stats(), setPrefs()). Welle 2: ?mpadmin=1 (ich bin Jellyfin-Admin im Fake: Kick-Knöpfe), ?mpbotadmin=<Index> (dieser Bot ist Admin, Standard keiner),
 //   ?botsocial=0 (Bots chatten/emoten nicht von selbst), ?mpchat=0 (Chat-Schalter aus). window.__devMp.bots.say(i,text)/emote(i,code)/park(i,xcm,zcm)/inbox(i)/kick(i,c);
 //   window.__devFigs = alle per npc.figure() angelegten Figuren (fig.getNetState().a = Animationscode, nur Mehrspieler-Läufe mit ?mp=…).
+// opts.dev: alle Query-Parameter (1.17.0), Module lesen ihre eigenen
 (function () {
   var q = new URLSearchParams(location.search);
   var touch = q.get('touch') === '1';
@@ -630,6 +631,7 @@
       openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true, touchApi: q.get('tapi') === 'pointer' ? 'pointer' : undefined,
       spawn: ['shop', 'street', 'palast', 'yard', 'roof', 'kiosk', 'alley'].indexOf(q.get('spawn')) >= 0 ? q.get('spawn') : null,
       devFlags: { npc: q.get('npc') !== '0', cars: q.get('cars') !== '0', palast: q.get('palast') === '1', brawl: q.get('brawl') === '1', props: q.get('props') !== '0' },
+      dev: Object.fromEntries(new URLSearchParams(location.search)),
       hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,
     }, mpOpts));
     window.__store = inst;

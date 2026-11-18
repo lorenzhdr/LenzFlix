@@ -142,6 +142,22 @@ export class StoreApp {
       getFps: () => this.showFps,
       getBigCovers: () => this.bigCovers,
       getDiscover: () => { const d = this.mods && this.mods.ctx.use('discover'); return d ? d.summary() : null; },
+      // 1.17.0: „Figur …“ / „Mitgliedsausweis“ nur mit echten Daten der Provider (Stubs liefern null → ausgeblendet)
+      onFigure: () => {
+        if (this.mode !== 'paused') return;
+        const av = this.modUse('avatar');
+        if (!av) return;
+        this.pause.hide(); this.setMode('play'); // wie onSearch: der Editor ist ein Overlay, kein requestLock
+        Promise.resolve().then(() => av.openEditor('pause')).catch((err) => console.warn('[LenzFlix Store3D] Figur-Editor', err));
+      },
+      getFigureEnabled: () => { const av = this.modUse('avatar'); return !!av && av.code() !== null; },
+      onCard: () => {
+        const m = this.modUse('member');
+        const data = m && m.cardData();
+        if (!data) return;
+        Promise.resolve().then(() => m.showCard(data, { mode: 'self' })).catch((err) => console.warn('[LenzFlix Store3D] Ausweis', err));
+      },
+      getCardEnabled: () => { const m = this.modUse('member'); return !!m && m.cardData() !== null; },
       getMp: () => { const n = this.mods && this.mods.ctx.use('net'); return n && n.menu ? n.menu() : null; },
       renderMp: (el) => { const n = this.mods && this.mods.ctx.use('net'); if (n && n.renderMenu) n.renderMenu(el); },
       getVoiceInfo: () => { const c = this.mods && this.mods.ctx.use('cashier'); return c && c.voiceInfo ? c.voiceInfo() : null; },
@@ -237,6 +253,7 @@ export class StoreApp {
       onThrow: () => this.doThrow('key'),
       onChat: () => this.doChat('key'),
       onEmote: () => this.doEmote('key'),
+      onView: () => { const sv = this.modUse('selfview'); if (sv && this.canAct()) sv.toggle(); }, // Taste V (1.17.0)
       onCarry: () => this.holdview.carryOut(),
       onZoom: (z) => this.setZoom(z),
       getZoom: () => this.zoom,
@@ -295,11 +312,21 @@ export class StoreApp {
     this.xr.probe().then(() => { if (!this.disposed) this.syncUi(); });
     if (this.suspended) this.pauseParts();
 
-    // Intro-Provider (Modul): nach dem ersten Bild, außer es wurde in dieser Sitzung schon gesehen
+    await this.startSequence(r);
+  }
+
+  /** Boot-Ende (1.17.0): erstes Bild, Figur-Gate (avatar), Intro (außer skipIntro), dann 'enter'. `r` = opts.restore. */
+  async startSequence(r) {
+    // Erstes Bild immer abwarten (1.17.0), dann Figur-Gate (avatar), dann Intro-Provider (Modul; außer skipIntro)
     const intro = this.mods.ctx.use('intro');
-    if (intro && !this.opts.skipIntro) {
-      await new Promise((res) => { this.onReadyHook = res; if (this.ready) res(); });
+    await new Promise((res) => { this.onReadyHook = res; if (this.ready) res(); });
+    if (this.disposed) return;
+    const av = this.mods.ctx.use('avatar');
+    if (av && av.needsGate()) {
+      try { await av.gate(); } catch (err) { console.warn('[LenzFlix Store3D] Figur-Gate', err); }
       if (this.disposed) return;
+    }
+    if (intro && !this.opts.skipIntro) {
       try { await intro.run(); } catch (err) { console.warn('[LenzFlix Store3D] Intro', err); }
       if (this.disposed) return;
     }
@@ -461,10 +488,32 @@ export class StoreApp {
     return this.player.y > 0.5 ? l.filter((i) => i.anyHeight) : l;
   }
 
+  /** Provider eines Moduls (oder undefined, z. B. vor dem Modul-Start). */
+  modUse(name) { const c = this.mods && this.mods.ctx; return c && c.use ? c.use(name) : undefined; }
+
   actionEvent(name, source) {
     const cam = this.engine.camera;
     cam.getWorldDirection(this._d);
-    return { name, source, aim: this.aim, origin: cam.position.clone(), dir: this._d.clone() };
+    const sv = this.modUse('selfview');
+    const origin = sv && sv.mode() === 'third' ? sv.eye(new Vector3()) : cam.position.clone(); // Außenansicht: Auge der Figur statt Kamera
+    return { name, source, aim: this.aim, origin, dir: this._d.clone(), weapon: 'hand', range: 1.6, max: 1 };
+  }
+
+  /**
+   * Zielstrahl (1.17.0). Ego: Kamera und Blickrichtung (bzw. der übergebene Strahl `ray`, z. B. Tippen), bitgleich zu früher.
+   * Außenansicht: Ursprung = Projektion des Auges (selfview.eye) auf den Strahl, Richtung = Strahlrichtung.
+   * Schreibt in `o`/`d` (Vector3) und gibt `o` zurück.
+   */
+  aimRay(o, d, ray) {
+    const cam = this.engine.camera;
+    if (ray) { o.copy(ray.origin); d.copy(ray.direction); } else { o.copy(cam.position); cam.getWorldDirection(d); }
+    const sv = this.modUse('selfview');
+    if (sv && sv.mode() === 'third') {
+      const e = sv.eye(this._e || (this._e = new Vector3()));
+      const t = Math.max(0, (e.x - o.x) * d.x + (e.y - o.y) * d.y + (e.z - o.z) * d.z);
+      o.addScaledVector(d, t);
+    }
+    return o;
   }
 
   /**
@@ -474,7 +523,8 @@ export class StoreApp {
   doUse(src = 'key') {
     if (!this.canAct()) return false;
     const a = this.aim;
-    if (a && (!a.ia || this.iaReachable(a.ia))) {
+    // Interaktionen mit noClick lösen nur per E/Touch aus; ein Klick läuft weiter (Aktion 'use' → doHit)
+    if (a && (!a.ia || this.iaReachable(a.ia)) && !(src === 'click' && a.ia && a.ia.noClick)) {
       if (a.ia) a.ia.onUse(); else this.take(a.info.itemId);
       return true;
     }
@@ -627,10 +677,9 @@ export class StoreApp {
   }
 
   updateAim() {
-    const { camera } = this.engine;
-    camera.getWorldDirection(this._d);
-    let hit = pickCover(this.shelves.faceViews, camera.position, this._d, 2.5);
-    const iaHit = pickBoxes(this.groundIas(), camera.position, this._d, 2.5, this.occluders());
+    const o = this.aimRay(this._ao || (this._ao = new Vector3()), this._d);
+    let hit = pickCover(this.shelves.faceViews, o, this._d, 2.5);
+    const iaHit = pickBoxes(this.groundIas(), o, this._d, 2.5, this.occluders());
     if (iaHit && (!hit || iaHit.t < hit.t)) hit = iaHit;
     const prev = this.aim;
     if (!hit) {
@@ -663,7 +712,8 @@ export class StoreApp {
     const ndc = { x: ((clientX - r.left) / r.width) * 2 - 1, y: -((clientY - r.top) / r.height) * 2 + 1 };
     camera.updateMatrixWorld(true);
     this.rc.setFromCamera(ndc, camera);
-    const { origin, direction } = this.rc.ray;
+    const origin = this.aimRay(this._ao || (this._ao = new Vector3()), this._ad || (this._ad = new Vector3()), this.rc.ray);
+    const direction = this._ad;
     this.pendingTake = this.pendingUse = null;
     const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
     const iaHit = pickBoxes(this.groundIas(), origin, direction, 9, this.occluders());

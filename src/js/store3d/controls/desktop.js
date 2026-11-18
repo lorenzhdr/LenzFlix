@@ -12,7 +12,7 @@ const LOCK_COOLDOWN = 1150; // Chrome lehnt requestPointerLock() kurz nach dem V
 const LOCK_RECENT = 3000;
 const LOCK_SILENT = 400; // kommt nach requestPointerLock() so lange weder Lock noch Fehler, gilt der Versuch als gescheitert
 /** Aktionstasten: Code -> ctx-Rückruf (nur im Modus 'play' abgefangen, damit Leertaste in Menüs und Panels weiter Knöpfe auslöst). */
-const ACTIONS = { Space: 'onJump', KeyF: 'onHit', KeyG: 'onThrow' };
+const ACTIONS = { Space: 'onJump', KeyF: 'onHit', KeyG: 'onThrow', KeyV: 'onView' };
 /** Mehrspieler-Tasten (Enter/T): nur im Modus 'play' mit Pointer-Lock und nur verbraucht, wenn der Rückruf true liefert (sonst bleibt die Taste unberührt, wie in 1.15). */
 const MP_ACTIONS = { Enter: 'onChat', NumpadEnter: 'onChat', KeyT: 'onEmote' };
 const ESC_DEBOUNCE = 300; // Esc, das den Lock beendet hat, darf das Pause-Menü nicht sofort wieder schließen

@@ -60,6 +60,8 @@ export function voiceNote(info, wantOnline = false) {
  *   onTouchTune?({ holdInvertY?, holdInvertX?, lookFlipY?, lookFlipX?, touchSens?, touchRegrip? }) / getTouchTune?() → dieselben Felder (Menü „Touch-Steuerung“, nur Touch; Standard: nichts umgekehrt, 'normal', Umgreifen 'short'),
  *   getInputInfo?() → string | null (Diagnosezeile im Panel „Touch-Steuerung“, nur Schema 'game'; wird bei offenem Panel jede Sekunde neu gelesen),
  *   getDiscover?() → { count, total, items:[{id,found,title,desc,hint}] } | null (Eintrag „Entdeckungen (n/N)“ + Liste; fehlt = ausgeblendet),
+ *   onFigure?() / getFigureEnabled?() → bool (1.17.0: Eintrag „Figur …“; fehlt oder false = ausgeblendet),
+ *   onCard?() / getCardEnabled?() → bool (1.17.0: Eintrag „Mitgliedsausweis“; fehlt oder false = ausgeblendet),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
 export function createPause(host, a) {
@@ -84,6 +86,10 @@ export function createPause(host, a) {
   vrb.hidden = true;
   mk('Suche', () => a.onSearch());
   const dsc = mk('', () => openDiscover());
+  const fig = mk('Figur …', () => { if (a.onFigure) a.onFigure(); }); // 1.17.0: nur mit a.onFigure (und getFigureEnabled → true)
+  fig.hidden = true;
+  const card = mk('Mitgliedsausweis', () => { if (a.onCard) a.onCard(); }); // 1.17.0: nur mit a.onCard (und getCardEnabled → true)
+  card.hidden = true;
   mk('Klassische Ansicht', () => a.onClassic());
   const q = mk('', () => {
     const next = QUALITY_NEXT[a.getQuality()] || 'auto';
@@ -327,6 +333,9 @@ export function createPause(host, a) {
     const dd = discoverNow();
     dsc.hidden = !dd;
     if (dd) dsc.textContent = `Entdeckungen (${dd.count}/${dd.total})`;
+    const enabledNow = (fn) => { try { return !fn || !!fn(); } catch { return false; } };
+    fig.hidden = !(a.onFigure && enabledNow(a.getFigureEnabled));
+    card.hidden = !(a.onCard && enabledNow(a.getCardEnabled));
     vrb.hidden = !(a.getVr && a.getVr());
     q.textContent = `Qualität: ${QUALITY_LABEL[a.getQuality()] || 'Auto'}`;
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;

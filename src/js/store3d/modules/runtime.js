@@ -25,6 +25,8 @@ export class ModuleHost {
     this.highlights = new Map();
     this.frozen = false;
     this.cam = null;
+    this.rig = null; // ctx.player.camera.setRig (1.17.0)
+    this.rigOn = false;
     this.look = null;
     this.walkPending = null;
     this.overlayState = null;
@@ -127,6 +129,8 @@ export class ModuleHost {
         camera: {
           flyTo: (pos, target, ms) => self.flyTo(pos, target, ms),
           release: () => self.release(),
+          /** 1.17.0: fn(camera, dt) läuft nach player.applyCamera, solange keine Modul-Kamera (flyTo) aktiv ist; true = Kamera gesetzt. null löst. */
+          setRig: (fn) => { self.rig = typeof fn === 'function' ? fn : null; if (!self.rig) self.rigOn = false; },
         },
       },
       overlay: {
@@ -344,8 +348,13 @@ export class ModuleHost {
   /** Nach player.applyCamera aufrufen; liefert true, solange die Modul-Kamera aktiv ist. */
   cameraStep(dt) {
     const c = this.cam;
-    if (!c) return false;
     const cam = this.app.engine.camera;
+    if (!c) {
+      // Außenansicht (1.17.0): Kamera-Rig nur ohne Modul-Kamera (flyTo hat Vorrang)
+      this.rigOn = false;
+      if (this.rig) { try { this.rigOn = this.rig(cam, dt) === true; } catch (err) { console.warn('[LenzFlix Store3D] Kamera-Rig', err); this.rig = null; } }
+      return false;
+    }
     if (c.t < 1) {
       c.t = Math.min(1, c.t + dt / c.dur);
       const k = ease(c.t);
@@ -495,6 +504,7 @@ export class ModuleHost {
     this.handles = [];
     this.overlayClose();
     this.release();
+    this.rig = null;
     for (const id of [...this.highlights.keys()]) this.highlight(id, false);
     for (const t of this.tracked) {
       try {
