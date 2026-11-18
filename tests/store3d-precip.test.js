@@ -152,7 +152,7 @@ describe('Modul precip', () => {
     expect(m.material.uniforms.uBoxY.value.length).toBe(MAX_BOXES);
     expect(m.material.uniforms.uBoxA.value[0].z).toBeGreaterThan(0); // Laden
     const seed = m.geometry.attributes.aSeed;
-    const maxN = Math.max(...['low', 'mid', 'high'].map((l) => presetFor(l, false).precip));
+    const maxN = Math.max(...['low', 'mid', 'high', 'ultra'].map((l) => presetFor(l, false).precip));
     expect(seed.count).toBe(maxN * 4);
     expect(m.geometry.index.count).toBe(maxN * 6);
     expect(m.material.transparent).toBe(true);

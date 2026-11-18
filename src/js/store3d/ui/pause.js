@@ -1,8 +1,8 @@
 // VIDEOTHEK LENZ · Pause-Menü (DOM im Host).
 import { el } from './hud.js';
 
-const QUALITY_LABEL = { auto: 'Auto', low: 'Niedrig', mid: 'Mittel', high: 'Hoch' };
-const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'auto' };
+const QUALITY_LABEL = { auto: 'Auto', low: 'Niedrig', mid: 'Mittel', high: 'Hoch', ultra: 'Ultra' };
+const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'ultra', ultra: 'auto' };
 
 /** Touch-Schemata: Dreier-Zyklus Spiel → Joystick → Touch. */
 const SCHEME_LABEL = { game: 'Spiel', joystick: 'Joystick', touch: 'Touch' };
@@ -92,7 +92,8 @@ export function createPause(host, a) {
   card.hidden = true;
   mk('Klassische Ansicht', () => a.onClassic());
   const q = mk('', () => {
-    const next = QUALITY_NEXT[a.getQuality()] || 'auto';
+    let next = QUALITY_NEXT[a.getQuality()] || 'auto';
+    if (next === 'ultra' && !(typeof a.canUltra === 'function' && a.canUltra())) next = 'auto'; // Ultra nur auf freigegebenen Geräten
     a.onQuality(next);
     refresh();
   });

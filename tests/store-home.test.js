@@ -99,6 +99,23 @@ describe('Routen', () => {
 });
 
 describe('mount', () => {
+  const withScreen = async (coarse, w, h, expected) => {
+    const sw = Object.getOwnPropertyDescriptor(window.screen, 'width');
+    const sh = Object.getOwnPropertyDescriptor(window.screen, 'height');
+    Object.defineProperty(window.screen, 'width', { value: w, configurable: true });
+    Object.defineProperty(window.screen, 'height', { value: h, configurable: true });
+    window.matchMedia = vi.fn((q) => ({ matches: coarse && q.includes('coarse'), media: q, addEventListener() {}, removeEventListener() {} }));
+    try {
+      await mountOk();
+      expect(captured.opts.ultraOk).toBe(expected);
+    } finally {
+      delete window.matchMedia;
+      if (sw) Object.defineProperty(window.screen, 'width', sw); else delete window.screen.width;
+      if (sh) Object.defineProperty(window.screen, 'height', sh); else delete window.screen.height;
+    }
+  };
+  it('ultraOk: kleiner Touch-Bildschirm (Handy) nein', () => withScreen(true, 390, 844, false));
+  it('ultraOk: Tablet/Touch-Laptop (grob, aber groß) ja', () => withScreen(true, 1280, 800, true));
   it('baut Bühne als erstes Kind von #homeTab und ruft create() mit deps/opts', async () => {
     await mountOk();
     const tab = document.getElementById('homeTab');
@@ -107,7 +124,7 @@ describe('mount', () => {
     expect(tab.firstElementChild.contains(captured.host)).toBe(true);
     expect(document.documentElement.classList.contains('lfx-store-home-on')).toBe(true);
     expect(captured.opts).toEqual({
-      quality: 'auto', sound: true, showFps: false, voiceOnline: false, voiceName: '', voicePitch: 'tief', bigCovers: true, touchControl: 'game', touchTune: { touchSens: 'normal', touchRegrip: 'short', holdInvertY: false, holdInvertX: false, lookFlipY: false, lookFlipX: false }, vr: { turn: 'snap', vignette: true, height: 'auto', quality: 'mid', seat: 'mid' }, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
+      quality: 'auto', sound: true, showFps: false, voiceOnline: false, voiceName: '', voicePitch: 'tief', bigCovers: true, touchControl: 'game', touchTune: { touchSens: 'normal', touchRegrip: 'short', holdInvertY: false, holdInvertX: false, lookFlipY: false, lookFlipX: false }, vr: { turn: 'snap', vignette: true, height: 'auto', quality: 'mid', seat: 'mid' }, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false, ultraOk: true,
     });
     for (const k of ['catalog', 'user', 'imageUrl', 'getItem', 'getSeasons', 'getEpisodes', 'setFavorite', 'setPlayed', 'search', 'loadTrailer', 'play', 'toast',
       'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal', 'onXr', 'cinema']) {

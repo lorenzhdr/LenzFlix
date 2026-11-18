@@ -22,6 +22,7 @@ export const LAYER_MIRROR = 2;
 
 /** Renderrate des Spiegels in Hz je Qualitätsstufe (0 = matt, kein Render). */
 export function mirrorHz(level) {
+  if (level === 'ultra') return 30; // Startwert, Messung legt fest
   if (level === 'high') return 20;
   if (level === 'mid') return 10;
   return 0;

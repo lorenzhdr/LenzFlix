@@ -10,6 +10,7 @@ import { makeCanvas } from '../world/textures.js';
 import { disposeTree } from '../util/geo.js';
 import { PITCH_FACTOR } from './voice.js';
 import { angDiff } from './m4-util.js';
+import { createUltra } from '../engine/ultra.js';
 
 const ease = (t) => t * t * (3 - 2 * t);
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
@@ -40,6 +41,9 @@ export class ModuleHost {
     this.texActive = 0;
     this.ac = new AbortController();
     this.ctx = this.makeCtx();
+    // 1.19.0: Ultra-Registry (engine/ultra.js) als Provider 'ultra'; Frame/Stufenwechsel/dispose hängen an update/hook/dispose dieser Klasse.
+    this.ultra = createUltra(this.ctx);
+    this.providers.set('ultra', this.ultra.api);
   }
 
   /** Eingabe gesperrt (freeze() oder Kamera-Übernahme). */
@@ -214,6 +218,7 @@ export class ModuleHost {
   }
 
   hook(name, ...args) {
+    if (name === 'onQuality' && this.ultra) this.ultra.onQuality(...args);
     for (const { name: mn, h } of this.handles) {
       if (typeof h[name] !== 'function') continue;
       try { h[name](...args); } catch (err) { warn(`Modul "${mn}".${name}`, err); }
@@ -231,6 +236,7 @@ export class ModuleHost {
     this.flushNav();
     this.stepLook(dt);
     this.hook('update', dt, now / 1000);
+    if (this.ultra) this.ultra.update(dt, now / 1000);
     this.emit('frame', dt, now / 1000);
     if (now - this.zoneT > 200) { this.zoneT = now; this.checkZones(); }
   }
@@ -519,6 +525,7 @@ export class ModuleHost {
     this.texQueue.forEach((j) => j.resolve(null));
     this.texQueue = [];
     this.hook('dispose');
+    if (this.ultra) this.ultra.dispose();
     this.handles = [];
     this.overlayClose();
     this.release();

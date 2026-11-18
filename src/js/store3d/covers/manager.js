@@ -107,7 +107,8 @@ export class CoverManager {
   /** Höchstzahl 2048er-Atlanten: Limit je Gerät (4 / Handy 2), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
   get hiCap() {
     if (!this.hiEnabled) return 0;
-    return Math.max(0, Math.min(this.hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
+    const hiMax = this.preset.hiMax || this.hiMax; // Ultra-Preset hebt die Obergrenze (nicht am Handy)
+    return Math.max(0, Math.min(hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
   }
 
   setPreset(p) {
