@@ -100,8 +100,18 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 17.11.2026 (1.16.0). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
-- **Version:** v1.16.0 veröffentlicht (Tag `v1.16.0` auf d469647, Branch `feature/v1.16.0` per Fast-Forward nach main, jsDelivr geprüft).
+Stand 18.11.2026 (1.16.1 vorbereitet). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
+- **Version:** v1.16.1 lokal committet auf `feature/v1.16.1` (c2d7d9b, Basis 0181b7e). Push, Tag `v1.16.1` und Fast-Forward nach main erst nach Freigabe des Nutzers. Zuletzt veröffentlicht: v1.16.0 (Tag auf d469647).
+  - Worker mit dem Close-Fix bereits deployt (Version a6248d8d, Rauchtest ok).
+  - Prüfung 1.16.1: 3758 Root-Tests (365 Dateien), 352 Worker-Tests, Lint 0, TV-Hashes gleich, `lenzstore.min.js` 1.291.143 B, w0–w4 PASS (w4 share 32/0, private 14/0).
+- **Inhalt 1.16.1 (Befunde aus dem Live-Test mit zwei Konten, Liste in `.tmp/v116/devtest/befunde.md`):**
+  - Kino: Schwarzbild-Rückfall nur, solange die Leinwand nie Bild gezeigt hat (Schwelle 10 s, `cinema/ambient.js`).
+  - Mitschauen: Vorsprung von Mitschauenden per kurzem lokalem Anhalten (`sync.js` `startHold`, nicht beim Gastgeber); Pause eines > 3 s abweichenden Mitglieds nutzt die Gruppenposition.
+  - Worker: `MpWorld.webSocketClose` antwortet mit `ws.close` (1000 statt 1006 nach 5 s).
+  - Spielerliste: Film-Spalte (`filmTitle` in `modules/net.js`, Rechte-Filter; eigene Sitzung wird nicht angezeigt). Text „Name zeigen“ korrigiert.
+  - Darstellung: Touch-Chatprotokoll unter dem Menü-Knopf, Overlays unterhalb der Leiste, Palast-Schilder innen lesbar, Hinweis „drehen“ beim Hinsetzen im Hochformat.
+  - Live nachgeprüft: Beitritt < 0,5 s nach ca. 5 s, Schwarzblenden ohne Rückfall, 10 min gemeinsam ohne Abbruch (max. 0,09 s), Rechte-Filter (neutrale Hülle, kein Angebot, kein Titel), Admin-Kick (4403, 10 min).
+- **Stand 1.16.0:**
   - charts-worker deployt (Mehrspieler-DO `MpWorld`, Migration `mp1`); `MP_SECRET` ist gesetzt.
   - Tests: 3737 Root-Tests (361 Dateien) und 351 Worker-Tests; Lint und Build grün.
   - Hauptbundle 499.367 B.
@@ -146,12 +156,8 @@ Stand 17.11.2026 (1.16.0). Bei jedem Release aktualisieren, knapp halten. Vertr�
   - 1.10.x: TV-Modus, Ladebild, Player-Bildmitte.
   - 1.9.x: Röhren-Geräte und VR-Kino.
 - **Offen:**
-  - **Gerätetests 1.16.0** (Testliste als privates Artifact; sie ersetzt die Liste von 1.15.0).
-    - iPhone: Spiel-Steuerung hoch und quer, Wisch-Trick.
-    - Palast-Kino, schon aus 1.15.0 offen.
-    - Mehrspieler und gemeinsames Kino mit Desktop und iPhone (selbes Konto).
-    - VR.
-    - Admin-Kick, Rechte-Filter und Stummschalten sind nur im Harness geprüft, weil es kein zweites Konto gibt.
+  - **Gerätetests 1.16.0 erledigt:** Steuerung und VR vom Nutzer am Gerät; Palast, Mehrspieler und Mitschauen von Claude live mit zwei Konten (iPhone-Punkte p4/m2 nur emuliert, echtes Puffern in Chrome nicht erzwingbar).
+  - **Release 1.16.1:** Freigabe für Push, Tag und Fast-Forward einholen, danach jsDelivr prüfen.
   - **Beobachten:**
     - Ob das Cloudflare-Idle-Kappen dauerhaft ist.
     - Free-Kontingent im Dashboard an Tag 1 und Tag 7. Der Ping alle 3 s kostet bis etwa 60 Requests pro Spielerstunde.
