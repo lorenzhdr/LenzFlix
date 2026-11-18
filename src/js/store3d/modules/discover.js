@@ -254,7 +254,7 @@ export default {
           api.found('roof');
           const w = ctx.use('weather');
           const hour = w && Number.isFinite(w.hour) ? w.hour : hourOf();
-          if (isRoofRainNight({ area, raining: !!(w && w.raining), hour })) {
+          if (isRoofRainNight({ area, raining: !!(w && (w.wet !== undefined ? w.wet : w.raining)), hour })) {
             roofRainT += step;
             if (roofRainT >= ROOF_RAIN_SEC) api.found('roof-rain');
           } else roofRainT = 0;

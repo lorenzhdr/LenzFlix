@@ -134,7 +134,7 @@ export function buildFacade(out, o = {}) {
     out.tint(casing.material);
     group.add(casing);
   }
-  out.setPalette(out.tod, out.rain);
+  out.setPalette(out.tod, out.rain, out.wx);
 
   let openAmt = 0;
   const untint = (m) => { const i = out.tinted.findIndex((q) => q.mat === m); if (i >= 0) out.tinted.splice(i, 1); };

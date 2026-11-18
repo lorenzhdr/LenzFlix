@@ -224,7 +224,7 @@ export default {
     const statics = (city && city.colliders ? city.colliders : []).filter((c) => !c.dynamic);
     let preset = presetFor(ctx.quality(), ctx.isPhone);
 
-    const raining = () => !!weather().raining;
+    const raining = () => { const w = weather(); return !!(w.wet !== undefined ? w.wet : w.raining); }; // 1.19.0: Regen UND Schnee (Schirm, Eile, weniger Leute)
     const tod = () => weather().tod || 'day';
 
     function walkerGroup() { const g = groups(); return (g && g.street) || ctx.scene; }

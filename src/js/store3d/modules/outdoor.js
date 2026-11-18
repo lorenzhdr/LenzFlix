@@ -10,6 +10,7 @@ import {
 import { quad, merge, rng } from '../util/geo.js';
 import { makeCanvas, toTexture } from '../world/textures.js';
 import { shared, skyPalette, timeOfDay, lerp } from './m4-util.js';
+import { createSnow } from '../weather/snow-patch.js';
 
 const PI = Math.PI;
 export const FAR_R = 60;
@@ -90,10 +91,11 @@ function buildOutdoor(ctx) {
   const textures = [];
   const T = (c, o) => { const t = toTexture(c, { aniso: 2, ...o }); textures.push(t); return t; };
   const tinted = []; // { mat, base:[r,g,b] }
-  const tint = (mat, base = [1, 1, 1]) => { tinted.push({ mat, base }); return mat; };
+  const snow = createSnow(L); // liegender Schnee (1.19.0): alle getönten Außenmaterialien bekommen den Patch (Figuren/Innenräume nie)
+  const tint = (mat, base = [1, 1, 1]) => { tinted.push({ mat, base }); snow.patch(mat); return mat; };
   const windowSets = [];
   const hooks = [];
-  const out = { group, tod: 'day', rain: false, pal: null, windowSets, tinted, hooks, L, textures, tint, T, fog: null, facade: null, city: null };
+  const out = { group, tod: 'day', rain: false, wx: null, pal: null, windowSets, tinted, hooks, L, textures, tint, T, fog: null, fogBase: [0.85, 0.9, 1], facade: null, city: null, snow };
 
   // --- Himmel (folgt der Kamera) ---
   const skyRoot = new Group();
@@ -130,10 +132,16 @@ function buildOutdoor(ctx) {
   skyRoot.add(sky, ground, stars, moon);
 
   // --- Palette ---
-  out.setPalette = (tod, rain) => {
-    out.tod = tod; out.rain = !!rain;
-    const pal = skyPalette(tod, rain);
+  // ex (1.19.0, optional): { overcast, fog 0..1, snow (fällt), cover 0..1 (liegt), wet } aus dem Wetterzustand
+  out.setPalette = (tod, rain, ex) => {
+    out.tod = tod; out.rain = !!rain; out.wx = ex || null;
+    const pal = skyPalette(tod, rain, ex ? { overcast: ex.overcast, fog: ex.fog, snow: ex.snowing } : undefined);
     out.pal = pal;
+    const cover = ex && ex.cover > 0 ? ex.cover : 0;
+    // Schneefarbe: Palette-Schatten, nachts/abends aufgehellt (bläulich, nie ganz weiß)
+    const boost = tod === 'night' ? 2.3 : tod === 'dusk' ? 1.4 : 1;
+    const snowRgb = [Math.min(0.97, pal.shade[0] * boost * 0.97), Math.min(0.98, pal.shade[1] * boost * 0.98), Math.min(1, pal.shade[2] * boost)];
+    snow.set(cover, snowRgb);
     const pos = skyGeo.attributes.position;
     const col = skyGeo.attributes.color;
     const [zen, mid, hor] = pal.sky;
@@ -150,18 +158,31 @@ function buildOutdoor(ctx) {
     const street = [pal.shade[0] * 0.24, pal.shade[1] * 0.25, pal.shade[2] * 0.28];
     for (let i = 0; i < gp.count; i++) {
       const k = Math.min(1, Math.hypot(gp.getX(i), gp.getZ(i)) / FAR_R);
-      gc.setXYZ(i, lerp(street[0], hor[0], k * k), lerp(street[1], hor[1], k * k), lerp(street[2], hor[2], k * k));
+      const sk = cover * (1 - k * 0.6) * 0.85; // Fernboden bei Schnee aufhellen (CPU-Farbe, kein Shader)
+      gc.setXYZ(i, lerp(lerp(street[0], snowRgb[0] * 0.9, sk), hor[0], k * k), lerp(lerp(street[1], snowRgb[1] * 0.9, sk), hor[1], k * k), lerp(lerp(street[2], snowRgb[2] * 0.9, sk), hor[2], k * k));
     }
     gc.needsUpdate = true;
     for (const t of tinted) t.mat.color.setRGB(t.base[0] * pal.shade[0], t.base[1] * pal.shade[1], t.base[2] * pal.shade[2]);
     stars.visible = pal.stars > 0.01;
     stars.material.opacity = pal.stars;
-    moon.visible = tod === 'night' && !rain;
-    for (const w of windowSets) w.recolor(tod, rain);
+    moon.visible = tod === 'night' && !rain && !(ex && (ex.wet || ex.overcast));
+    for (const w of windowSets) w.recolor(tod, rain || !!(ex && (ex.overcast || ex.snowing)));
+    out.fogBase = [hor[0], hor[1], hor[2]];
     if (out.fog) out.fog.color.setRGB(hor[0], hor[1], hor[2]); // Nebel in Horizontfarbe
     for (const h of hooks) h(tod, !!rain, pal);
   };
   out.follow = (cam) => { skyRoot.position.set(cam.position.x, 0, cam.position.z); };
+  out.skyRoot = skyRoot;
+  /** Blitzaufhellen (0..1): Himmel/Ferne heller, Nebel zieht mit. Nur Farbwerte (kein Neukompilieren). */
+  out.setFlash = (k) => {
+    const f = k > 0 ? Math.min(1, k) : 0;
+    sky.material.color.setScalar(1 + f * 2.4);
+    ground.material.color.setScalar(1 + f * 1.2);
+    if (out.fog) {
+      const b = out.fogBase;
+      out.fog.color.setRGB(b[0] + (1 - b[0]) * f * 0.7, b[1] + (1 - b[1]) * f * 0.7, b[2] + (1 - b[2]) * f * 0.7);
+    }
+  };
   out.addWindows = (specs) => {
     const ws = buildWindowSet(specs);
     if (!ws) return null;

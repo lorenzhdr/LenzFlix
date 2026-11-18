@@ -43,6 +43,17 @@ export const LINES = {
     'Schönes Schmuddelwetter, {name}. Perfekt für einen Filmabend.',
     'Hör mal, der Regen trommelt aufs Dach. Fehlt nur noch das Popcorn.',
   ],
+  snow: [
+    'Es schneit, {name}. Mütze auf, Film an.',
+    'Schnee draußen, Kassette drinnen. So muss das.',
+    'Pass auf, {name}, draußen ist es glatt. Such dir drinnen was Warmes zum Schauen aus.',
+    'Weiße Straße, warmer Laden. Ich finde, das passt.',
+  ],
+  cold: [
+    'Brr, {name}, ist das kalt da draußen. Hier drin läuft zum Glück die Heizung.',
+    'Du bist ja ganz durchgefroren. Komm rein, such dir einen Film aus.',
+    'Bei der Kälte kommt kein Mensch freiwillig vor die Tür. Außer dir, {name}.',
+  ],
   horror: [
     'Horror, {name}? Bitte danach das Licht anlassen.',
     '{title}? Mutig! Ich schaue nur durch die Finger.',
