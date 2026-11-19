@@ -10,7 +10,7 @@ import {
 import { makeCanvas, toTexture } from '../world/textures.js';
 import { getOutdoor } from './outdoor.js';
 import { scheduleWarm } from '../engine/warm.js';
-import { OUTDOOR_AREAS } from '../world/city.js';
+import { OUTDOOR_AREAS, areaAt } from '../world/city.js';
 import { prefersReducedMotion } from './m4-util.js';
 import { winterNext } from '../weather/state.js';
 import {
@@ -119,7 +119,7 @@ export default {
       const idx = new Uint16Array(BOLT_SEG * 6);
       for (let i = 0; i < BOLT_SEG; i++) { const b = i * 4; idx.set([b, b + 1, b + 2, b, b + 2, b + 3], i * 6); }
       g.setIndex(new BufferAttribute(idx, 1));
-      const m = new MeshBasicMaterial({ color: 0xe8f0ff, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, fog: false, toneMapped: false });
+      const m = new MeshBasicMaterial({ color: 0xe8f0ff, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, fog: false, toneMapped: false, forceSinglePass: true });
       bolt = new Mesh(g, m);
       bolt.frustumCulled = false;
       bolt.renderOrder = 12;
@@ -213,13 +213,20 @@ export default {
     }
     const tmp = new Vector3();
     let pickT = 0;
+    /** Sichtbar samt Eltern-Gruppen (Salon, Palast-Innenraum werden aus der Ferne ausgeblendet; die Atem-Points hängen nicht darunter). */
+    const shownChain = (o) => { for (let q = o; q; q = q.parent) if (q.visible === false) return false; return true; };
+    /** Atem nur im Freien: geheizte Innenräume (Laden, Salon, Palast) bleiben ohne Wölkchen. */
+    const outside = (p, h) => {
+      try { return OUTDOOR_AREAS.includes(areaAt(L, p.x, p.z, (h.root && h.root.position && h.root.position.y) || 0)); } catch { return false; }
+    };
     function pickSlots() {
       const np = ctx.use('npc');
       const list = np && typeof np.people === 'function' ? np.people() : [];
       const cands = [];
       for (const p of list) {
         const h = p.handle;
-        if (!h || h.disposed || !h.root || !h.root.visible || p.kind === 'cat' || p.kind === 'pigeon') continue;
+        if (!h || h.disposed || !h.root || !shownChain(h.root) || p.kind === 'cat' || p.kind === 'pigeon') continue;
+        if (!outside(p, h)) continue;
         const d = Math.hypot(p.x - cam.position.x, p.z - cam.position.z);
         if (d <= 14) cands.push({ h, d });
       }
@@ -240,7 +247,7 @@ export default {
       let any = false;
       for (let i = 0; i < BREATH_MAX; i++) {
         const h = slots[i];
-        if (!h || h.disposed || !h.root.visible) { breathPhA[i] = -1; continue; }
+        if (!h || h.disposed || !shownChain(h.root)) { breathPhA[i] = -1; continue; }
         try { (typeof h.faceWorld === 'function' ? h.faceWorld(tmp) : h.headWorld(tmp)); } catch { breathPhA[i] = -1; continue; }
         const ry = h.root.rotation.y;
         breathPosA[i * 3] = tmp.x; breathPosA[i * 3 + 1] = tmp.y - 0.1; breathPosA[i * 3 + 2] = tmp.z;

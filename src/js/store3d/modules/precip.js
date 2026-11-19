@@ -10,10 +10,10 @@ import {
 import { rng } from '../util/geo.js';
 import { presetFor } from '../engine/quality.js';
 import { OUTDOOR_AREAS } from '../world/city.js';
-import { clamp } from './m4-util.js';
+import { clamp, prefersReducedMotion } from './m4-util.js';
 import { scheduleWarm } from '../engine/warm.js';
 import {
-  HALF, Y_BELOW, Y_ABOVE, MAX_BOXES, KINDS, normalizeWeather, countFor, stepBlend, shelterBoxes, packBoxes,
+  HALF, Y_BELOW, Y_ABOVE, MAX_BOXES, KINDS, normalizeWeather, countFor, stepBlend, shelterBoxes, packBoxes, calmFor, shaderTime,
 } from '../weather/precip-logic.js';
 
 const VERT = /* glsl */ `
@@ -27,6 +27,7 @@ uniform float uLen;
 uniform float uWidth;
 uniform float uSize;
 uniform float uKind;
+uniform float uSway;
 uniform float uAlpha;
 uniform vec3 uCam;
 uniform vec4 uBoxA[${MAX_BOXES}];
@@ -46,8 +47,8 @@ void main() {
     mod(raw.z - uCam.z + uHalf, span) - uHalf);
   vec3 p = vec3(uCam.x + rel.x, uCam.y + uYLo + rel.y, uCam.z + rel.z);
   if (uKind > 0.5) {
-    p.x += sin(uTime * 0.8 + aSeed.x * 40.0) * 0.25;
-    p.z += cos(uTime * 0.6 + aSeed.z * 40.0) * 0.25;
+    p.x += sin(uTime * 0.8 + aSeed.x * 40.0) * 0.25 * uSway;
+    p.z += cos(uTime * 0.6 + aSeed.z * 40.0) * 0.25 * uSway;
   }
   // Schutz: unter Dach (Box) verschwindet das Partikel (alle vier Ecken außerhalb des Clip-Raums)
   for (int i = 0; i < ${MAX_BOXES}; i++) {
@@ -153,6 +154,7 @@ export default {
       uWidth: { value: 0.024 },
       uSize: { value: 0.035 },
       uKind: { value: 0 },
+      uSway: { value: 1 },
       uAlpha: { value: 0 },
       uCam: { value: new Vector3() },
       uBoxA: { value: boxA },
@@ -174,16 +176,29 @@ export default {
     let near = false;
     let suspended = false;
     let checkT = 0;
+    let t0 = null; // Zeitbasis ab erstem Update: uTime = Szenenzeit statt Seitenlaufzeit (float32-Auflösung im Shader bleibt fein)
     const cam = ctx.camera;
     const wp = new Vector3();
     const D = ctx.layout.d;
 
+    // Reduzierte Bewegung: ruhiger (langsamer, kürzere Streifen, kein Pendeln), nicht abgeschaltet; live über das change-Ereignis
+    let calm = calmFor(prefersReducedMotion());
+    let curKind = null;
+    let mq = null;
+    try { mq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null; } catch { mq = null; }
     function applyKind(k) {
       const K = KINDS[k] || KINDS.rain;
+      curKind = k;
       U.uKind.value = K.id;
-      U.uFall.value.set(K.fallMin, K.fallMax);
-      if (k === 'snow') { U.uWind.value.set(0.35, 0.15); } else { U.uWind.value.set(1.1, 0.4); }
+      U.uFall.value.set(K.fallMin * calm.fall, K.fallMax * calm.fall);
+      const wx = k === 'snow' ? 0.35 : 1.1;
+      const wz = k === 'snow' ? 0.15 : 0.4;
+      U.uWind.value.set(wx * calm.wind, wz * calm.wind);
+      U.uLen.value = 0.5 * calm.len;
+      U.uSway.value = calm.sway;
     }
+    const onMotion = () => { calm = calmFor(prefersReducedMotion()); if (curKind) applyKind(curKind); };
+    if (mq && mq.addEventListener) mq.addEventListener('change', onMotion);
     function setWeather(w) {
       want = normalizeWeather(w);
       if (first) { first = false; st.kind = want.kind; st.a = want.i; } // erster Wert gilt sofort, Änderungen blenden weich
@@ -217,10 +232,11 @@ export default {
         if (!vis) { if (mesh.visible) mesh.visible = false; return; }
         const n = countFor(presetFor(level, phone).precip, st.a);
         if (!n) { mesh.visible = false; return; }
-        if (U.uKind.value !== KINDS[st.kind].id) applyKind(st.kind);
+        if (curKind !== st.kind) applyKind(st.kind);
         cam.getWorldPosition(wp);
         U.uCam.value.copy(wp);
-        U.uTime.value = t;
+        if (t0 === null) t0 = t;
+        U.uTime.value = shaderTime(t, t0);
         U.uAlpha.value = KINDS[st.kind].alpha * (0.5 + 0.5 * Math.min(1, st.a));
         geo.setDrawRange(0, n * 6);
         mesh.visible = true;
@@ -228,7 +244,7 @@ export default {
       onQuality(lv) { level = lv; },
       onSuspend() { suspended = true; mesh.visible = false; },
       onResume() { suspended = false; },
-      dispose() { cancelWarm(); if (window.__lfxM4) delete window.__lfxM4.precip; },
+      dispose() { cancelWarm(); if (mq && mq.removeEventListener) mq.removeEventListener('change', onMotion); if (window.__lfxM4) delete window.__lfxM4.precip; },
     };
   },
 };

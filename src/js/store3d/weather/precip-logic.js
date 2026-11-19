@@ -16,6 +16,25 @@ export const KINDS = {
   snow: { id: 1, fallMin: 1, fallMax: 1.5, alpha: 0.9 },
 };
 
+/**
+ * Reduzierte Bewegung (prefers-reduced-motion): der Niederschlag fällt weiter, aber ruhiger. fall/wind = Faktor auf Fallgeschwindigkeit
+ * und Wind, len = Faktor auf die Streifenlänge (Regen), sway = Faktor auf das Pendeln der Flocken (Schnee).
+ */
+export function calmFor(reduced) {
+  return reduced ? { fall: 0.5, wind: 0.5, len: 0.6, sway: 0 } : { fall: 1, wind: 1, len: 1, sway: 1 };
+}
+
+/**
+ * Shader-Zeitbasis (float32): Zeit ab Modulstart, periodisch gewrappt, damit die Uniform nach Tagen Dauerbetrieb klein bleibt.
+ * Die Periode ist ein Vielfaches von 10*PI s und damit gemeinsames Vielfaches der Pendelperioden (2*PI/0.8 und 2*PI/0.6): das Pendeln
+ * springt beim Wrap nicht. Fallbewegung und Neon-Flackern wechseln einmal je ~1 h die Phase (bei Zufallsfeld/Flackern nicht sichtbar).
+ */
+export const TIME_PERIOD = 10 * Math.PI * 115;
+export function shaderTime(t, t0) {
+  const d = t - t0;
+  return d - Math.floor(d / TIME_PERIOD) * TIME_PERIOD;
+}
+
 export const clamp01 = (v) => (v > 1 ? 1 : v > 0 ? v : 0);
 
 /** Normiert den Wetterwunsch: { kind: 'rain'|'snow'|null, i: 0..1 }. Ungültiges = kein Niederschlag. */
