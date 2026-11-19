@@ -47,6 +47,13 @@ afterEach(() => {
   delete window.__lfxStandalone;
 });
 
+describe('webapp: id', () => {
+  it('ein vorhandenes id des Original-Manifests bleibt, sonst start_url', () => {
+    expect(buildManifest({ ...SRC, id: 'jf-app' }, 'https://srv.test/web/manifest.json', 'flix').id).toBe('https://srv.test/web/jf-app');
+    expect(buildManifest(SRC, 'https://srv.test/web/manifest.json', 'flix').id).toBe('https://srv.test/web/index.html#/home');
+  });
+});
+
 describe('webapp: Standalone-Klasse', () => {
   it('display-mode standalone setzt html.lfx-standalone', () => {
     mockMq(true);
@@ -138,25 +145,49 @@ describe('webapp: Manifest-Override', () => {
     expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
   });
 
-  it('Fetch-Fehler: Original bleibt, späterer Abgleich versucht erneut, begrenzt', async () => {
-    globalThis.fetch = vi.fn(async () => { throw new Error('offline'); });
-    for (let i = 0; i < 8; i++) { applyWebApp('flix'); await flush(); }
-    expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
-    expect(globalThis.fetch).toHaveBeenCalledTimes(4);
-    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  it('Fetch-Fehler: Original bleibt, Rückoff 2/5/15/60 s, danach aufgeben', async () => {
+    const t0 = 1_000_000;
+    let now = t0;
+    const dn = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      globalThis.fetch = vi.fn(async () => { throw new Error('offline'); });
+      // schnelle Abgleiche (100-ms-Takt beim Start) verbrauchen nur einen Versuch
+      for (let i = 0; i < 8; i++) { applyWebApp('flix'); await flush(); now += 100; }
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      let failAt = t0; // Zeitpunkt des letzten Fehlversuchs (der erste lief bei t0)
+      for (const wait of [2000, 5000, 15000, 60000]) {
+        const before = globalThis.fetch.mock.calls.length;
+        now = failAt + wait - 1; applyWebApp('flix'); await flush();
+        expect(globalThis.fetch.mock.calls.length).toBe(before); // noch in der Wartezeit
+        now = failAt + wait; applyWebApp('flix'); await flush();
+        expect(globalThis.fetch.mock.calls.length).toBe(before + 1);
+        failAt = now;
+      }
+      expect(globalThis.fetch).toHaveBeenCalledTimes(5);
+      now += 600000; applyWebApp('flix'); await flush();
+      expect(globalThis.fetch).toHaveBeenCalledTimes(5); // aufgegeben
+      expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
+      expect(URL.createObjectURL).not.toHaveBeenCalled();
+      applyWebApp('retro'); await flush(); // Designwechsel: neuer Versuch
+      expect(globalThis.fetch).toHaveBeenCalledTimes(6);
+    } finally { dn.mockRestore(); }
   });
 
-  it('Fehler, dann Erfolg beim nächsten Abgleich setzt das Manifest', async () => {
-    let n = 0;
-    globalThis.fetch = vi.fn(async () => {
-      if (n++ === 0) throw new Error('503');
-      return { ok: true, status: 200, json: async () => SRC };
-    });
-    applyWebApp('plus');
-    await flush();
-    applyWebApp('plus');
-    await flush();
-    expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toMatch(/^blob:/);
+  it('Fehler, dann Erfolg nach Ablauf der Wartezeit setzt das Manifest', async () => {
+    let now = 5_000_000;
+    const dn = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      let n = 0;
+      globalThis.fetch = vi.fn(async () => {
+        if (n++ === 0) throw new Error('503');
+        return { ok: true, status: 200, json: async () => SRC };
+      });
+      applyWebApp('plus'); await flush();
+      applyWebApp('plus'); await flush(); // noch in der Wartezeit
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      now += 2100; applyWebApp('plus'); await flush();
+      expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toMatch(/^blob:/);
+    } finally { dn.mockRestore(); }
   });
 
   it('HTTP-Fehler lässt das Original stehen', async () => {

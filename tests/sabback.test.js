@@ -84,10 +84,9 @@ describe('sabback mount und Klick', () => {
     sab.mount();
     const b = document.getElementById('lfx-sab-back');
     expect(b.getAttribute('aria-label')).toBe('Zurück');
-    expect(root.classList.contains('lfx-sab-on')).toBe(true);
     sab.unmount();
     expect(document.getElementById('lfx-sab-back')).toBeNull();
-    expect(root.classList.contains('lfx-sab-on')).toBe(false);
+    expect(root.classList.contains('lfx-sab-on')).toBe(false); // Klasse entfällt (kein CSS nutzte sie)
   });
   it('Klick: history.back() bei Verlauf', () => {
     const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
@@ -103,5 +102,29 @@ describe('sabback mount und Klick', () => {
     goBack();
     expect(back).not.toHaveBeenCalled();
     expect(window.location.hash).toBe('#/home');
+  });
+  it('Verlaufsindex 0: back() ohne Hash-Wechsel → nach 450 ms Rückfall #/home', () => {
+    vi.useFakeTimers();
+    try {
+      const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+      vi.spyOn(window.history, 'length', 'get').mockReturnValue(3);
+      window.location.hash = '#/details?id=1';
+      goBack();
+      expect(back).toHaveBeenCalledTimes(1);
+      expect(window.location.hash).toBe('#/details?id=1');
+      vi.advanceTimersByTime(500);
+      expect(window.location.hash).toBe('#/home');
+    } finally { vi.useRealTimers(); }
+  });
+  it('back() mit Hash-Wechsel: kein Rückfall', () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(window.history, 'back').mockImplementation(() => { window.location.hash = '#/movies'; });
+      vi.spyOn(window.history, 'length', 'get').mockReturnValue(3);
+      window.location.hash = '#/details?id=1';
+      goBack();
+      vi.advanceTimersByTime(500);
+      expect(window.location.hash).toBe('#/movies');
+    } finally { vi.useRealTimers(); }
   });
 });

@@ -188,6 +188,7 @@ function fillStoreCovers(c) {
 }
 
 const ONLINE_POLL_MS = 30000;
+const ONLINE_MAX_FAILS = 2;
 
 /** Pille „● N online“ auf der Kachel „store“; ab 1 sichtbar, sonst entfernt. */
 function showOnline(card, n) {
@@ -213,6 +214,7 @@ function showOnline(card, n) {
 function fillStoreOnline(c) {
   const card = c.cards.get('store');
   if (!card) return;
+  let fails = 0; // Fehlabrufe in Folge: ein einzelner (429/503/Netz) lässt den letzten Wert stehen, erst der zweite blendet aus
   const tick = () => {
     if (current !== c || document.hidden) return; // versteckter Tab: kein Abruf
     if (c.onlineCtl) c.onlineCtl.abort();
@@ -220,6 +222,10 @@ function fillStoreOnline(c) {
     c.onlineCtl = ctl;
     fetchOnline(ctl ? ctl.signal : undefined).then((n) => {
       if (current !== c || !card.isConnected || (ctl && ctl.signal.aborted)) return;
+      if (n === null || n === undefined) {
+        fails++;
+        if (fails < ONLINE_MAX_FAILS) return; // Pille bleibt mit dem letzten Wert (kein Flackern)
+      } else fails = 0;
       showOnline(card, n);
     }).catch(() => {});
   };

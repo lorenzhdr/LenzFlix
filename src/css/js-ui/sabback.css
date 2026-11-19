@@ -28,7 +28,9 @@ html.lfx-js.lfx-standalone.lfx-theme-retro.lfx-retro-tabbar-on:not(.layout-tv) #
 }
 html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back:active {
   transform: scale(0.94);
-  background: var(--lfx-pill-active);
+  /* nicht --lfx-pill-active: in LENZ+ weiß (Pfeil weiß auf weiß); surface-3 + Rand bleibt in allen Designs hell auf dunkel lesbar */
+  background: var(--lfx-surface-3);
+  border-color: var(--lfx-text-muted);
 }
 html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back:focus-visible {
   outline: 2px solid var(--lfx-text);

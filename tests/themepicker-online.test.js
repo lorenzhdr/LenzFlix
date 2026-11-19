@@ -86,6 +86,22 @@ describe('Online-Pille im Design-Menü', () => {
     expect(pill()).toBeNull();
   });
 
+  it('ein einzelner Fehlabruf lässt den letzten Wert stehen, der zweite in Folge blendet aus, Erfolg setzt zurück', async () => {
+    const seq = [3, null, 4, null, null];
+    online.fn = vi.fn(async () => seq.shift() ?? null);
+    openThemePicker();
+    await flush();
+    expect(pill().textContent).toBe('3 online');
+    await vi.advanceTimersByTimeAsync(30000); await flush(); // Fehler 1
+    expect(pill().textContent).toBe('3 online');
+    await vi.advanceTimersByTimeAsync(30000); await flush(); // Erfolg
+    expect(pill().textContent).toBe('4 online');
+    await vi.advanceTimersByTimeAsync(30000); await flush(); // Fehler 1 (Zähler neu)
+    expect(pill().textContent).toBe('4 online');
+    await vi.advanceTimersByTimeAsync(30000); await flush(); // Fehler 2
+    expect(pill()).toBeNull();
+  });
+
   it('versteckter Tab: Ticks werden übersprungen, bei sichtbar sofort aktualisiert, Listener beim Schließen entfernt', async () => {
     online.fn = vi.fn(async () => 2);
     let hidden = true;

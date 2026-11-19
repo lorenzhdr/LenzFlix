@@ -2,7 +2,7 @@
 // Dort gibt es keine Browser-Zurück-Taste. Der Knopf erscheint nur, wo kein eigener sichtbarer Zurück-Weg existiert:
 // retro immer, flix ab 900 px (darunter behält das Handy-Menü den nativen Pfeil), plus/prime ab 800 px (darunter eigene
 // Kopfzeile). Nie: Startseite, Player, VIDEOTHEK (store), TV, Anmeldung/Admin, TV-Modus-Seite.
-// Eigener Mount-Point #lfx-sab-back; Aktion history.back(), ohne Verlauf (length <= 1) → #/home.
+// Eigener Mount-Point #lfx-sab-back; Aktion history.back(); ohne Vorgänger (length <= 1 oder Hash ändert sich nicht) → #/home.
 import { mountPoint, unmountPoint } from '../core/dom.js';
 import { isReady } from '../core/api.js';
 import { isTv, isNarrow, isNavCompact } from '../core/layout.js';
@@ -11,7 +11,7 @@ import { parseLfxRoute } from '../shared/routes.js';
 
 const ICON_BACK = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m14.5 5-7 7 7 7"/></svg>';
 const ID = 'lfx-sab-back';
-const ON_CLASS = 'lfx-sab-on';
+const BACK_CHECK_MS = 450;
 const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|configurationpage|queue)/;
 const PLAYER = '[id="videoOsdPage"]:not(.hide)';
 
@@ -26,9 +26,22 @@ function needsButton(theme) {
   }
 }
 
+let backTimer = null;
+
+/**
+ * Zurück. Heuristik für „kein Vorgänger in dieser App“: history.length zählt auch fremde Einträge (Start aus einem Link,
+ * Neuladen am Verlaufsanfang), history.back() am Index 0 bleibt dann wirkungslos. Deshalb nach dem Aufruf prüfen: hat sich
+ * der Hash nach BACK_CHECK_MS nicht geändert, geht es nach #/home. Verlässt back() die Seite, wird sie entladen (kein Rückfall).
+ */
 export function goBack() {
-  if (window.history.length <= 1) window.location.hash = '#/home';
-  else window.history.back();
+  if (window.history.length <= 1) { window.location.hash = '#/home'; return; }
+  const before = window.location.hash;
+  if (backTimer) clearTimeout(backTimer);
+  window.history.back();
+  backTimer = setTimeout(() => {
+    backTimer = null;
+    if (window.location.hash === before) window.location.hash = '#/home';
+  }, BACK_CHECK_MS);
 }
 
 const sabbackFeature = {
@@ -50,11 +63,10 @@ const sabbackFeature = {
     el.title = 'Zurück';
     el.innerHTML = ICON_BACK;
     el.onclick = goBack;
-    document.documentElement.classList.add(ON_CLASS);
   },
   unmount() {
     unmountPoint(ID);
-    document.documentElement.classList.remove(ON_CLASS);
+    if (backTimer) { clearTimeout(backTimer); backTimer = null; }
   },
 };
 

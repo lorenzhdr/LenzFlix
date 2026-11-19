@@ -145,6 +145,7 @@ html.lfx-js .lfx-tp__state {
   position: absolute;
   top: 20px;
   right: 20px;
+  z-index: 6; /* über Ladenschild und Badges der Store-Vorschau */
   display: flex;
   align-items: center;
 }
@@ -600,10 +601,12 @@ html.lfx-js .lfx-tp__badges {
   position: absolute;
   top: 20px;
   left: 16px;
-  z-index: 5; /* über Regalen, Schild und Vignette der Store-Vorschau */
+  z-index: 5; /* über Regalen und Vignette der Store-Vorschau */
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column; /* Beta und Online-Pille untereinander: das Ladenschild rechts daneben bleibt frei */
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 40%;
   pointer-events: none;
 }
 html.lfx-js .lfx-tp__beta {
@@ -616,13 +619,19 @@ html.lfx-js .lfx-tp__beta {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-/* Sheet: Vorschau oben bündig, Pille unten links in der Vorschau (Schild oben bleibt frei) */
+/* Sheet: Vorschau 112 px breit; Beta und Pille untereinander, auf die Vorschaubreite begrenzt */
 html.lfx-js .lfx-tp--sheet .lfx-tp__badges {
-  top: 54px;
+  top: 30px; /* unter dem Ladenschild, beide Pillen bleiben innerhalb der Vorschau */
   left: 14px;
+  gap: 2px;
+  max-width: 96px;
 }
-/* Online-Pille neben dem Beta-Hinweis (gleicher Flex-Container, keine geratene Breite) */
+/* Online-Pille unter dem Beta-Hinweis (gleicher Container, nie breiter als er) */
 html.lfx-js .lfx-tp__online {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -707,6 +716,27 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__card {
 html.lfx-js .lfx-tp--sheet .lfx-tp__state {
   top: 12px;
   right: 12px;
+}
+/* Store-Kachel: „Aktiv“ unten rechts, nie über Ladenschild (Raster) oder Wortmarke (Sheet) */
+html.lfx-js .lfx-tp__card--store .lfx-tp__state {
+  top: auto;
+  bottom: 14px;
+}
+/* Sheet: Platz unter dem Text reservieren, damit „Aktiv“ keine Tagline überdeckt */
+html.lfx-js .lfx-tp--sheet .lfx-tp__card--store.is-active .lfx-tp__info {
+  padding-bottom: 30px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__card--store .lfx-tp__state {
+  bottom: 10px;
+}
+/* Wortmarke darf bei schmaler Textspalte (320 px) umbrechen statt rechts abgeschnitten zu werden */
+html.lfx-js .lfx-tp--sheet .lfx-tp__mark--store {
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  height: auto;
+  min-height: 48px;
+  max-width: 100%;
+  line-height: 26px;
 }
 
 @media (max-width: 799px) {
