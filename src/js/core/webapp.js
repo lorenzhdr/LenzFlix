@@ -24,7 +24,11 @@ let sourcePromise = null; // geparstes Original-Manifest
 let lastTheme = null;
 let failTheme = null;
 let fails = 0; // Fehlversuche für das aktuelle Design (max. MAX_FAILS)
-const MAX_FAILS = 4;
+let nextTryAt = 0; // frühester Zeitpunkt (Date.now) des nächsten Versuchs nach einem Fehler
+// Zeitbasierter Rückoff: nach Fehlversuch n wartet der Abgleich RETRY_MS[n-1]; ein kurzer Serverfehler beim Start
+// (mehrere Abgleiche pro Sekunde) verbraucht die Versuche so nicht in < 1 s. Nach dem letzten Fehlversuch: aufgeben.
+const RETRY_MS = [2000, 5000, 15000, 60000];
+const MAX_FAILS = RETRY_MS.length + 1;
 let seq = 0;
 
 /** Läuft die Seite als installierte Web-App? */
@@ -60,7 +64,7 @@ export function buildManifest(src, base, theme) {
   m.name = name;
   m.short_name = name;
   const start = abs(src.start_url || '.', base) || base;
-  m.id = start; // Identität bleibt die der Original-App
+  m.id = (src.id && abs(src.id, base)) || start; // Identität bleibt die der Original-App (vorhandenes id, sonst start_url)
   m.start_url = start;
   m.scope = abs(src.scope || '.', base) || start;
   const icons = Array.isArray(src.icons) ? src.icons : [];
@@ -85,6 +89,7 @@ function restoreLink() {
   lastTheme = null;
   failTheme = null;
   fails = 0;
+  nextTryAt = 0;
 }
 
 function loadSource() {
@@ -104,8 +109,8 @@ async function applyManifest(theme) {
   const el = document.head && document.head.querySelector('link[rel="manifest"]');
   if (!el) return;
   if (theme === lastTheme && link === el) return; // Link-Identität zuerst: ein ersetzter <link> wird neu überschrieben
-  if (theme !== failTheme) { failTheme = theme; fails = 0; }
-  if (fails >= MAX_FAILS) return;
+  if (theme !== failTheme) { failTheme = theme; fails = 0; nextTryAt = 0; }
+  if (fails >= MAX_FAILS || Date.now() < nextTryAt) return;
   if (!link || link !== el) {
     if (link) restoreLink();
     const href = el.getAttribute('href');
@@ -127,10 +132,12 @@ async function applyManifest(theme) {
     link.setAttribute('href', next);
     if (old) URL.revokeObjectURL(old);
     fails = 0;
+    nextTryAt = 0;
   } catch {
-    // Fehler: Original (oder zuletzt gesetzte Blob-URL) stehen lassen; nächster Abgleich versucht es erneut (höchstens MAX_FAILS-mal je Design).
+    // Fehler: Original (oder zuletzt gesetzte Blob-URL) stehen lassen; ein späterer Abgleich versucht es nach RETRY_MS erneut (höchstens MAX_FAILS-mal je Design).
     if (mine === seq) {
       fails++;
+      nextTryAt = Date.now() + (RETRY_MS[fails - 1] || 0);
       lastTheme = null;
       if (link && !blobUrl) link.setAttribute('href', origHref);
     }
