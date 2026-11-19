@@ -1416,6 +1416,13 @@
   var RETRY_MS = [2e3, 5e3, 15e3, 6e4];
   var MAX_FAILS = RETRY_MS.length + 1;
   var seq2 = 0;
+  var retryTimer = null;
+  function clearRetry() {
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+  }
   function isStandalone() {
     if (typeof window.__lfxStandalone === "boolean") return window.__lfxStandalone;
     try {
@@ -1456,6 +1463,7 @@
     return m;
   }
   function restoreLink() {
+    clearRetry();
     if (link && origHref !== null) link.setAttribute("href", origHref);
     if (blobUrl) URL.revokeObjectURL(blobUrl);
     blobUrl = null;
@@ -1490,6 +1498,7 @@
       failTheme = theme2;
       fails = 0;
       nextTryAt = 0;
+      clearRetry();
     }
     if (fails >= MAX_FAILS || Date.now() < nextTryAt) return;
     if (!link || link !== el4) {
@@ -1504,6 +1513,7 @@
         return;
       }
     }
+    clearRetry();
     const mine = ++seq2;
     lastTheme = theme2;
     try {
@@ -1523,6 +1533,16 @@
         nextTryAt = Date.now() + (RETRY_MS[fails - 1] || 0);
         lastTheme = null;
         if (link && !blobUrl) link.setAttribute("href", origHref);
+        if (fails < MAX_FAILS && running) {
+          clearRetry();
+          retryTimer = setTimeout(() => {
+            retryTimer = null;
+            if (running && failTheme === theme2) {
+              nextTryAt = 0;
+              applyManifest(theme2);
+            }
+          }, RETRY_MS[fails - 1] || 0);
+        }
       }
     }
   }
@@ -11861,7 +11881,7 @@
   // src/js/features/sabback.js
   var ICON_BACK = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m14.5 5-7 7 7 7"/></svg>';
   var ID10 = "lfx-sab-back";
-  var BACK_CHECK_MS = 450;
+  var BACK_CHECK_MS = 1200;
   var EXCLUDED6 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|configurationpage|queue)/;
   var PLAYER2 = '[id="videoOsdPage"]:not(.hide)';
   function needsButton(theme2) {
@@ -11878,17 +11898,39 @@
     }
   }
   var backTimer = null;
+  var backOff = null;
+  function endBack() {
+    if (backTimer) {
+      clearTimeout(backTimer);
+      backTimer = null;
+    }
+    if (backOff) {
+      backOff();
+      backOff = null;
+    }
+  }
   function goBack() {
     if (window.history.length <= 1) {
       window.location.hash = "#/home";
       return;
     }
-    const before = window.location.hash;
-    if (backTimer) clearTimeout(backTimer);
+    endBack();
+    let moved = false;
+    const onMove2 = () => {
+      moved = true;
+    };
+    window.addEventListener("popstate", onMove2);
+    window.addEventListener("hashchange", onMove2);
+    backOff = () => {
+      window.removeEventListener("popstate", onMove2);
+      window.removeEventListener("hashchange", onMove2);
+    };
     window.history.back();
     backTimer = setTimeout(() => {
       backTimer = null;
-      if (window.location.hash === before) window.location.hash = "#/home";
+      const fell = !moved;
+      endBack();
+      if (fell) window.location.hash = "#/home";
     }, BACK_CHECK_MS);
   }
   var sabbackFeature = {
@@ -11913,10 +11955,7 @@
     },
     unmount() {
       unmountPoint(ID10);
-      if (backTimer) {
-        clearTimeout(backTimer);
-        backTimer = null;
-      }
+      endBack();
     }
   };
   var sabback_default = sabbackFeature;

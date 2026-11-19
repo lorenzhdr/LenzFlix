@@ -32226,6 +32226,11 @@ void main() {
     }
     part(cur, x1, 0, CEIL_H);
   }
+  function freeze(m) {
+    m.matrixAutoUpdate = false;
+    m.updateMatrix();
+    return m;
+  }
   function wallTrimSpans(layout, side, D2) {
     const GAP3 = 2e-3;
     const W2 = layout.w;
@@ -32328,6 +32333,8 @@ void main() {
     layout.facade.windows = windows;
     const wallsMesh = new Mesh(merge(wallParts), new MeshLambertMaterial({ map: tex.wallpaper, vertexColors: true }));
     const trimMesh = new Mesh(merge(trimParts), new MeshLambertMaterial({ vertexColors: true }));
+    freeze(wallsMesh);
+    freeze(trimMesh);
     group.add(wallsMesh, trimMesh);
     const doorGroup = new Group();
     doorGroup.name = "lfx-door";
@@ -32341,13 +32348,17 @@ void main() {
     group.add(doorGroup);
     const glass = new Mesh(merge(glassParts), new MeshBasicMaterial({ color: 11458303, transparent: true, opacity: 0.13, depthWrite: false, side: DoubleSide }));
     glass.renderOrder = 5;
+    freeze(glass);
     group.add(glass);
     const night = new Mesh(quad({ w: W2 + 30, h: 9, x: W2 / 2, y: 3.6, z: D2 + 8, ry: PI2 }), new MeshBasicMaterial({ map: tex.night }));
     const street = new Mesh(flatRect(-14, D2, W2 + 14, D2 + 8, { y: -0.02, tile: 4, roomW: W2, roomD: D2 }), new MeshBasicMaterial({ color: 1382186 }));
     night.name = "lfx-backdrop";
     street.name = "lfx-street";
+    freeze(night);
+    freeze(street);
     group.add(night, street);
     const ceil = new Mesh(flatRect(0, 0, W2, D2, { y: CEIL_H, up: false, tile: 0.6, roomW: W2, roomD: D2 }), new MeshBasicMaterial({ map: tex.ceiling, color: 13222837 }));
+    freeze(ceil);
     group.add(ceil);
     const frames = [];
     const tubes = [];
@@ -32356,8 +32367,8 @@ void main() {
       tubes.push(quad({ w: p.w, h: p.d, x: p.x, y: CEIL_H - 0.045, z: p.z, rx: PI2 / 2 }));
     }
     if (frames.length) {
-      group.add(new Mesh(merge(frames), new MeshLambertMaterial({ vertexColors: true })));
-      group.add(new Mesh(merge(tubes), new MeshBasicMaterial({ color: 16774360, toneMapped: false })));
+      group.add(freeze(new Mesh(merge(frames), new MeshLambertMaterial({ vertexColors: true }))));
+      group.add(freeze(new Mesh(merge(tubes), new MeshBasicMaterial({ color: 16774360, toneMapped: false }))));
     }
     return {
       group,
@@ -40324,10 +40335,16 @@ float lfxNoise(vec2 p) {
     const near = Math.min(far - 8, Math.max(preset.fogNear || 34, diag + 1));
     return { near, far };
   }
-  function fogTarget(base, fog, indoor) {
+  function fogTarget(base, fog, indoor, out = {}) {
     const f = Number.isFinite(fog) ? Math.min(1, Math.max(0, fog)) : 0;
-    if (indoor || f <= 0) return { near: base.near, far: base.far };
-    return { near: Math.min(base.near, 20 - 14 * f), far: Math.min(base.far, 58 - 36 * f) };
+    if (indoor || f <= 0) {
+      out.near = base.near;
+      out.far = base.far;
+      return out;
+    }
+    out.near = Math.min(base.near, 20 - 14 * f);
+    out.far = Math.min(base.far, 58 - 36 * f);
+    return out;
   }
   var INDOOR_AREAS = /* @__PURE__ */ new Set(["shop", "palastHall", "palastFoyer", "salon"]);
   var city_default = {
@@ -40361,6 +40378,7 @@ float lfxNoise(vec2 p) {
       let sees = true;
       let poseZ = 0;
       let sigAcc = 1;
+      const fogTmp = { near: 0, far: 0 };
       function applyVisibility() {
         const all = xrOn;
         const out0 = area !== "shop" && area !== "doorway";
@@ -40440,6 +40458,10 @@ float lfxNoise(vec2 p) {
         groups: cm ? cm.groups : null,
         signals: () => signalAt(Date.now() / 1e3),
         visible: () => ({ ...vis }),
+        /** Dieselben Werte ohne Kopie (nur lesen, nie behalten): für Frame-Pfade ohne Allokation. */
+        visibleRef: () => vis,
+        /** Wird die Ladenhülle (Innenraum samt Ultra-Innenraum) gerade gezeichnet? Allokationsfrei, pro Frame lesbar. */
+        shellVisible: () => !shopShell || shopShell.visible !== false,
         /** Szene aufteilen (store.js ruft das nach mods.init): Laden-Hülle und Regale werden je Bereich ein-/ausgeblendet. */
         partition() {
           if (shopShell || !cm) {
@@ -40485,7 +40507,7 @@ float lfxNoise(vec2 p) {
             refresh();
           }
           const wx = ctx.use("weather");
-          const tg = fogTarget(fr, wx && wx.fog, INDOOR_AREAS.has(area));
+          const tg = fogTarget(fr, wx && wx.fog, INDOOR_AREAS.has(area), fogTmp);
           if (Math.abs(tg.near - fog.near) > 0.02 || Math.abs(tg.far - fog.far) > 0.02) {
             const k = 1 - Math.exp(-Math.min(dt, 0.25) * 3.5);
             fog.near += (tg.near - fog.near) * k;
@@ -40918,6 +40940,9 @@ float lfxNoise(vec2 p) {
     let cancelled = false;
     let timer = null;
     let idle = null;
+    let started = false;
+    let dirty = false;
+    const done = /* @__PURE__ */ new Set();
     const later = sched || ((fn) => {
       if (typeof requestIdleCallback === "function") {
         const id2 = requestIdleCallback(() => fn(), { timeout: 2e3 });
@@ -40928,25 +40953,43 @@ float lfxNoise(vec2 p) {
       const id = setTimeout(fn, 32);
       return () => clearTimeout(id);
     });
+    const allowed = (x) => {
+      try {
+        return !x.ok || !!x.ok();
+      } catch {
+        return false;
+      }
+    };
     const run = (list) => {
       idle = null;
       if (cancelled) return;
       const it = list.shift();
-      if (it && it.object) warmObject(ctx.renderer, it.object, ctx.camera, ctx.scene, { textures: it.textures, debug: !!(ctx.opts && ctx.opts.debug) });
+      if (it && it.object && !done.has(it.object) && allowed(it)) {
+        done.add(it.object);
+        warmObject(ctx.renderer, it.object, ctx.camera, ctx.scene, { textures: it.textures, debug: !!(ctx.opts && ctx.opts.debug) });
+      }
+      if (list.length) idle = later(() => run(list));
+      else if (dirty) {
+        dirty = false;
+        collect2();
+      }
+    };
+    const collect2 = () => {
+      let list = [];
+      try {
+        list = (getList() || []).filter((x) => x && x.object && !done.has(x.object) && allowed(x));
+      } catch {
+        list = [];
+      }
       if (list.length) idle = later(() => run(list));
     };
     timer = setTimeout(() => {
       timer = null;
       if (cancelled || !ctx || !ctx.renderer || !ctx.camera) return;
-      let list = [];
-      try {
-        list = (getList() || []).filter((x) => x && x.object);
-      } catch {
-        list = [];
-      }
-      if (list.length) idle = later(() => run(list));
+      started = true;
+      collect2();
     }, delayMs);
-    return () => {
+    const cancel = () => {
       cancelled = true;
       if (timer) {
         clearTimeout(timer);
@@ -40960,6 +41003,12 @@ float lfxNoise(vec2 p) {
       }
       idle = null;
     };
+    cancel.retry = () => {
+      if (cancelled || !started) return;
+      if (idle === null) collect2();
+      else dirty = true;
+    };
+    return cancel;
   }
 
   // src/js/store3d/modules/precip.js
@@ -41123,6 +41172,7 @@ void main() {
       let want = { kind: null, i: 0 };
       let first = true;
       let level = ctx.quality();
+      let precipMax = presetFor(level, phone).precip;
       let near = false;
       let suspended = false;
       let checkT = 0;
@@ -41189,7 +41239,7 @@ void main() {
             if (mesh.visible) mesh.visible = false;
             return;
           }
-          const n = countFor(presetFor(level, phone).precip, st.a);
+          const n = countFor(precipMax, st.a);
           if (!n) {
             mesh.visible = false;
             return;
@@ -41205,6 +41255,7 @@ void main() {
         },
         onQuality(lv) {
           level = lv;
+          precipMax = presetFor(lv, phone).precip;
         },
         onSuspend() {
           suspended = true;
@@ -41632,6 +41683,8 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       }
       syncVisible();
       ready = true;
+      const cancelWarm = drops ? scheduleWarm(ctx, () => [{ object: drops, textures: [dropTex, trailTex] }]) : () => {
+      };
       const cam = ctx.camera;
       let checkT = 0;
       return {
@@ -41670,6 +41723,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         },
         dispose() {
           gone = true;
+          cancelWarm();
           if (fetchGuard) {
             clearTimeout(fetchGuard);
             fetchGuard = null;
@@ -41823,6 +41877,7 @@ void main() {
       let thermo = null;
       let thermoTex = null;
       let thermoShown = null;
+      let warmer = null;
       const f = L2.facade;
       if (f && f.door) {
         const mat2 = new MeshBasicMaterial({ toneMapped: false });
@@ -41849,6 +41904,7 @@ void main() {
           thermo.material.map = thermoTex;
           thermo.material.needsUpdate = true;
           if (old) old.dispose();
+          if (!old && warmer) warmer.retry();
         }
         thermo.visible = true;
       }
@@ -41975,9 +42031,15 @@ void main() {
         for (let q = o; q; q = q.parent) if (q.visible === false) return false;
         return true;
       };
+      const wv = new Vector3();
       const outside = (p, h3) => {
         try {
-          return OUTDOOR_AREAS.includes(areaAt(L2, p.x, p.z, h3.root && h3.root.position && h3.root.position.y || 0));
+          let y = 0;
+          if (typeof h3.root.getWorldPosition === "function") {
+            h3.root.getWorldPosition(wv);
+            y = wv.y;
+          } else if (h3.root.position) y = h3.root.position.y;
+          return OUTDOOR_AREAS.includes(areaAt(L2, p.x, p.z, Number.isFinite(y) ? y : 0));
         } catch {
           return false;
         }
@@ -42078,7 +42140,12 @@ void main() {
         onWeather();
       }
       hook();
-      const cancelWarm = scheduleWarm(ctx, () => [bolt, breath, thermo].filter(Boolean).map((object) => ({ object })));
+      const cancelWarm = scheduleWarm(ctx, () => [
+        { object: bolt, ok: () => boltVisible(level) },
+        { object: breath, ok: () => atLeast(level, "high") },
+        thermo ? { object: thermo, ok: () => !!thermo.material.map } : null
+      ].filter(Boolean));
+      warmer = cancelWarm;
       return {
         update(dt, t) {
           if (!hooked) hook();
@@ -42096,6 +42163,7 @@ void main() {
         },
         onQuality(lv) {
           level = lv;
+          cancelWarm.retry();
         },
         onSuspend() {
           suspended = true;
@@ -45494,6 +45562,8 @@ void main() {
         return true;
       }
       let bubbleSticky = false;
+      let bubbleX = null;
+      let bubbleY = 0;
       function placeBubble() {
         if (bubble.hidden || !host || xrOn()) return;
         v.set(pos.x, pos.y + 1.95, pos.z).project(ctx.camera);
@@ -45502,8 +45572,16 @@ void main() {
         if (on) {
           const w = host.clientWidth || window.innerWidth;
           const h3 = host.clientHeight || window.innerHeight;
-          bubble.style.transform = `translate(${((v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * h3).toFixed(1)}px) translate(-50%, -100%)`;
-        } else {
+          const bx3 = (v.x * 0.5 + 0.5) * w;
+          const by = (-v.y * 0.5 + 0.5) * h3;
+          if (bubbleX === null || Math.abs(bx3 - bubbleX) > 0.5 || Math.abs(by - bubbleY) > 0.5) {
+            bubbleX = bx3;
+            bubbleY = by;
+            bubble.style.transform = `translate(${bx3.toFixed(1)}px, ${by.toFixed(1)}px) translate(-50%, -100%)`;
+          }
+        } else if (bubbleX !== null) {
+          bubbleX = null;
+          bubbleY = 0;
           bubble.style.transform = "";
         }
       }
@@ -62868,6 +62946,8 @@ void main() {
         if (beam) beam.visible = false;
         if (dot2d) dot2d.hidden = true;
       }
+      let dotX = null;
+      let dotY = 0;
       function placeDot2d() {
         if (!dot2d || !point || !ctx.camera) return;
         const cv = ctx.renderer && ctx.renderer.domElement;
@@ -62880,6 +62960,9 @@ void main() {
         dot2d.hidden = false;
         const x = cv.offsetLeft + (tmpP.x * 0.5 + 0.5) * cv.clientWidth;
         const y = cv.offsetTop + (-tmpP.y * 0.5 + 0.5) * cv.clientHeight;
+        if (dotX !== null && Math.abs(x - dotX) <= 0.5 && Math.abs(y - dotY) <= 0.5) return;
+        dotX = x;
+        dotY = y;
         dot2d.style.transform = "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0) translate(-50%,-50%)";
       }
       function canLaser() {
@@ -63453,6 +63536,7 @@ void main() {
     const p = env2.player;
     m.cool = Math.max(0, m.cool - dt);
     m.t = Math.max(0, m.t - dt);
+    if (m.st !== "attack") m.over = 0;
     if (m.st === "beaten") {
       if (m.t <= 0) {
         m.st = "flee";
@@ -64368,14 +64452,19 @@ void main() {
     return k > 0.05 ? 0.4 + 0.6 * k : 0;
   }
   var lerp3 = (a, b, k) => a + (b - a) * Math.min(1, k);
+  var WEATHER_OF = /* @__PURE__ */ new WeakMap();
   function weatherOf(ctx) {
     const w = ctx.use && ctx.use("weather");
-    return {
-      tod: w && w.tod || "day",
-      raining: !!(w && w.raining),
-      cover: w && Number.isFinite(w.cover) ? w.cover : 0,
-      fog: w && Number.isFinite(w.fog) ? w.fog : 0
-    };
+    let r = WEATHER_OF.get(ctx);
+    if (!r) {
+      r = { tod: "day", raining: false, cover: 0, fog: 0 };
+      WEATHER_OF.set(ctx, r);
+    }
+    r.tod = w && w.tod || "day";
+    r.raining = !!(w && w.raining);
+    r.cover = w && Number.isFinite(w.cover) ? w.cover : 0;
+    r.fog = w && Number.isFinite(w.fog) ? w.fog : 0;
+    return r;
   }
   var normalOf = (yaw) => ({ nx: Math.sin(yaw), nz: Math.cos(yaw) });
   function neonSources(L2) {
@@ -64564,11 +64653,13 @@ void main() {
     if (mq && mq.addEventListener) mq.addEventListener("change", applyMotion);
     let t0 = null;
     let cur = -1;
-    let lastSig = "";
+    let lastMain = null;
+    let lastSide = null;
+    let sigAcc = 1;
     function setSignals(sig) {
-      const key2 = `${sig.main}|${sig.side}`;
-      if (key2 === lastSig) return;
-      lastSig = key2;
+      if (sig.main === lastMain && sig.side === lastSide) return;
+      lastMain = sig.main;
+      lastSide = sig.side;
       const attr = geo.attributes.aA;
       signals.forEach((s, i) => {
         const phase = s.signal === "main" ? sig.main : sig.side;
@@ -64589,6 +64680,9 @@ void main() {
         mat2.uniforms.uStrength.value = cur;
         if (t0 === null) t0 = t;
         mat2.uniforms.uTime.value = shaderTime(t, t0);
+        sigAcc += dt;
+        if (sigAcc < 0.25) return;
+        sigAcc = 0;
         const city2 = ctx.use && ctx.use("city");
         if (city2 && typeof city2.signals === "function") {
           try {
@@ -64670,6 +64764,7 @@ void main() {
   var SHADOW_PARKED_MAX = 4;
   var SHADOW_FAR = 30;
   var FLOOR_Y = 0.03;
+  var ALL_VISIBLE = { street: true, shopShell: true };
   function shown(o) {
     for (let p = o; p; p = p.parent) if (p.visible === false) return false;
     return true;
@@ -64742,14 +64837,16 @@ void main() {
     };
     function rebuild() {
       const city2 = ctx.use && ctx.use("city");
-      const vis = city2 && typeof city2.visible === "function" ? city2.visible() : { street: true, shopShell: true };
+      const vis = city2 && typeof city2.visibleRef === "function" ? city2.visibleRef() : city2 && typeof city2.visible === "function" ? city2.visible() : ALL_VISIBLE;
       let i = 0;
       for (const s of stat) {
         if (s.group === "street" ? !vis.street : !vis.shopShell) continue;
         put(i++, s.x, s.y, s.z, s.sx, s.sz);
       }
       if (vis.street) {
-        for (const r of parkedNow().slice(0, SHADOW_PARKED_MAX)) {
+        const parked = parkedNow();
+        for (let pi = 0, pn = Math.min(parked.length, SHADOW_PARKED_MAX); pi < pn; pi++) {
+          const r = parked[pi];
           put(i++, (r.x0 + r.x1) / 2, 0, (r.z0 + r.z1) / 2, Math.max(1, (r.x1 - r.x0) * 1.2), Math.max(1, (r.z1 - r.z0) * 1.2));
         }
       }
@@ -66195,10 +66292,8 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
     wallpaper: wallpaperCanvas2,
     ceiling: ceilingCanvas2
   };
-  function makeUltraTextures(aniso = 4) {
-    const out = {};
-    for (const [k, fn] of Object.entries(ULTRA_TEX)) out[k] = toTexture(fn(), { repeat: true, aniso });
-    return out;
+  function makeUltraTexture(key2, aniso = 4) {
+    return toTexture(ULTRA_TEX[key2](), { repeat: true, aniso });
   }
 
   // src/js/store3d/world/room-ultra-logic.js
@@ -66445,7 +66540,8 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
   function buildPosters(layout, o = {}) {
     const group = new Group();
     group.name = "ultra-posters";
-    const tex = toTexture(posterAtlas2(), { aniso: o.aniso || 4 });
+    let tex = null;
+    let mesh = null;
     const parts = posterSpots(layout).map((p) => {
       const col2 = p.cell % 4;
       const row = Math.floor(p.cell / 4);
@@ -66453,11 +66549,34 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
       const v1 = 1 - row * 0.5;
       return quad({ w: p.w, h: p.h, x: p.x, y: p.y, z: p.z, ry: p.ry, uv: [u0, v1 - 0.5, u0 + 0.25, v1] });
     });
-    if (parts.length) group.add(new Mesh(merge(parts), new MeshLambertMaterial({ map: tex, vertexColors: true })));
-    return { object: group, dispose() {
-      disposeTree(group);
-      tex.dispose();
-    } };
+    const mat2 = new MeshLambertMaterial({ vertexColors: true });
+    if (parts.length) {
+      mesh = new Mesh(merge(parts), mat2);
+      mesh.visible = false;
+      group.add(mesh);
+    }
+    let done = false;
+    return {
+      object: group,
+      /** Teilschritt (engine/ultra.js): der Plakat-Atlas (Canvas) ist der teure Teil und kommt in einem eigenen Häppchen. */
+      more() {
+        if (done) return false;
+        done = true;
+        tex = toTexture(posterAtlas2(), { aniso: o.aniso || 4 });
+        mat2.map = tex;
+        mat2.needsUpdate = true;
+        if (mesh) mesh.visible = true;
+        return false;
+      },
+      get textures() {
+        return tex ? [tex] : [];
+      },
+      dispose() {
+        disposeTree(group);
+        mat2.dispose();
+        if (tex) tex.dispose();
+      }
+    };
   }
   function buildClutter(layout) {
     const group = new Group();
@@ -66605,8 +66724,10 @@ void main() {
   function buildTex(ctx) {
     const group = new Group();
     group.name = "ultra-tex";
-    const neu = makeUltraTextures(1);
+    const neu = {};
+    const keys = Object.keys(ULTRA_TEX);
     const swapped = [];
+    const known = /* @__PURE__ */ new Set();
     let shown2 = false;
     let acc = 0;
     function collect2() {
@@ -66615,10 +66736,16 @@ void main() {
         for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
           live.add(m);
           const k = m.map && m.map.userData && m.map.userData.lfxTex;
-          if (k && !swapped.some((s) => s.mat === m)) swapped.push({ mat: m, old: m.map, key: k });
+          if (k && !known.has(m)) {
+            known.add(m);
+            swapped.push({ mat: m, old: m.map, key: k });
+          }
         }
       });
-      for (let i = swapped.length - 1; i >= 0; i--) if (!live.has(swapped[i].mat)) swapped.splice(i, 1);
+      for (let i = swapped.length - 1; i >= 0; i--) if (!live.has(swapped[i].mat)) {
+        known.delete(swapped[i].mat);
+        swapped.splice(i, 1);
+      }
     }
     function apply() {
       collect2();
@@ -66636,10 +66763,21 @@ void main() {
     function restore() {
       for (const s of swapped) s.mat.map = s.old;
       swapped.length = 0;
+      known.clear();
     }
     return {
       object: group,
-      textures: Object.values(neu),
+      /** Ein Teilschritt: eine Textur zeichnen. true = es gibt noch mehr (engine/ultra.js ruft je Häppchen einmal). */
+      more() {
+        const k = keys.find((x) => !neu[x]);
+        if (k === void 0) return false;
+        neu[k] = makeUltraTexture(k, 1);
+        if (shown2) apply();
+        return keys.some((x) => !neu[x]);
+      },
+      get textures() {
+        return Object.values(neu);
+      },
       // vorab hochladen (engine/warm.js): hängen noch an keinem Material
       update(dt) {
         for (const s of swapped) {
@@ -66673,12 +66811,17 @@ void main() {
       const u = ctx.use("ultra");
       if (!u) return null;
       const L2 = ctx.layout;
+      const gate = () => {
+        const c = ctx.use("city");
+        return !c || typeof c.shellVisible !== "function" || c.shellVisible();
+      };
       const offs = [
         u.register("tex", () => buildTex(ctx)),
-        u.register("posters", () => buildPosters(L2, { aniso: maxAniso(ctx) })),
-        u.register("clutter", () => buildClutter(L2)),
-        u.register("lamps", () => buildLamps(L2)),
-        u.register("dust", () => buildDust(L2, ctx))
+        // Innenraum-Details folgen dem Bereichs-Culling der Ladenhülle (modules/city.js): draußen/im Hof/Saal/Salon unsichtbar, 0 Draw-Calls
+        u.register("posters", () => buildPosters(L2, { aniso: maxAniso(ctx) }), { gate }),
+        u.register("clutter", () => buildClutter(L2), { gate }),
+        u.register("lamps", () => buildLamps(L2), { gate }),
+        u.register("dust", () => buildDust(L2, ctx), { gate })
       ];
       return { dispose() {
         offs.forEach((f) => f());
@@ -72375,9 +72518,26 @@ void main() {
     };
     const isActive = () => level() === "ultra";
     const allowed = (key2) => flt.only ? key2 === flt.only : !flt.off.has(key2);
-    const reachable = () => !!(ctx && ctx.opts && ctx.opts.ultraOk === true);
+    const reachable = () => {
+      if (!(ctx && ctx.opts && ctx.opts.ultraOk === true)) return false;
+      let set = "auto";
+      try {
+        if (typeof ctx.qualitySetting === "function") set = ctx.qualitySetting();
+      } catch {
+        set = "auto";
+      }
+      return set === "auto" || set === "ultra" || set === void 0 || set === null;
+    };
     const wantBuild = () => reachable() ? atLeast(level(), "high") : level() === "ultra";
-    const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built;
+    const gateOk = (e) => {
+      if (!e.gate) return true;
+      try {
+        return !!e.gate();
+      } catch {
+        return true;
+      }
+    };
+    const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built && gateOk(e);
     function setShown(e, v) {
       if (!!e.shown === v) return;
       e.shown = v;
@@ -72404,6 +72564,7 @@ void main() {
         if (!api2 || !api2.object) throw new Error("build() liefert kein { object }");
         e.api = api2;
         e.built = true;
+        e.more = typeof api2.more === "function";
         api2.object.visible = false;
         (e.parent || ctx.scene).add(api2.object);
         api2.object.visible = visibleNow(e);
@@ -72416,11 +72577,21 @@ void main() {
     }
     function pending() {
       if (!wantBuild()) return [];
-      return [...entries.values()].filter((e) => !e.built && !e.failed && allowed(e.key));
+      return [...entries.values()].filter((e) => !e.failed && allowed(e.key) && (!e.built || e.more));
+    }
+    function moreOne(e) {
+      const t0 = now();
+      try {
+        if (!e.api || typeof e.api.more !== "function" || !e.api.more()) e.more = false;
+      } catch (err) {
+        e.more = false;
+        warn18(`Ultra-Detail "${e.key}".more`, err);
+      }
+      e.ms = +(e.ms + now() - t0).toFixed(2);
     }
     function warmPending() {
       if (!wantBuild()) return [];
-      return [...entries.values()].filter((e) => e.built && !e.failed && e.warm === void 0 && allowed(e.key));
+      return [...entries.values()].filter((e) => e.built && !e.more && !e.failed && e.warm === void 0 && allowed(e.key));
     }
     function warmOne(e) {
       const r = ctx.renderer;
@@ -72430,11 +72601,13 @@ void main() {
       }
       e.warm = true;
       const t0 = now();
+      const mine = e.api;
+      const live = () => !disposed && e.api === mine && e.warm === true;
       try {
-        warmObject(r, e.api.object, ctx.camera, ctx.scene, { textures: e.api.textures, debug: !!(ctx.opts && ctx.opts.debug) }).then((did) => {
-          if (!did) e.warm = false;
+        warmObject(r, mine.object, ctx.camera, ctx.scene, { textures: mine.textures, debug: !!(ctx.opts && ctx.opts.debug) }).then((did) => {
+          if (live() && !did) e.warm = false;
         }, () => {
-          e.warm = false;
+          if (live()) e.warm = false;
         });
       } catch (err) {
         e.warm = false;
@@ -72455,7 +72628,8 @@ void main() {
       const budget = Math.min(BUDGET_MS, Number.isFinite(avail) && avail >= 0 ? avail : BUDGET_MS);
       let todo = pending();
       while (todo.length) {
-        buildOne(todo[0]);
+        if (todo[0].built) moreOne(todo[0]);
+        else buildOne(todo[0]);
         todo = pending();
         if (now() - t0 >= budget) break;
       }
@@ -72476,6 +72650,7 @@ void main() {
         warn18(`Ultra-Detail "${e.key}" dispose`, err);
       }
       e.built = false;
+      e.more = false;
       e.warm = void 0;
       e.shown = false;
       e.api = null;
@@ -72484,7 +72659,7 @@ void main() {
       register(key2, build3, opts = {}) {
         if (disposed || typeof build3 !== "function" || typeof key2 !== "string" || !key2 || entries.has(key2)) return () => {
         };
-        const e = { key: key2, build: build3, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0, shown: false, warm: void 0, warmMs: 0 };
+        const e = { key: key2, build: build3, parent: opts && opts.parent ? opts.parent : null, gate: opts && typeof opts.gate === "function" ? opts.gate : null, more: false, built: false, failed: false, api: null, ms: 0, shown: false, warm: void 0, warmMs: 0 };
         entries.set(key2, e);
         kick();
         return () => {
@@ -72510,6 +72685,13 @@ void main() {
         }
         if (!act) return;
         for (const e of entries.values()) {
+          if (e.gate && e.built && e.api && e.api.object) {
+            const v = visibleNow(e);
+            if (e.api.object.visible !== v) {
+              e.api.object.visible = v;
+              setShown(e, v);
+            }
+          }
           if (!e.built || !e.api || typeof e.api.update !== "function" || !visibleNow(e)) continue;
           try {
             e.api.update(dt, t);
@@ -72596,6 +72778,8 @@ void main() {
         isPhone: app.phone,
         isTouch: app.touch,
         quality: () => app.engine.preset.level,
+        /** Gewählte Einstellung ('auto'|'low'|'mid'|'high'|'ultra'), nicht die aufgelöste Stufe (Ultra-Vorbau nur bei auto/ultra). */
+        qualitySetting: () => app.qualitySetting,
         /** 1.17.0: Szenenwechsel der Bühne (Studio für Editor/Ausweisfoto); null = zurück zur Laden-Szene. Muster: VR-Kino (cinema.js). */
         stage: {
           setScene: (s) => {
