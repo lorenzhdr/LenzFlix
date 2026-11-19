@@ -126,6 +126,7 @@ export function stepRowdy(m, dt, env) {
   const p = env.player;
   m.cool = Math.max(0, m.cool - dt);
   m.t = Math.max(0, m.t - dt);
+  if (m.st !== 'attack') m.over = 0; // Hysterese „oben auf der Treppe“ gilt nur im Angriff (1.19.0)
   if (m.st === 'beaten') { if (m.t <= 0) { m.st = 'flee'; m.t = 6; } return ev; }
   if (m.st === 'flee') {
     moveTo(m, m.hx, m.hz, dt, env, 1.6);

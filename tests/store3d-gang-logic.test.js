@@ -108,4 +108,19 @@ describe('npc/gang-logic 1.18.1: versperrter Weg', () => {
     expect(m.st).toBe('approach');
     expect(evs).toHaveLength(0);
   });
+  it('over wird beim Verlassen von attack zurückgesetzt (Hysterese beim nächsten Angriff voll)', () => {
+    const g = createGang(1, 1, [{ x: 1, z: 1 }]);
+    const m = g.members[0];
+    const env = (y) => ({ allowed, forbidden, player: { x: 1.5, z: 1, y, safe: false } });
+    m.st = 'attack'; m.over = 0.9; m.cool = 5;
+    stepRowdy(m, 0.1, env(0)); // zurück auf Boden: schon im Angriff Reset
+    expect(m.over).toBe(0);
+    m.st = 'attack'; m.over = 0.9;
+    m.st = 'idle'; // Zustandswechsel ohne Reset im attack-Zweig (z. B. Ziel weg)
+    stepRowdy(m, 0.1, { allowed, forbidden, player: null });
+    expect(m.over).toBe(0);
+    m.st = 'taunt'; m.over = 0.9; m.t = 5;
+    stepRowdy(m, 0.1, env(0));
+    expect(m.over).toBe(0);
+  });
 });

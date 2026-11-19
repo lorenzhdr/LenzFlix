@@ -30,6 +30,11 @@ let nextTryAt = 0; // frühester Zeitpunkt (Date.now) des nächsten Versuchs nac
 const RETRY_MS = [2000, 5000, 15000, 60000];
 const MAX_FAILS = RETRY_MS.length + 1;
 let seq = 0;
+let retryTimer = null; // plant den nächsten Versuch zum Ablauf von nextTryAt (sonst gäbe es ohne neuen Abgleich keinen)
+
+function clearRetry() {
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+}
 
 /** Läuft die Seite als installierte Web-App? */
 export function isStandalone() {
@@ -79,6 +84,7 @@ export function buildManifest(src, base, theme) {
 }
 
 function restoreLink() {
+  clearRetry();
   if (link && origHref !== null) link.setAttribute('href', origHref);
   if (blobUrl) URL.revokeObjectURL(blobUrl);
   blobUrl = null;
@@ -109,7 +115,7 @@ async function applyManifest(theme) {
   const el = document.head && document.head.querySelector('link[rel="manifest"]');
   if (!el) return;
   if (theme === lastTheme && link === el) return; // Link-Identität zuerst: ein ersetzter <link> wird neu überschrieben
-  if (theme !== failTheme) { failTheme = theme; fails = 0; nextTryAt = 0; }
+  if (theme !== failTheme) { failTheme = theme; fails = 0; nextTryAt = 0; clearRetry(); }
   if (fails >= MAX_FAILS || Date.now() < nextTryAt) return;
   if (!link || link !== el) {
     if (link) restoreLink();
@@ -120,6 +126,7 @@ async function applyManifest(theme) {
     baseHref = abs(href, document.baseURI);
     if (!baseHref) { restoreLink(); return; }
   }
+  clearRetry();
   const mine = ++seq;
   lastTheme = theme;
   try {
@@ -140,6 +147,10 @@ async function applyManifest(theme) {
       nextTryAt = Date.now() + (RETRY_MS[fails - 1] || 0);
       lastTheme = null;
       if (link && !blobUrl) link.setAttribute('href', origHref);
+      if (fails < MAX_FAILS && running) {
+        clearRetry();
+        retryTimer = setTimeout(() => { retryTimer = null; if (running && failTheme === theme) applyManifest(theme); }, RETRY_MS[fails - 1] || 0);
+      }
     }
   }
 }

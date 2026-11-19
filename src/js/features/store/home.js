@@ -343,7 +343,7 @@ function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
 }
 
 /** Ultra nur auf Desktop/Laptop/Tablet: kein TV, kein kleiner Touch-Bildschirm (Feature-Erkennung, kein UA-Sniffing). */
-function ultraAllowed() {
+export function ultraAllowed() {
   try {
     if (isTv()) return false;
     const touchSmall = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) && Math.min(screen.width, screen.height) < 600;

@@ -79,6 +79,8 @@ describe('sabback match', () => {
   });
 });
 
+const settle = (h) => { window.location.hash = h; return new Promise((r) => setTimeout(r, 20)); };
+
 describe('sabback mount und Klick', () => {
   it('legt Knopf mit aria-label an und räumt auf', () => {
     sab.mount();
@@ -103,27 +105,50 @@ describe('sabback mount und Klick', () => {
     expect(back).not.toHaveBeenCalled();
     expect(window.location.hash).toBe('#/home');
   });
-  it('Verlaufsindex 0: back() ohne Hash-Wechsel → nach 450 ms Rückfall #/home', () => {
+  it('Verlaufsindex 0: back() ohne Verlaufswechsel → nach 1200 ms Rückfall #/home', async () => {
+    await settle('#/details?id=1'); // Hash vorab setzen, damit dessen hashchange nicht in goBack() fällt
     vi.useFakeTimers();
     try {
       const back = vi.spyOn(window.history, 'back').mockImplementation(() => {});
       vi.spyOn(window.history, 'length', 'get').mockReturnValue(3);
-      window.location.hash = '#/details?id=1';
       goBack();
       expect(back).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(1100);
       expect(window.location.hash).toBe('#/details?id=1');
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(200);
       expect(window.location.hash).toBe('#/home');
     } finally { vi.useRealTimers(); }
   });
-  it('back() mit Hash-Wechsel: kein Rückfall', () => {
+  it('Vorgänger mit gleichem Hash (popstate ohne Hash-Wechsel): kein Rückfall', async () => {
+    await settle('#/details?id=1'); // Hash vorab setzen, damit dessen hashchange nicht in goBack() fällt
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(window.history, 'back').mockImplementation(() => { setTimeout(() => window.dispatchEvent(new Event('popstate')), 10); });
+      vi.spyOn(window.history, 'length', 'get').mockReturnValue(3);
+      goBack();
+      vi.advanceTimersByTime(2000);
+      expect(window.location.hash).toBe('#/details?id=1');
+    } finally { vi.useRealTimers(); }
+  });
+  it('langsames Gerät (popstate nach 900 ms): kein Rückfall', async () => {
+    await settle('#/details?id=1'); // Hash vorab setzen, damit dessen hashchange nicht in goBack() fällt
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(window.history, 'back').mockImplementation(() => { setTimeout(() => window.dispatchEvent(new Event('popstate')), 900); });
+      vi.spyOn(window.history, 'length', 'get').mockReturnValue(3);
+      goBack();
+      vi.advanceTimersByTime(2000);
+      expect(window.location.hash).toBe('#/details?id=1');
+    } finally { vi.useRealTimers(); }
+  });
+  it('back() mit Hash-Wechsel: kein Rückfall', async () => {
+    await settle('#/details?id=1'); // Hash vorab setzen, damit dessen hashchange nicht in goBack() fällt
     vi.useFakeTimers();
     try {
       vi.spyOn(window.history, 'back').mockImplementation(() => { window.location.hash = '#/movies'; });
       vi.spyOn(window.history, 'length', 'get').mockReturnValue(3);
-      window.location.hash = '#/details?id=1';
       goBack();
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(2000);
       expect(window.location.hash).toBe('#/movies');
     } finally { vi.useRealTimers(); }
   });
