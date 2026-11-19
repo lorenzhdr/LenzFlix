@@ -337,6 +337,7 @@ export default {
     }
     function hideGfx() { if (dot) dot.visible = false; if (beam) beam.visible = false; if (dot2d) dot2d.hidden = true; }
     /** DOM-Punkt (nur `low`) pro Bild an die Bildschirmstelle des Treffpunkts. */
+    let dotX = null; let dotY = 0;
     function placeDot2d() {
       if (!dot2d || !point || !ctx.camera) return;
       const cv = ctx.renderer && ctx.renderer.domElement;
@@ -346,6 +347,8 @@ export default {
       dot2d.hidden = false;
       const x = cv.offsetLeft + (tmpP.x * 0.5 + 0.5) * cv.clientWidth;
       const y = cv.offsetTop + (-tmpP.y * 0.5 + 0.5) * cv.clientHeight;
+      if (dotX !== null && Math.abs(x - dotX) <= 0.5 && Math.abs(y - dotY) <= 0.5) return; // Wert unverändert: kein Style-Write
+      dotX = x; dotY = y;
       dot2d.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) translate(-50%,-50%)';
     }
 

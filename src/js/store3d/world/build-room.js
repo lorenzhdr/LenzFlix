@@ -82,6 +82,9 @@ function wallAlongX(list, x0, x1, z0, z1, openings, color) {
  * Freie z-Abschnitte einer Seitenwand ('w' = x≈0, 'e' = x≈W), an denen kein Wandregal (run.style 'wall') steht.
  * Zwischen Leiste und Regalkante bleiben 2 mm, damit keine Stirnflächen zusammenfallen.
  */
+/** Statisches Netz (nach dem Bau nie bewegt): lokale Matrix einmal berechnen, dann nicht mehr pro Frame (matrixWorld folgt weiter dem Elternteil). */
+function freeze(m) { m.matrixAutoUpdate = false; m.updateMatrix(); return m; }
+
 export function wallTrimSpans(layout, side, D) {
   const GAP = 0.002;
   const W = layout.w;
@@ -194,6 +197,7 @@ export function buildRoom(layout, tex) {
 
   const wallsMesh = new Mesh(merge(wallParts), new MeshLambertMaterial({ map: tex.wallpaper, vertexColors: true }));
   const trimMesh = new Mesh(merge(trimParts), new MeshLambertMaterial({ vertexColors: true }));
+  freeze(wallsMesh); freeze(trimMesh);
   group.add(wallsMesh, trimMesh);
   // Eingangstür: eigenes, benanntes Objekt mit zwei Flügeln (Module/Intro greifen per Name zu)
   const doorGroup = new Group();
@@ -208,6 +212,7 @@ export function buildRoom(layout, tex) {
   group.add(doorGroup);
   const glass = new Mesh(merge(glassParts), new MeshBasicMaterial({ color: 0xaed6ff, transparent: true, opacity: 0.13, depthWrite: false, side: DoubleSide }));
   glass.renderOrder = 5;
+  freeze(glass);
   group.add(glass);
 
   // --- Kulisse: Straße bei Nacht ---
@@ -215,10 +220,12 @@ export function buildRoom(layout, tex) {
   const street = new Mesh(flatRect(-14, D, W + 14, D + 8, { y: -0.02, tile: 4, roomW: W, roomD: D }), new MeshBasicMaterial({ color: 0x15172a }));
   night.name = 'lfx-backdrop';
   street.name = 'lfx-street';
+  freeze(night); freeze(street);
   group.add(night, street);
 
   // --- Decke + Leuchtstoffpaneele ---
   const ceil = new Mesh(flatRect(0, 0, W, D, { y: CEIL_H, up: false, tile: 0.6, roomW: W, roomD: D }), new MeshBasicMaterial({ map: tex.ceiling, color: 0xc9c3b5 }));
+  freeze(ceil);
   group.add(ceil);
   const frames = [];
   const tubes = [];
@@ -227,8 +234,8 @@ export function buildRoom(layout, tex) {
     tubes.push(quad({ w: p.w, h: p.d, x: p.x, y: CEIL_H - 0.045, z: p.z, rx: PI / 2 }));
   }
   if (frames.length) {
-    group.add(new Mesh(merge(frames), new MeshLambertMaterial({ vertexColors: true })));
-    group.add(new Mesh(merge(tubes), new MeshBasicMaterial({ color: 0xfff4d8, toneMapped: false })));
+    group.add(freeze(new Mesh(merge(frames), new MeshLambertMaterial({ vertexColors: true }))));
+    group.add(freeze(new Mesh(merge(tubes), new MeshBasicMaterial({ color: 0xfff4d8, toneMapped: false }))));
   }
 
   return {
