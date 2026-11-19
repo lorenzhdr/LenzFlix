@@ -5,6 +5,7 @@
 // Hohe Teile (Gesimse, Klimageräte, Schüsseln, Schornsteine, Antennen, Kronen) hängen über Kopfhöhe an Fassaden bzw. Dächern.
 import { seeded } from '../modules/m4-util.js';
 import { windowGrid } from '../modules/outdoor.js';
+import { gangEnv } from '../modules/gang.js';
 
 export const SKY_RADII = [52, 54, 56]; // Radien der Skyline-Ringe (m, Höhenstaffeln innen → außen)
 const WIN_FLOOR_H = 2.7;
@@ -46,6 +47,10 @@ export function makeKeepout(layout) {
   });
   const zebraRects = c.zebras.map((q) => ({ x0: q.x0 - 0.4, z0: q.z0 - 0.4, x1: q.x1 + 0.4, z1: q.z1 + 0.4 }));
   const doors = doorRects(c);
+  // Palast-Schaukästen: ~0,8 m Luft davor/daneben (kein Mülleimer, Fahrradständer, Poller direkt am Aushang)
+  const posterRects = ((c.palast && c.palast.posterSlots) || []).map((q) => ({ x0: q.x - q.w / 2 - 0.8, z0: q.z - 0.8, x1: q.x + q.w / 2 + 0.8, z1: q.z + 0.8 }));
+  let gangSpots = [];
+  try { const ge = gangEnv(c); if (ge) gangSpots = ge.spots; } catch { gangSpots = []; }
   const spawns = Object.values(c.spawns);
   const slots = [...c.discoverSlots, ...c.propSlots];
   const b = c.bounds;
@@ -59,21 +64,49 @@ export function makeKeepout(layout) {
       for (const q of zoneRects) if (inside(q, x, z, r)) return true;
       for (const q of zebraRects) if (inside(q, x, z, r)) return true;
       for (const q of doors) if (inside(q, x, z, r)) return true;
+      for (const q of posterRects) if (inside(q, x, z, r)) return true;
       for (const s of spawns) if (Math.hypot(x - s.x, z - s.z) < 1.4 + r) return true;
       for (const s of slots) if (Math.hypot(x - s.x, z - s.z) < 0.9 + r) return true;
       if (kind === 'tree') {
         for (const l of c.lights) if (Math.hypot(x - l.x, z - l.z) < 2.4) return true;
         for (const s of c.signs) if (Math.hypot(x - s.x, z - s.z) < 2.4) return true;
         for (const s of c.signals) if (Math.hypot(x - s.x, z - s.z) < 1.8) return true;
+        for (const s of gangSpots) if (Math.hypot(x - s.x, z - s.z) < 1.0 + r) return true; // Bandenplätze (gang-Zone) bleiben stammfrei
       }
       return false;
     },
   };
 }
 
+/** Schildflächen der Stadt auf Fassaden (city.signs + Ladenschilder samt Kasten) als Rechtecke { axis, c (Wandposition), a0/a1 (entlang der Wand), y0/y1 }. */
+export function signBoards(city) {
+  const list = [];
+  for (const s of city.signs || []) {
+    const h = s.w / 4;
+    const alongX = Math.abs(Math.sin(s.yaw || 0)) < 0.5; // Schild auf einer Wand quer zu z (yaw 0 / π)
+    list.push(alongX ? { axis: 'z', c: s.z, a0: s.x - s.w / 2, a1: s.x + s.w / 2, y0: s.y - h / 2, y1: s.y + h / 2 } : { axis: 'x', c: s.x, a0: s.z - s.w / 2, a1: s.z + s.w / 2, y0: s.y - h / 2, y1: s.y + h / 2 });
+  }
+  for (const s of city.shopFronts || []) {
+    const h = s.w / 4 + 0.16;
+    list.push({ axis: 'z', c: s.z, a0: s.x - s.w / 2 - 0.1, a1: s.x + s.w / 2 + 0.1, y0: s.y - h / 2, y1: s.y + h / 2 });
+  }
+  return list;
+}
+/** Überdeckt ein Fenster (Rahmen inklusive, `margin` m Rand) ein Schild derselben Wand? */
+export function windowOnSign(win, boards, margin = 0.15) {
+  const a = win.axis === 'z' ? win.x : win.z;
+  const c = win.axis === 'z' ? win.z : win.x;
+  for (const b of boards) {
+    if (b.axis !== win.axis || Math.abs(b.c - c) > 0.6) continue;
+    if (a + win.w / 2 + margin > b.a0 && a - win.w / 2 - margin < b.a1 && win.y + win.h / 2 + margin > b.y0 && win.y - win.h / 2 - margin < b.y1) return true;
+  }
+  return false;
+}
+
 /** Fenster der Fassaden, genau wie world/build-city.js sie anlegt (Position/Größe; `lit` ist hier ohne Belang). */
 export function facadeWindows(city) {
   const out = [];
+  const boards = signBoards(city);
   const flat = () => 0.5;
   for (const b of city.buildings) {
     const w = b.x1 - b.x0;
@@ -84,12 +117,17 @@ export function facadeWindows(city) {
     const sr = b.parts && city.salon ? city.salon.rect : null;
     for (const g of grid) {
       if (sr && g.x > sr.x0 - 0.6 && g.x < sr.x1 + 0.6 && g.y - g.h / 2 < city.salon.ceil) continue;
-      out.push({ ...g, face: b.front === 'S' ? 1 : -1, axis: 'z', b: b.id });
+      const win = { ...g, face: b.front === 'S' ? 1 : -1, axis: 'z', b: b.id };
+      if (windowOnSign(win, boards)) continue; // Ultra-Rahmen nie über Schildern (Schrift bleibt lesbar)
+      out.push(win);
     }
   }
   const f = city.frame;
   for (const [ex, dir] of [[f.XW0 + 0.03, 1], [f.XW1 - 0.03, -1]]) {
-    for (let fl = 0; fl < 4; fl++) for (let zz = f.fz + 1.1; zz < f.sz - 0.6; zz += 1.8) out.push({ x: ex, y: 2.2 + fl * 2.2 + (fl ? 0.3 : 0), z: zz, w: 0.9, h: 1.3, face: dir, axis: 'x', b: 'wall' });
+    for (let fl = 0; fl < 4; fl++) for (let zz = f.fz + 1.1; zz < f.sz - 0.6; zz += 1.8) {
+      const win = { x: ex, y: 2.2 + fl * 2.2 + (fl ? 0.3 : 0), z: zz, w: 0.9, h: 1.3, face: dir, axis: 'x', b: 'wall' };
+      if (!windowOnSign(win, boards)) out.push(win);
+    }
   }
   return out;
 }
@@ -138,8 +176,32 @@ function planFacade(layout, rand) {
   return { windows, ac, dishes, pipes, roofs, frame: f };
 }
 
-/** Bäume: Stämme + Kronenblobs (InstancedMesh), nur dort, wo die Freihalte-Prüfung (inkl. Laternen/Schilder) frei meldet. */
-function planTrees(layout, keep, rand, placed) {
+/** Abstand der Punktmitte (x,y,z) zum Quader b (x0..x1, y0..y1, z0..z1). */
+function sphereBoxDist(b, x, y, z) {
+  return Math.hypot(Math.max(b.x0 - x, 0, x - b.x1), Math.max(b.y0 - y, 0, y - b.y1), Math.max(b.z0 - z, 0, z - b.z1));
+}
+/** Schneidet die Strecke a→b eine Kugel (Mitte c, Radius r)? */
+export function segmentHitsSphere(a, b, c, r) {
+  const dx = b.x - a.x; const dy = b.y - a.y; const dz = b.z - a.z;
+  const l2 = dx * dx + dy * dy + dz * dz;
+  const t = l2 ? Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.y - a.y) * dy + (c.z - a.z) * dz) / l2)) : 0;
+  return Math.hypot(a.x + t * dx - c.x, a.y + t * dy - c.y, a.z + t * dz - c.z) < r;
+}
+/** Kronenkugeln eines Baums (Hauptblob + 2 Nebenblobs), Zufall je Standort (unabhängig von der Plan-Zufallsfolge). */
+function crownBlobs(t, lr) {
+  const cy = t.trunk + t.crown * 0.55;
+  const blobs = [{ x: t.x, y: cy, z: t.z, sx: t.crown, sy: t.crown * 0.95, sz: t.crown, tone: t.tone }];
+  for (let k = 0; k < 2; k++) {
+    const a = lr() * Math.PI * 2;
+    const s = t.crown * (0.55 + lr() * 0.2);
+    blobs.push({ x: t.x + Math.cos(a) * t.crown * 0.6, y: cy + (k ? 0.45 : -0.2) * t.crown, z: t.z + Math.sin(a) * t.crown * 0.6, sx: s, sy: s * 0.9, sz: s, tone: (t.tone + 1 + k) % 3 });
+  }
+  return blobs;
+}
+const blobR = (b) => Math.max(b.sx, b.sy, b.sz);
+
+/** Bäume: Stämme + Kronenblobs (InstancedMesh), nur dort, wo die Freihalte-Prüfung (inkl. Laternen/Schilder) frei meldet und die KRONE nichts schneidet. */
+function planTrees(layout, keep, rand, placed, signs = []) {
   const c = layout.city;
   const f = c.frame;
   const cand = [];
@@ -148,6 +210,22 @@ function planTrees(layout, keep, rand, placed) {
   for (let z = f.sz + 3; z < f.zSS - 3; z += 3.5) { cand.push({ x: f.xc0 - 0.5, z, w: 1 }); cand.push({ x: f.xc1 + 0.5, z, w: 1 }); } // Seitenstraße Süd
   for (const [x, z] of [[f.W + 7.0, -9.6], [-2.0, -10.0], [f.W * 0.45, -10.0]]) cand.push({ x, z, w: 2 }); // Hinterhof (Ecken)
   shuffle(cand, rand);
+  // feste Hindernisse für Kronen: hohe Kollider (Hauswände, Container, Hofwand …) und Schildtafeln der Straßenschilder
+  const solids = layout.colliders.filter((q) => q.kind !== 'bounds' && Number.isFinite(q.x0)).map((q) => ({ x0: q.x0, x1: q.x1, z0: q.z0, z1: q.z1, y0: q.y0 || 0, y1: Number.isFinite(q.y1) ? q.y1 : 99 }));
+  const plates = signs.map((s) => ({ x0: s.x - 0.3, x1: s.x + 0.3, z0: s.z - 0.3, z1: s.z + 0.3, y0: 1.75, y1: 2.35 }));
+  // Sichtlinien zu den Leuchtschildern (Laden, Palast) von den Straßenachsen: keine Krone davor
+  const targets = [{ x: f.W / 2, y: 4.0, z: f.D + 0.05 }];
+  if (c.palast && c.palast.sign) targets.push({ x: c.palast.sign.x, y: c.palast.sign.y, z: f.sz - 0.05 });
+  const eyes = [];
+  for (let x = f.XW0 + 2; x < f.XW1 - 1; x += 4) eyes.push({ x, y: 1.6, z: f.roadMid });
+  for (let z = f.zSN + 2; z < f.zSS - 1; z += 4) eyes.push({ x: (f.xc0 + f.xc1) / 2, y: 1.6, z });
+  const sightClear = (blobs) => {
+    for (const tg of targets) for (const e of eyes) {
+      if (Math.hypot(tg.x - e.x, tg.z - e.z) > 45) continue;
+      for (const b of blobs) if (segmentHitsSphere(e, tg, b, blobR(b) * 0.85)) return false;
+    }
+    return true;
+  };
   const trees = [];
   const MIN = 7.5;
   for (const k of cand) {
@@ -155,18 +233,18 @@ function planTrees(layout, keep, rand, placed) {
     if (keep.blocked(k.x, k.z, 0.2, 'tree')) continue;
     if (trees.some((t) => Math.hypot(t.x - k.x, t.z - k.z) < MIN)) continue;
     if (placed.some((p) => Math.hypot(p.x - k.x, p.z - k.z) < p.r + 0.45)) continue;
-    trees.push({ x: Math.round(k.x * 100) / 100, z: Math.round(k.z * 100) / 100, r: 0.2, trunk: 2.2 + rand() * 0.5, crown: 1.0 + rand() * 0.35, tone: Math.floor(rand() * 3), yard: k.w === 2 });
+    if (k.x > -1.5 && k.x < f.W + 1.5 && k.z > f.D - 0.5 && k.z < f.D + 6) continue; // nie mittig vor dem Schaufenster/Schild der Videothek
+    const lr = seeded(Math.round(k.x * 100) * 7919 + Math.round(k.z * 100) * 104729 + 17);
+    const t = { x: Math.round(k.x * 100) / 100, z: Math.round(k.z * 100) / 100, r: 0.2, trunk: 2.2 + lr() * 0.5, crown: 1.0 + lr() * 0.35, tone: Math.floor(lr() * 3), yard: k.w === 2 };
+    const blobs = crownBlobs(t, lr);
+    if (blobs.some((b) => { const r = blobR(b) * 0.9; return solids.some((q) => sphereBoxDist(q, b.x, b.y, b.z) < r) || plates.some((q) => sphereBoxDist(q, b.x, b.y, b.z) < r); })) continue;
+    if (!sightClear(blobs)) continue;
+    t.blobs = blobs;
+    trees.push(t);
   }
   const crowns = [];
-  for (const t of trees) {
-    const cy = t.trunk + t.crown * 0.55;
-    crowns.push({ x: t.x, y: cy, z: t.z, sx: t.crown, sy: t.crown * 0.95, sz: t.crown, tone: t.tone });
-    for (let k = 0; k < 2; k++) {
-      const a = rand() * Math.PI * 2;
-      const s = t.crown * (0.55 + rand() * 0.2);
-      crowns.push({ x: t.x + Math.cos(a) * t.crown * 0.6, y: cy + (k ? 0.45 : -0.2) * t.crown, z: t.z + Math.sin(a) * t.crown * 0.6, sx: s, sy: s * 0.9, sz: s, tone: (t.tone + 1 + k) % 3 });
-    }
-  }
+  for (const t of trees) crowns.push(...t.blobs);
+  for (const t of trees) delete t.blobs;
   return { trees, crowns };
 }
 
@@ -294,7 +372,7 @@ function planStreet(layout, keep, rand, placed) {
   return { curbs, grates: grates2, manholes, bollards, bins, hoops, signs };
 }
 
-/** Skyline: ferne Gebäude auf drei Ringen (Höhenstaffeln). Mittelpunkt = Mitte der Welt (Bereich bounds). */
+/** Skyline: ferne Gebäude auf drei Ringen (Höhenstaffeln). Die Gebäude liegen RELATIV zum Ringmittelpunkt (x/z um den Ursprung); cx/cz = Mitte der Welt (Bereich bounds), der Ring folgt der Kamera über skylineRoot(). */
 export function planSkyline(layout) {
   const b = layout.city.bounds;
   const cx = (b.x0 + b.x1) / 2;
@@ -311,7 +389,7 @@ export function planSkyline(layout) {
       const h = h0 + rand() * (h1 - h0);
       const da = w / R;
       const am = a + da / 2;
-      blds.push({ layer, x: cx + Math.cos(am) * R, z: cz + Math.sin(am) * R, w, d, h, rot: -am - Math.PI / 2, tone: rand(), roof: rand() < 0.3 ? { w: w * 0.4, d: d * 0.5, h: 1 + rand() * 2 } : null, seed: Math.floor(rand() * 1e6) });
+      blds.push({ layer, x: Math.cos(am) * R, z: Math.sin(am) * R, w, d, h, rot: -am - Math.PI / 2, tone: rand(), roof: rand() < 0.3 ? { w: w * 0.4, d: d * 0.5, h: 1 + rand() * 2 } : null, seed: Math.floor(rand() * 1e6) });
       a += da + 0.006 + rand() * 0.03;
     }
   });
@@ -322,13 +400,18 @@ export function planSkyline(layout) {
   return { cx, cz, blds, follow };
 }
 
+/** Wurzelposition der Skyline für eine Kamera: Mitte der Welt + (Kamera − Mitte) · follow (Ring um die Kamera, Rest = Parallaxe). */
+export function skylineRoot(sk, camX, camZ) {
+  return { x: sk.cx + (camX - sk.cx) * sk.follow, z: sk.cz + (camZ - sk.cz) * sk.follow };
+}
+
 /** Gesamtplan (rein, deterministisch). */
 export function planUltraCity(layout) {
   const rand = seeded(Math.round(layout.w * 100 + layout.d * 10) + 31);
   const keep = makeKeepout(layout);
   const placed = [];
   const street = planStreet(layout, keep, rand, placed);
-  const t = planTrees(layout, keep, rand, placed);
+  const t = planTrees(layout, keep, rand, placed, street.signs);
   const facade = planFacade(layout, rand);
   const skyline = planSkyline(layout);
   return { facade, street, trees: t.trees, crowns: t.crowns, skyline };
