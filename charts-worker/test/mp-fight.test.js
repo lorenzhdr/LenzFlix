@@ -42,7 +42,7 @@ function world(st0) {
 describe('mp-fight: Vertrag', () => {
   it('Server kuendigt fight an, Tabellen stimmen', () => {
     expect(SERVER_CAPS).toContain('fight');
-    expect(CAPS[CAPS.length - 1]).toBe('fight');
+    expect(CAPS.slice(-2)).toEqual(['fight', 'rich2']);
     for (const t of ['wp', 'fh', 'lz', 'lb', 'gc', 'gs', 'gr', 'gh']) expect(T_CAP[t]).toBe('fight');
     expect(STORE_PREFIXES).toContain('fg:');
     expect(fight.cap).toBe('fight');
