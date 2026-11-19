@@ -1111,7 +1111,7 @@ Hülle `features/store/prefs.js`, `localStorage lfx.store.<name>.<uid>`; Mapping
 
 ### Draw-Calls und Größe (1.19.0)
 - Ziel bleibt ≤ 140 bei `low`; Spitze am Gassenmund (nachts, Bande, Laser, 5 Mitspieler) gemessen 131. Niederschlag = 1 Draw-Call (auch `low`), Scheibentropfen 1, Atem 1, Thermometer klein; Ultra-Details nur auf `ultra` (z. B. `ultra-room` +5, `ultra-wet` höchstens +2 und nur bei Nässe).
-- `lenzstore.min.js` rund 1,64 MB (Schwelle `STORE_MIN_BUDGET` 1,70 MB, Nutzer-OK); Hauptbundle `lenzflix.min.js` rund 522 KB (Budget 520 KiB = 532 480 B).
+- `lenzstore.min.js` rund 1,64 MB (Schwelle `STORE_MIN_BUDGET` 1,70 MB, Nutzer-OK); Hauptbundle `lenzflix.min.js` 522 122 B ≈ 510 KiB (Budget 520 KiB = 532 480 B).
 
 ### Fallen (1.19.0)
 - `Float32BufferAttribute(array, n)` kopiert das Array. Wer später ins eigene Array schreibt, nimmt `new BufferAttribute(array, n)` oder schreibt in `geometry.attributes.<name>.array` und setzt `needsUpdate`.
