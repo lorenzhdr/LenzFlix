@@ -38333,6 +38333,28 @@ void main() {
         if (ctx.soundOn()) unlock();
       };
       for (const ev of gestureEvents) document.addEventListener(ev, onGesture, { capture: true, passive: true });
+      let hiddenPaused = false;
+      const onVisibility = () => {
+        if (document.hidden) {
+          if (ac && !hiddenPaused && !suspended) {
+            hiddenPaused = true;
+            try {
+              ac.suspend();
+            } catch {
+            }
+          }
+        } else if (hiddenPaused) {
+          hiddenPaused = false;
+          if (ac && !suspended && ctx.soundOn()) {
+            try {
+              ac.resume().then(onRunning, () => {
+              });
+            } catch {
+            }
+          }
+        }
+      };
+      document.addEventListener("visibilitychange", onVisibility);
       const live = () => ac && ac.state === "running" && ctx.soundOn() && !suspended;
       function env2(g, t, a, d, peak) {
         g.gain.setValueAtTime(1e-4, t);
@@ -38871,15 +38893,19 @@ void main() {
         onResume() {
           suspended = false;
           if (ac && ctx.soundOn()) {
-            try {
-              ac.resume().then(onRunning, () => {
-              });
-            } catch {
+            if (document.hidden) hiddenPaused = true;
+            else {
+              try {
+                ac.resume().then(onRunning, () => {
+                });
+              } catch {
+              }
             }
           }
         },
         dispose() {
           for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
+          document.removeEventListener("visibilitychange", onVisibility);
           offs.forEach((o) => o());
           ambientRunning = false;
           if (offWeather) {
@@ -39143,9 +39169,9 @@ float lfxNoise(vec2 p) {
     };
     const tinted = [];
     const snow = createSnow(L2);
-    const tint2 = (mat2, base = [1, 1, 1]) => {
+    const tint2 = (mat2, base = [1, 1, 1], opts = null) => {
       tinted.push({ mat: mat2, base });
-      snow.patch(mat2);
+      if (!(opts && opts.snow === false)) snow.patch(mat2);
       return mat2;
     };
     const windowSets = [];
@@ -40168,9 +40194,9 @@ float lfxNoise(vec2 p) {
       const geo = B2(q.x0, q.z0, q.x1, q.z1, y0, q.y1, KIND_COLOR[q.kind]);
       (STREET_KINDS.has(q.kind) ? sg : yg).push(geo);
     }
-    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W2 + T3, D2 + T3, 3, 3.3, [0.32, 0.32, 0.36]));
-    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W2 + T3, -T3, 0, 3, [0.55, 0.3, 0.26]));
-    yg.push(B2(-T3 - 0.03, -T3, -T3, D2, 0, 3, [0.58, 0.34, 0.28]));
+    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W2 + T3, D2 + T3, 3.02, 3.3, [0.32, 0.32, 0.36]));
+    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W2 + T3, -T3, 0, 3.02, [0.55, 0.3, 0.26]));
+    yg.push(B2(-T3 - 0.03, -T3, -T3, D2, 0, 3.02, [0.58, 0.34, 0.28]));
     put(yard, yg, flat, "city-yard-props");
     const gates = [];
     const bar2 = (x0, z0, x1, z1) => {
@@ -41397,12 +41423,25 @@ void main() {
         }
       }
       const REFRESH_S = 900;
+      const RETRY_S = 65;
+      const RETRY_MAX = 5;
+      const PENDING_MAX_MS = 8e3;
       let fetchedAt = 0;
       let activeS = 0;
+      let failStreak = 0;
+      let fetching = false;
       let gone = false;
       let waitTimer = null;
+      const dueS = () => failStreak > 0 && failStreak <= RETRY_MAX ? RETRY_S : REFRESH_S;
+      function endPending() {
+        const was = pending;
+        pending = false;
+        recompute();
+        if (was) pushPrecip();
+      }
       function fetchReal() {
-        if (!getReal) return;
+        if (!getReal || fetching) return;
+        fetching = true;
         fetchedAt = Date.now();
         activeS = 0;
         let p;
@@ -41412,29 +41451,35 @@ void main() {
           p = null;
         }
         Promise.resolve(p).then((v) => {
+          fetching = false;
           if (gone) return;
           if (v && typeof v === "object") {
             real = v;
-            realAt = Number.isFinite(v.ts) && v.ts > 1e12 && v.ts <= Date.now() ? v.ts : Date.now();
-          }
-          pending = false;
-          recompute();
+            realAt = v.stale && Number.isFinite(v.ts) && v.ts > 1e12 && v.ts <= Date.now() ? v.ts : Date.now();
+            failStreak = 0;
+          } else failStreak++;
+          endPending();
         }, () => {
+          fetching = false;
           if (!gone) {
-            pending = false;
-            recompute();
+            failStreak++;
+            endPending();
           }
         });
       }
+      let onVis = null;
       if (getReal) {
         waitTimer = setTimeout(() => {
           waitTimer = null;
-          if (pending) {
-            pending = false;
-            recompute();
-          }
-        }, 1500);
+          if (pending) endPending();
+        }, PENDING_MAX_MS);
         fetchReal();
+        onVis = () => {
+          if (typeof document === "undefined" || document.hidden || gone) return;
+          recompute();
+          if (!suspended && Date.now() - fetchedAt >= dueS() * 1e3) fetchReal();
+        };
+        if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVis);
       }
       const listeners = /* @__PURE__ */ new Set();
       weather.onChange = (fn) => {
@@ -41528,6 +41573,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       let near = false;
       let suspended = false;
       function pushPrecip() {
+        if (pending) return;
         const pr = ctx.use("precip");
         if (pr && typeof pr.setWeather === "function") pr.setWeather(weather.precip);
       }
@@ -41545,7 +41591,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
           out.follow(cam);
           if (getReal && !suspended) {
             activeS += dt;
-            if (activeS >= REFRESH_S) fetchReal();
+            if (activeS >= dueS()) fetchReal();
           }
           if (t - checkT > 0.4) {
             checkT = t;
@@ -41570,7 +41616,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
             apply();
             emit();
           }
-          if (getReal && Date.now() - fetchedAt > REFRESH_S * 1e3) fetchReal();
+          if (getReal && Date.now() - fetchedAt >= dueS() * 1e3) fetchReal();
           syncVisible();
         },
         dispose() {
@@ -41579,6 +41625,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
             clearTimeout(waitTimer);
             waitTimer = null;
           }
+          if (onVis && typeof document !== "undefined") document.removeEventListener("visibilitychange", onVis);
           listeners.clear();
           const pr = ctx.use("precip");
           if (pr && typeof pr.setWeather === "function") pr.setWeather(null);
@@ -43871,7 +43918,7 @@ void main() {
       }
       function ensureHeldMat() {
         if (!heldMat) {
-          heldMat = getOutdoor(ctx).tint(new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true }));
+          heldMat = getOutdoor(ctx).tint(new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true }), [1, 1, 1], { snow: false });
         }
         return heldMat;
       }
@@ -51799,6 +51846,11 @@ void main() {
       dispose() {
         bodies.dispose();
         wings.dispose();
+        for (const g of [body, wing]) {
+          g.dispose();
+          const k = geos.indexOf(g);
+          if (k >= 0) geos.splice(k, 1);
+        }
       }
     };
   }
@@ -51870,8 +51922,8 @@ void main() {
     // Eilig bei Regen
     rain: ["Brr, nass! Wer hat das bestellt?", "Regen! Mein Schirm ist stolz auf mich.", "Wenigstens ist die Stra\xDFe jetzt sauber.", "Pf\xFCtzen-Alarm!"],
     // Plaudern im Vorbeigehen (Spieler < 2 m, ruhig)
-    hello: ["Na?", "Sch\xF6nen Abend noch!", "Moin!", "Tolles Wetter f\xFCr Kino, oder?", "Hallo, Fremde!", "Auch auf dem Weg zum n\xE4chsten Film?"],
-    night: ["Ganz sch\xF6n dunkel hier.", "Nachts sieht alles aus wie ein Film.", "Die Laternen leuchten so sch\xF6n ... filmreif."],
+    hello: ["Na?", "Moin!", "Tolles Wetter f\xFCr Kino, oder?", "Hallo, Fremde!", "Auch auf dem Weg zum n\xE4chsten Film?"],
+    night: ["Sch\xF6nen Abend noch!", "Ganz sch\xF6n dunkel hier.", "Nachts sieht alles aus wie ein Film.", "Die Laternen leuchten so sch\xF6n ... filmreif."],
     // Kartenabreißer
     ticket: [
       "Karte bitte! ... Spa\xDF, ist alles frei, nimm Platz!",
@@ -53688,6 +53740,37 @@ void main() {
         }
         flock = null;
       }
+      const umbQuota = (seed) => frac((seed ^ 1374496523) >>> 0) < 0.75;
+      let wetPrev = raining();
+      let offWx = null;
+      function syncUmbrellas() {
+        for (const e of walkers) {
+          const want = () => raining() && umbQuota(e.seed);
+          if (want() === !!e.look.umbrella) continue;
+          later(0.4 + frac(e.seed) * 5, () => {
+            if (!walkers.includes(e)) return;
+            const v = want();
+            if (v === !!e.look.umbrella) return;
+            e.look.umbrella = v;
+            try {
+              e.handle.setUmbrella(v);
+            } catch {
+            }
+          });
+        }
+      }
+      {
+        const wp = ctx.use("weather");
+        if (wp && typeof wp.onChange === "function") {
+          offWx = wp.onChange(() => {
+            const rain = raining();
+            if (rain === wetPrev) return;
+            wetPrev = rain;
+            adjustWalkers();
+            syncUmbrellas();
+          });
+        }
+      }
       if (enabled && city2 && city2.sidewalkPaths) {
         graph = buildGraph(city2.sidewalkPaths);
         adjustWalkers();
@@ -53998,6 +54081,13 @@ void main() {
           }
           offProvider();
           offAnimals();
+          if (offWx) {
+            try {
+              offWx();
+            } catch {
+            }
+            offWx = null;
+          }
           if (pool) {
             pool.dispose();
             pool = null;
@@ -56896,7 +56986,7 @@ void main() {
     x.textAlign = "center";
     x.textBaseline = "middle";
     x.font = `bold 56px ${FONT}`;
-    x.fillText("VIDEOTHEK LENZ", 256, 68);
+    x.fillText("VIDEOTHEK LENZ", 256, 68, 460);
     return toTexture(c, { aniso: 2 });
   }
   function createStudio() {
@@ -57127,7 +57217,7 @@ void main() {
     beard: ["Keiner", "Stoppeln", "Schnauzer", "Spitzbart", "Vollbart", "Kinnbart"],
     shape: ["Gerade", "Breite Schultern", "Breite H\xFCften"],
     top: ["T-Shirt", "Langarm", "Kapuzenpulli", "Hemd", "Tr\xE4gershirt", "Pullover", "Jacke", "Weste", "Polo", "Kleid"],
-    topU: ["Regencape", "Dreier-Trikot", "Hausverbot-Shirt", "Warnweste-Shirt"],
+    topU: ["Regencape", "Dreier-Trikot", "Hausverbot-Shirt", "Warnweste-Shirt", "Nietenjacke"],
     topP: ["Einfarbig", "Brustband", "Ringel", "L\xE4ngsstreifen", "Zweifarbig", "Karo"],
     bottom: ["Jeans", "Shorts", "Rock", "Cargo", "Trainingshose", "Weite Hose"],
     bottomU: ["Zebrastreifen-Hose"],
@@ -57135,11 +57225,11 @@ void main() {
     shoe: ["Turnschuhe", "Stiefel", "Sandalen", "Halbschuhe", "Hohe Turnschuhe"],
     shoeU: ["Farbklecks-Treter"],
     glasses: ["Keine", "Rund", "Eckig", "Sonnenbrille", "Streberbrille"],
-    glassesU: ["Fliegerbrille", "Dreidimensionale Brille"],
+    glassesU: ["Fliegerbrille", "Dreidimensionale Brille", "Pflaster-Veilchen"],
     hat: ["Keine", "Kappe", "M\xFCtze", "Hut", "Anglerhut", "Stirnband", "Baskenm\xFCtze"],
-    hatU: ["Goldkappe", "Krone des Fundus", "Katzen\xF6hrchen", "Dosenhut", "Platzanweiser-M\xFCtze"],
+    hatU: ["Goldkappe", "Krone des Fundus", "Katzen\xF6hrchen", "Dosenhut", "Platzanweiser-M\xFCtze", "Lockenwickler-Haube"],
     bag: ["Keine", "Umh\xE4ngetasche", "Rucksack", "Einkaufstasche"],
-    bagU: ["Chipst\xFCte am Gurt", "Kassettenrucksack"]
+    bagU: ["Chipst\xFCte am Gurt", "Kassettenrucksack", "Katzenkopf-Rucksack"]
   };
   var FIELD_NAMES = {
     skin: F.skin,
@@ -59919,6 +60009,15 @@ void main() {
       fragmentShader: FRAG3
     });
   }
+  function shadowsReady(renderer, scene) {
+    const sm = renderer && renderer.shadowMap;
+    if (!sm || !sm.enabled) return true;
+    let ok = true;
+    scene.traverse((o) => {
+      if (o.isLight && o.castShadow && o.shadow && !o.shadow.map) ok = false;
+    });
+    return ok;
+  }
   function renderToTarget(renderer, scene, cam, rt, hide = []) {
     const prevRt = renderer.getRenderTarget();
     const info = renderer.info;
@@ -60027,6 +60126,7 @@ void main() {
     }
     function renderNow() {
       const cam = ctx.camera;
+      if (!shadowsReady(ctx.renderer, ctx.scene)) return false;
       if (!setup(cam)) return false;
       if (rt && rt.width !== rtSize) {
         rt.dispose();
@@ -62434,11 +62534,20 @@ void main() {
         return Math.max(0.3, Math.min(1, dmg / 26));
       }
       const NPC_DMG_SCALE = 0.5;
+      const NPC_REACH_Y = 1.2;
       function hitPlayer(o) {
         if (disposed || !o || xrOn() || flags.fight === false) return false;
         if (protReason()) return false;
         const dmg = Number(o.dmg);
         if (!(dmg > 0)) return false;
+        if (o.src === "npc" || o.src === "gang") {
+          let py = 0;
+          try {
+            py = Number(ctx.player.getPose().y) || 0;
+          } catch {
+          }
+          if (py - (Number(o.fromY) || 0) > NPC_REACH_Y) return false;
+        }
         const r = energy.hit(dmg * (o.src === "npc" || o.src === "gang" ? NPC_DMG_SCALE : 1), T5);
         if (r.ignored) return false;
         const k = strengthOf(dmg);
@@ -63116,6 +63225,8 @@ void main() {
   var STREET_MARGIN = 6;
   var ROWDY_HP = 60;
   var FLEE_HP = 0.25;
+  var BODY_R = 0.3;
+  var REACH_Y = 0.6;
   var ST = ["idle", "approach", "taunt", "threaten", "attack", "flee", "beaten"];
   function fnv2(s) {
     let h3 = 2166136261;
@@ -63138,7 +63249,7 @@ void main() {
   var inR = (r, x, z) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;
   var distR = (r, x, z) => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1));
   function gangAreaOk(x, z, allowed, forbidden = [], margin = STREET_MARGIN) {
-    for (const f of forbidden) if (inR(f, x, z)) return false;
+    for (const f of forbidden) if (f.r > 0 ? distR(f, x, z) < f.r : inR(f, x, z)) return false;
     for (const a of allowed) if (distR(a, x, z) <= margin) return true;
     return false;
   }
@@ -63176,6 +63287,7 @@ void main() {
     return ev;
   }
   var PROGRESS_MIN = 0.25;
+  var SIDE_MAX_S = 1;
   function moveTo(m, tx, tz, dt, env2, mul = 1) {
     const dx = tx - m.x;
     const dz = tz - m.z;
@@ -63186,9 +63298,12 @@ void main() {
     const sx = dx / d * s;
     const sz = dz / d * s;
     const ok = (x, z) => gangAreaOk(x, z, env2.allowed, env2.forbidden);
+    let usedSide = false;
     if (ok(m.x + sx, m.z + sz)) {
       m.x += sx;
       m.z += sz;
+      m.side = 0;
+      m.sideT = 0;
     } else {
       const tryX = () => {
         if (Math.abs(dx) <= 1e-3) return false;
@@ -63208,9 +63323,33 @@ void main() {
         }
         return false;
       };
-      if (!(Math.abs(dx) >= Math.abs(dz) ? tryX() || tryZ() : tryZ() || tryX())) return false;
+      const side = () => {
+        if ((m.sideT || 0) > SIDE_MAX_S) return false;
+        const k0 = m.side || (m.i % 2 ? 1 : -1);
+        for (const a of [0.87, 1.57]) {
+          for (const k of [k0, -k0]) {
+            const c = Math.cos(a);
+            const sn = Math.sin(a) * k;
+            const ux = dx / d;
+            const uz = dz / d;
+            const nx = m.x + (ux * c - uz * sn) * s;
+            const nz = m.z + (uz * c + ux * sn) * s;
+            if (ok(nx, nz)) {
+              m.x = nx;
+              m.z = nz;
+              m.side = k;
+              m.sideT = (m.sideT || 0) + dt;
+              usedSide = true;
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      const axes = () => Math.abs(dx) >= Math.abs(dz) ? tryX() || tryZ() : tryZ() || tryX();
+      if (!(m.side ? side() || axes() : axes() || side())) return false;
     }
-    return d - Math.hypot(tx - m.x, tz - m.z) >= PROGRESS_MIN * s;
+    return !usedSide && d - Math.hypot(tx - m.x, tz - m.z) >= PROGRESS_MIN * s;
   }
   var STUCK_TAUNT_S = 1.2;
   var STUCK_TAUNT_DIST = 9;
@@ -63239,7 +63378,8 @@ void main() {
       }
       return ev;
     }
-    const usable = p && !p.safe && gangAreaOk(p.x, p.z, env2.allowed, env2.forbidden);
+    const usable = p && !p.safe && gangAreaOk(p.x, p.z, env2.playerAllowed || env2.allowed, env2.playerForbidden || env2.forbidden);
+    const reach = !p || !(p.y > REACH_Y);
     const dist = p ? Math.hypot(p.x - m.x, p.z - m.z) : Infinity;
     if (!usable) {
       if (m.st !== "idle") {
@@ -63285,6 +63425,13 @@ void main() {
       return ev;
     }
     if (m.st === "attack") {
+      if (!reach) {
+        m.st = "taunt";
+        m.t = 2.5;
+        m.stuck = 0;
+        ev.push({ type: "say", i: m.i, cat: "taunt" });
+        return ev;
+      }
       if (dist > 1.2) {
         stuckStep(m, moveTo(m, p.x, p.z, dt, env2, 1.5), dt);
         if (m.stuck >= STUCK_GIVE_UP_S) {
@@ -63403,9 +63550,10 @@ void main() {
   function gangEnv(city2) {
     const zn = city2 && city2.zones;
     if (!zn || !zn.alley || !zn.yard || !zn.store) return null;
-    const allowed = rects(zn, ["alley", "yard", "escape"]);
-    const solid = (city2.colliders || []).filter((c) => c && c.kind !== "escape" && !c.dynamic && (c.y1 === void 0 || c.y1 > 0.4) && Number.isFinite(c.x0)).map((c) => ({ x0: c.x0, z0: c.z0, x1: c.x1, z1: c.z1 }));
-    const shut = [...rects(zn, ["store", "doorway"]).map((r) => grow(r, WALL_GROW)), ...solid];
+    const allowed = rects(zn, ["alley", "yard"]);
+    const solid = (city2.colliders || []).filter((c) => c && !c.dynamic && (c.kind === "escape" || c.y1 === void 0 || c.y1 > 0.4) && Number.isFinite(c.x0)).map((c) => ({ x0: c.x0, z0: c.z0, x1: c.x1, z1: c.z1, r: BODY_R }));
+    const doors = rects(zn, ["store", "doorway"]).map((r) => grow(r, WALL_GROW));
+    const shut = [...doors, ...solid];
     const clear = (x, z) => !shut.some((r) => x > r.x0 - 0.7 && x < r.x1 + 0.7 && z > r.z0 - 0.7 && z < r.z1 + 0.7);
     const spots = [];
     const grid = (r, step) => {
@@ -63413,7 +63561,7 @@ void main() {
     };
     grid(zn.alley.rect, 1.6);
     grid(zn.yard.rect, 3.2);
-    return { allowed, forbidden: shut, spots };
+    return { allowed, forbidden: shut, playerAllowed: [...allowed, ...rects(zn, ["escape"])], playerForbidden: doors, spots };
   }
   var gang_default = {
     name: "gang",
@@ -63803,7 +63951,7 @@ void main() {
         const pose = poseOf();
         if (pose) {
           const fp = fightProv();
-          out.push({ c: myC(), self: true, x: pose.x, z: pose.z, safe: !entered || !!(fp && typeof fp.protected === "function" && fp.protected()) });
+          out.push({ c: myC(), self: true, x: pose.x, y: pose.y || 0, z: pose.z, safe: !entered || !!(fp && typeof fp.protected === "function" && fp.protected()) });
         }
         if (role === "leader" && fn && fn.has()) {
           const n = ctx.use("net");
@@ -63811,7 +63959,7 @@ void main() {
           for (const p of list) {
             if (p.f & 8) continue;
             const pp = fn.peerPos(p.c);
-            if (pp) out.push({ c: p.c, self: false, x: pp.x, z: pp.z, safe: false });
+            if (pp) out.push({ c: p.c, self: false, x: pp.x, y: pp.y || 0, z: pp.z, safe: false });
           }
         }
         return out;
@@ -63849,7 +63997,7 @@ void main() {
           let best = null;
           let bd = Infinity;
           for (const t of targets) {
-            if (t.safe || !gangAreaOk(t.x, t.z, env2.allowed, env2.forbidden)) continue;
+            if (t.safe || !gangAreaOk(t.x, t.z, env2.playerAllowed, env2.playerForbidden)) continue;
             const d = Math.hypot(t.x - m.x, t.z - m.z);
             if (d < bd) {
               bd = d;
@@ -63857,7 +64005,7 @@ void main() {
             }
           }
           m.tgt = best ? best.c : 0;
-          const evs = stepRowdy(m, dt, { allowed: env2.allowed, forbidden: env2.forbidden, player: best ? { x: best.x, z: best.z, safe: false } : null });
+          const evs = stepRowdy(m, dt, { allowed: env2.allowed, forbidden: env2.forbidden, playerAllowed: env2.playerAllowed, playerForbidden: env2.playerForbidden, player: best ? { x: best.x, y: best.y || 0, z: best.z, safe: false } : null });
           for (const e of evs) if (e.type === "strike") strike(m, e, best, fn);
         }
       }
@@ -64570,6 +64718,14 @@ void main() {
     });
     const zebraRects = c.zebras.map((q) => ({ x0: q.x0 - 0.4, z0: q.z0 - 0.4, x1: q.x1 + 0.4, z1: q.z1 + 0.4 }));
     const doors = doorRects(c);
+    const posterRects = (c.palast && c.palast.posterSlots || []).map((q) => ({ x0: q.x - q.w / 2 - 0.8, z0: q.z - 0.8, x1: q.x + q.w / 2 + 0.8, z1: q.z + 0.8 }));
+    let gangSpots = [];
+    try {
+      const ge = gangEnv(c);
+      if (ge) gangSpots = ge.spots;
+    } catch {
+      gangSpots = [];
+    }
     const spawns = Object.values(c.spawns);
     const slots = [...c.discoverSlots, ...c.propSlots];
     const b = c.bounds;
@@ -64583,19 +64739,44 @@ void main() {
         for (const q of zoneRects) if (inside(q, x, z, r)) return true;
         for (const q of zebraRects) if (inside(q, x, z, r)) return true;
         for (const q of doors) if (inside(q, x, z, r)) return true;
+        for (const q of posterRects) if (inside(q, x, z, r)) return true;
         for (const s of spawns) if (Math.hypot(x - s.x, z - s.z) < 1.4 + r) return true;
         for (const s of slots) if (Math.hypot(x - s.x, z - s.z) < 0.9 + r) return true;
         if (kind === "tree") {
           for (const l of c.lights) if (Math.hypot(x - l.x, z - l.z) < 2.4) return true;
           for (const s of c.signs) if (Math.hypot(x - s.x, z - s.z) < 2.4) return true;
           for (const s of c.signals) if (Math.hypot(x - s.x, z - s.z) < 1.8) return true;
+          for (const s of gangSpots) if (Math.hypot(x - s.x, z - s.z) < 1 + r) return true;
         }
         return false;
       }
     };
   }
+  function signBoards(city2) {
+    const list = [];
+    for (const s of city2.signs || []) {
+      const h3 = s.w / 4;
+      const alongX = Math.abs(Math.sin(s.yaw || 0)) < 0.5;
+      list.push(alongX ? { axis: "z", c: s.z, a0: s.x - s.w / 2, a1: s.x + s.w / 2, y0: s.y - h3 / 2, y1: s.y + h3 / 2 } : { axis: "x", c: s.x, a0: s.z - s.w / 2, a1: s.z + s.w / 2, y0: s.y - h3 / 2, y1: s.y + h3 / 2 });
+    }
+    for (const s of city2.shopFronts || []) {
+      const h3 = s.w / 4 + 0.16;
+      list.push({ axis: "z", c: s.z, a0: s.x - s.w / 2 - 0.1, a1: s.x + s.w / 2 + 0.1, y0: s.y - h3 / 2, y1: s.y + h3 / 2 });
+    }
+    return list;
+  }
+  function windowOnSign(win, boards, margin = 0.15) {
+    const a = win.axis === "z" ? win.x : win.z;
+    const c = win.axis === "z" ? win.z : win.x;
+    for (const b of boards) {
+      if (b.axis !== win.axis || Math.abs(b.c - c) > 0.6) continue;
+      if (a + win.w / 2 + margin > b.a0 && a - win.w / 2 - margin < b.a1 && win.y + win.h / 2 + margin > b.y0 && win.y - win.h / 2 - margin < b.y1) return true;
+    }
+    return false;
+  }
   function facadeWindows2(city2) {
     const out = [];
+    const boards = signBoards(city2);
     const flat = () => 0.5;
     for (const b of city2.buildings) {
       const w = b.x1 - b.x0;
@@ -64606,12 +64787,17 @@ void main() {
       const sr = b.parts && city2.salon ? city2.salon.rect : null;
       for (const g of grid) {
         if (sr && g.x > sr.x0 - 0.6 && g.x < sr.x1 + 0.6 && g.y - g.h / 2 < city2.salon.ceil) continue;
-        out.push({ ...g, face: b.front === "S" ? 1 : -1, axis: "z", b: b.id });
+        const win = { ...g, face: b.front === "S" ? 1 : -1, axis: "z", b: b.id };
+        if (windowOnSign(win, boards)) continue;
+        out.push(win);
       }
     }
     const f = city2.frame;
     for (const [ex, dir] of [[f.XW0 + 0.03, 1], [f.XW1 - 0.03, -1]]) {
-      for (let fl = 0; fl < 4; fl++) for (let zz = f.fz + 1.1; zz < f.sz - 0.6; zz += 1.8) out.push({ x: ex, y: 2.2 + fl * 2.2 + (fl ? 0.3 : 0), z: zz, w: 0.9, h: 1.3, face: dir, axis: "x", b: "wall" });
+      for (let fl = 0; fl < 4; fl++) for (let zz = f.fz + 1.1; zz < f.sz - 0.6; zz += 1.8) {
+        const win = { x: ex, y: 2.2 + fl * 2.2 + (fl ? 0.3 : 0), z: zz, w: 0.9, h: 1.3, face: dir, axis: "x", b: "wall" };
+        if (!windowOnSign(win, boards)) out.push(win);
+      }
     }
     return out;
   }
@@ -64659,7 +64845,29 @@ void main() {
     }
     return { windows, ac, dishes, pipes, roofs, frame: f };
   }
-  function planTrees(layout, keep2, rand, placed) {
+  function sphereBoxDist(b, x, y, z) {
+    return Math.hypot(Math.max(b.x0 - x, 0, x - b.x1), Math.max(b.y0 - y, 0, y - b.y1), Math.max(b.z0 - z, 0, z - b.z1));
+  }
+  function segmentHitsSphere(a, b, c, r) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const dz = b.z - a.z;
+    const l2 = dx * dx + dy * dy + dz * dz;
+    const t = l2 ? Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.y - a.y) * dy + (c.z - a.z) * dz) / l2)) : 0;
+    return Math.hypot(a.x + t * dx - c.x, a.y + t * dy - c.y, a.z + t * dz - c.z) < r;
+  }
+  function crownBlobs(t, lr) {
+    const cy = t.trunk + t.crown * 0.55;
+    const blobs = [{ x: t.x, y: cy, z: t.z, sx: t.crown, sy: t.crown * 0.95, sz: t.crown, tone: t.tone }];
+    for (let k = 0; k < 2; k++) {
+      const a = lr() * Math.PI * 2;
+      const s = t.crown * (0.55 + lr() * 0.2);
+      blobs.push({ x: t.x + Math.cos(a) * t.crown * 0.6, y: cy + (k ? 0.45 : -0.2) * t.crown, z: t.z + Math.sin(a) * t.crown * 0.6, sx: s, sy: s * 0.9, sz: s, tone: (t.tone + 1 + k) % 3 });
+    }
+    return blobs;
+  }
+  var blobR = (b) => Math.max(b.sx, b.sy, b.sz);
+  function planTrees(layout, keep2, rand, placed, signs = []) {
     const c = layout.city;
     const f = c.frame;
     const cand = [];
@@ -64674,25 +64882,42 @@ void main() {
     }
     for (const [x, z] of [[f.W + 7, -9.6], [-2, -10], [f.W * 0.45, -10]]) cand.push({ x, z, w: 2 });
     shuffle(cand, rand);
+    const solids = layout.colliders.filter((q) => q.kind !== "bounds" && Number.isFinite(q.x0)).map((q) => ({ x0: q.x0, x1: q.x1, z0: q.z0, z1: q.z1, y0: q.y0 || 0, y1: Number.isFinite(q.y1) ? q.y1 : 99 }));
+    const plates = signs.map((s) => ({ x0: s.x - 0.3, x1: s.x + 0.3, z0: s.z - 0.3, z1: s.z + 0.3, y0: 1.75, y1: 2.35 }));
+    const targets = [{ x: f.W / 2, y: 4, z: f.D + 0.05 }];
+    if (c.palast && c.palast.sign) targets.push({ x: c.palast.sign.x, y: c.palast.sign.y, z: f.sz - 0.05 });
+    const eyes = [];
+    for (let x = f.XW0 + 2; x < f.XW1 - 1; x += 4) eyes.push({ x, y: 1.6, z: f.roadMid });
+    for (let z = f.zSN + 2; z < f.zSS - 1; z += 4) eyes.push({ x: (f.xc0 + f.xc1) / 2, y: 1.6, z });
+    const sightClear = (blobs) => {
+      for (const tg of targets) for (const e of eyes) {
+        if (Math.hypot(tg.x - e.x, tg.z - e.z) > 45) continue;
+        for (const b of blobs) if (segmentHitsSphere(e, tg, b, blobR(b) * 0.85)) return false;
+      }
+      return true;
+    };
     const trees = [];
     const MIN = 7.5;
     for (const k of cand) {
       if (trees.length >= 16) break;
       if (keep2.blocked(k.x, k.z, 0.2, "tree")) continue;
-      if (trees.some((t) => Math.hypot(t.x - k.x, t.z - k.z) < MIN)) continue;
+      if (trees.some((t2) => Math.hypot(t2.x - k.x, t2.z - k.z) < MIN)) continue;
       if (placed.some((p) => Math.hypot(p.x - k.x, p.z - k.z) < p.r + 0.45)) continue;
-      trees.push({ x: Math.round(k.x * 100) / 100, z: Math.round(k.z * 100) / 100, r: 0.2, trunk: 2.2 + rand() * 0.5, crown: 1 + rand() * 0.35, tone: Math.floor(rand() * 3), yard: k.w === 2 });
+      if (k.x > -1.5 && k.x < f.W + 1.5 && k.z > f.D - 0.5 && k.z < f.D + 6) continue;
+      const lr = seeded(Math.round(k.x * 100) * 7919 + Math.round(k.z * 100) * 104729 + 17);
+      const t = { x: Math.round(k.x * 100) / 100, z: Math.round(k.z * 100) / 100, r: 0.2, trunk: 2.2 + lr() * 0.5, crown: 1 + lr() * 0.35, tone: Math.floor(lr() * 3), yard: k.w === 2 };
+      const blobs = crownBlobs(t, lr);
+      if (blobs.some((b) => {
+        const r = blobR(b) * 0.9;
+        return solids.some((q) => sphereBoxDist(q, b.x, b.y, b.z) < r) || plates.some((q) => sphereBoxDist(q, b.x, b.y, b.z) < r);
+      })) continue;
+      if (!sightClear(blobs)) continue;
+      t.blobs = blobs;
+      trees.push(t);
     }
     const crowns = [];
-    for (const t of trees) {
-      const cy = t.trunk + t.crown * 0.55;
-      crowns.push({ x: t.x, y: cy, z: t.z, sx: t.crown, sy: t.crown * 0.95, sz: t.crown, tone: t.tone });
-      for (let k = 0; k < 2; k++) {
-        const a = rand() * Math.PI * 2;
-        const s = t.crown * (0.55 + rand() * 0.2);
-        crowns.push({ x: t.x + Math.cos(a) * t.crown * 0.6, y: cy + (k ? 0.45 : -0.2) * t.crown, z: t.z + Math.sin(a) * t.crown * 0.6, sx: s, sy: s * 0.9, sz: s, tone: (t.tone + 1 + k) % 3 });
-      }
-    }
+    for (const t of trees) crowns.push(...t.blobs);
+    for (const t of trees) delete t.blobs;
     return { trees, crowns };
   }
   var CURB_STEP = 0.25;
@@ -64837,7 +65062,7 @@ void main() {
         const h3 = h0 + rand() * (h1 - h0);
         const da = w / R2;
         const am = a + da / 2;
-        blds.push({ layer, x: cx + Math.cos(am) * R2, z: cz + Math.sin(am) * R2, w, d, h: h3, rot: -am - Math.PI / 2, tone: rand(), roof: rand() < 0.3 ? { w: w * 0.4, d: d * 0.5, h: 1 + rand() * 2 } : null, seed: Math.floor(rand() * 1e6) });
+        blds.push({ layer, x: Math.cos(am) * R2, z: Math.sin(am) * R2, w, d, h: h3, rot: -am - Math.PI / 2, tone: rand(), roof: rand() < 0.3 ? { w: w * 0.4, d: d * 0.5, h: 1 + rand() * 2 } : null, seed: Math.floor(rand() * 1e6) });
         a += da + 6e-3 + rand() * 0.03;
       }
     });
@@ -64847,12 +65072,15 @@ void main() {
     const follow = Math.min(1, Math.max(0.9, 1 - 1.4 / maxOff));
     return { cx, cz, blds, follow };
   }
+  function skylineRoot(sk, camX, camZ) {
+    return { x: sk.cx + (camX - sk.cx) * sk.follow, z: sk.cz + (camZ - sk.cz) * sk.follow };
+  }
   function planUltraCity(layout) {
     const rand = seeded(Math.round(layout.w * 100 + layout.d * 10) + 31);
     const keep2 = makeKeepout(layout);
     const placed = [];
     const street = planStreet(layout, keep2, rand, placed);
-    const t = planTrees(layout, keep2, rand, placed);
+    const t = planTrees(layout, keep2, rand, placed, street.signs);
     const facade = planFacade(layout, rand);
     const skyline = planSkyline(layout);
     return { facade, street, trees: t.trees, crowns: t.crowns, skyline };
@@ -65006,8 +65234,9 @@ void main() {
   var PI10 = Math.PI;
   var shadeOf2 = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
   var lift = (c, k, a = 0) => [Math.min(1, c[0] * k + a), Math.min(1, c[1] * k + a), Math.min(1, c[2] * k + a)];
-  function tintedMat(out, base = [1, 1, 1]) {
+  function tintedMat(out, base = [1, 1, 1], setup = null) {
     const m = new MeshBasicMaterial({ vertexColors: true });
+    if (setup) setup(m);
     out.tint(m, base);
     const sh = out.pal && out.pal.shade;
     if (sh) m.color.setRGB(base[0] * sh[0], base[1] * sh[1], base[2] * sh[2]);
@@ -65309,18 +65538,13 @@ void main() {
     g.setAttribute("color", new Float32BufferAttribute(col2, 3));
     return g;
   }
-  function buildUltraTrees(out, city2, plan) {
-    const root = new Group();
-    root.name = "ultra-trees";
-    const trees = plan.trees;
-    const crowns = plan.crowns;
-    if (!trees.length) return { object: root, sync() {
-    }, dispose() {
-      root.removeFromParent();
-    } };
-    const uSway = { value: 0 };
-    const crownMat = tintedMat(out);
-    crownMat.onBeforeCompile = (sh) => {
+  var SWAY_PERIOD = 20 * PI10;
+  function swayTime(t, t0 = 0) {
+    const d = (t - t0) % SWAY_PERIOD;
+    return d < 0 ? d + SWAY_PERIOD : d;
+  }
+  function swayHook(uSway) {
+    return (sh) => {
       sh.uniforms.uSway = uSway;
       sh.vertexShader = `uniform float uSway;
 ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
@@ -65331,7 +65555,39 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
   transformed.z += cos(uSway * 1.1 + lfxPh * 1.3) * 0.04 * lfxK;
 #endif`);
     };
-    crownMat.customProgramCacheKey = () => "lfx-ultra-sway";
+  }
+  function buildUltraTrees(out, city2, plan) {
+    const root = new Group();
+    root.name = "ultra-trees";
+    const trees = plan.trees;
+    const crowns = plan.crowns;
+    if (!trees.length) return { object: root, sync() {
+    }, dispose() {
+      root.removeFromParent();
+    } };
+    const uSway = { value: 0 };
+    let t0 = null;
+    let mq = null;
+    try {
+      mq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+    } catch {
+      mq = null;
+    }
+    let still = !!(mq && mq.matches);
+    const onMq = (e2) => {
+      still = !!(e2 && typeof e2.matches === "boolean" ? e2.matches : mq && mq.matches);
+    };
+    if (mq) {
+      try {
+        if (mq.addEventListener) mq.addEventListener("change", onMq);
+        else if (mq.addListener) mq.addListener(onMq);
+      } catch {
+      }
+    }
+    const crownMat = tintedMat(out, [1, 1, 1], (m2) => {
+      m2.onBeforeCompile = swayHook(uSway);
+      m2.customProgramCacheKey = () => "lfx-ultra-sway";
+    });
     const trunkMat = tintedMat(out);
     const crownGeo = crownGeometry();
     const tr = new Raw();
@@ -65366,8 +65622,13 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
     return {
       object: root,
       meshes: [crownMesh, trunkMesh],
+      get still() {
+        return still;
+      },
       update(dt, t) {
-        uSway.value = t;
+        if (still) return;
+        if (t0 === null) t0 = t;
+        uSway.value = swayTime(t, t0);
       },
       sync(groups) {
         root.children.forEach((c) => {
@@ -65375,6 +65636,13 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
         });
       },
       dispose() {
+        if (mq) {
+          try {
+            if (mq.removeEventListener) mq.removeEventListener("change", onMq);
+            else if (mq.removeListener) mq.removeListener(onMq);
+          } catch {
+          }
+        }
         root.removeFromParent();
         crownMesh.dispose();
         trunkMesh.dispose();
@@ -65389,6 +65657,10 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
   var WARM = [1, 0.8, 0.46];
   var COOL2 = [0.4, 0.56, 0.85];
   var FOG_MIX = [0.4, 0.52, 0.64];
+  function fogMixOf(layer, fog) {
+    const f = fog > 0 ? Math.min(1, fog) : 0;
+    return FOG_MIX[layer] + (1 - FOG_MIX[layer]) * f;
+  }
   function buildUltraSkyline(out, city2, plan, camera) {
     const sk = plan.skyline;
     const raw = new Raw();
@@ -65427,19 +65699,25 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
     root.add(mesh);
     const col2 = geo.attributes.color;
     const mix3 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+    const fogOf = () => {
+      const f = out.wx && Number.isFinite(out.wx.fog) ? out.wx.fog : 0;
+      return f > 0 ? Math.min(1, f) : 0;
+    };
+    let fk = fogOf();
+    const fogMix = (layer) => fogMixOf(layer, fk);
     function recolor(tod, rain, pal) {
       if (!pal) return;
       const hor = pal.sky[2];
       const shade2 = pal.shade;
       const litP = tod === "night" ? 0.15 : tod === "dusk" ? 0.08 : 0;
       for (const bd of bodies) {
-        const m = FOG_MIX[bd.layer];
+        const m = fogMix(bd.layer);
         const base = [(0.17 + bd.tone * 0.1) * shade2[0], (0.19 + bd.tone * 0.08) * shade2[1], (0.25 + bd.tone * 0.07) * shade2[2]];
         const c = mix3(base, hor, m);
         for (let v = bd.v0; v < bd.v1; v++) col2.setXYZ(v, c[0] * shadeArr[v * 3], c[1] * shadeArr[v * 3], c[2] * shadeArr[v * 3]);
       }
       for (const w of wins) {
-        const m = FOG_MIX[w.layer];
+        const m = fogMix(w.layer);
         let c;
         if (w.lit < litP) c = mix3(w.lit < litP * 0.7 ? WARM : COOL2, hor, m * 0.35);
         else c = mix3([0.1 * shade2[0] + 0.02, 0.13 * shade2[1] + 0.03, 0.2 * shade2[2] + 0.05], hor, m);
@@ -65453,10 +65731,16 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
     return {
       object: root,
       meshes: [mesh],
-      update() {
+      update(dt) {
+        const tg = fogOf();
+        if (tg !== fk) {
+          fk = Math.abs(tg - fk) < 0.01 ? tg : fk + (tg - fk) * Math.min(1, (dt > 0 ? dt : 0.016) * 3);
+          recolor(out.tod, out.rain, out.pal);
+        }
         const cam = camera;
         if (!cam) return;
-        root.position.set(sk.cx + (cam.position.x - sk.cx) * sk.follow, 0, sk.cz + (cam.position.z - sk.cz) * sk.follow);
+        const p = skylineRoot(sk, cam.position.x, cam.position.z);
+        root.position.set(p.x, 0, p.z);
         root.updateMatrixWorld(true);
       },
       /** Drinnen (Saal, Foyer, Salon) nicht zeichnen. */
@@ -65786,6 +66070,25 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
     }
     return out;
   }
+  function fitTitle(title, maxW, measure, max = 30, min = 17) {
+    const words = String(title).split(" ");
+    const widest = (ws, px2) => ws.reduce((m, w) => Math.max(m, measure(w, px2)), 0);
+    let px = max;
+    while (px > min && widest(words, px) > maxW) px -= 1;
+    if (widest(words, px) <= maxW) return { px, words };
+    const out = [];
+    for (const w of words) {
+      let rest = w;
+      while (rest.length > 3 && measure(rest, px) > maxW) {
+        let n = rest.length - 1;
+        while (n > 2 && measure(rest.slice(0, n) + "-", px) > maxW) n--;
+        out.push(rest.slice(0, n) + "-");
+        rest = rest.slice(n);
+      }
+      out.push(rest);
+    }
+    return { px, words: out };
+  }
   var C = (hex2) => [(hex2 >> 16 & 255) / 255, (hex2 >> 8 & 255) / 255, (hex2 & 255) / 255];
   function clutterBoxes(layout) {
     const { w: W2, d: D2 } = layout;
@@ -65942,12 +66245,17 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
       }
       ctx.textAlign = "center";
       ctx.fillStyle = "#fff";
-      ctx.font = `bold 30px ${FONT}`;
-      const lines = wrapLines(ctx, a.title, 216);
-      const y0 = y + 296 - (lines.length - 1) * 16;
+      const fit2 = fitTitle(a.title, 216, (t, px) => {
+        ctx.font = `bold ${px}px ${FONT}`;
+        return ctx.measureText(t).width;
+      });
+      ctx.font = `bold ${fit2.px}px ${FONT}`;
+      const lines = wrapLines(ctx, fit2.words.join(" "), 216);
+      const lh = Math.round(fit2.px * 1.07);
+      const y0 = y + 296 - (lines.length - 1) * lh / 2;
       ctx.shadowColor = "rgba(0,0,0,0.6)";
       ctx.shadowBlur = 6;
-      lines.forEach((ln, k) => ctx.fillText(ln, x + 128, y0 + k * 32));
+      lines.forEach((ln, k) => ctx.fillText(ln, x + 128, y0 + k * lh));
       ctx.shadowBlur = 0;
       ctx.font = `italic 12px ${FONT}`;
       ctx.fillStyle = "rgba(255,255,255,0.82)";
@@ -66151,7 +66459,11 @@ void main() {
       for (const s of swapped) {
         const t = neu[s.key];
         if (!t || s.mat.map === t) continue;
-        t.anisotropy = s.old.anisotropy || 1;
+        const an = s.old.anisotropy || 1;
+        if (t.anisotropy !== an) {
+          t.anisotropy = an;
+          t.needsUpdate = true;
+        }
         s.mat.map = t;
       }
     }
@@ -68431,6 +68743,7 @@ void main() {
         label = document.createElement("div");
         label.className = "lfx-mp-count";
         label.setAttribute("role", "status");
+        label.hidden = true;
         root.appendChild(label);
       }
       h3.appendChild(root);
@@ -68451,6 +68764,10 @@ void main() {
           if (root) root.hidden = true;
           if (host && host.classList) host.classList.remove("lfx-store-has-social");
           shown2 = "";
+          if (label) {
+            label.textContent = "";
+            label.hidden = true;
+          }
           return;
         }
         if (!ensure()) return;
@@ -68460,6 +68777,7 @@ void main() {
         const want = text || "";
         if (want !== shown2) {
           label.textContent = want;
+          label.hidden = !want;
           shown2 = want;
         }
       },
@@ -71279,6 +71597,7 @@ void main() {
         } catch {
         }
       };
+      let hintPending = false;
       const core = {
         ctx,
         frame,
@@ -71374,10 +71693,7 @@ void main() {
           sentFlags = flags();
           syncHeld();
           const pr = prefs();
-          if (!pr.hint) {
-            toast(HINT);
-            writePrefs({ hint: true });
-          }
+          if (!pr.hint) hintPending = true;
         } else if (m.t === "b" || m.t === "j" || m.t === "l" || m.t === "pf") {
           peers.ev(m);
           if (m.t === "b") callParts("ev", m);
@@ -71708,6 +72024,11 @@ void main() {
           peers.tick(dt);
           callParts("tick", dt, t);
           if (!live) return;
+          if (hintPending && ctx.playing()) {
+            hintPending = false;
+            toast(HINT);
+            writePrefs({ hint: true });
+          }
           samplePose(nowMs());
           hudText = ctx.playing() && !(ctx.xr && ctx.xr.presenting()) ? hudLabel() : "";
           hud.set(hudText, { chat: chatOn(), emote: emoteOn() || hudText !== "" && local.usable() });
@@ -72224,7 +72545,8 @@ void main() {
             if (self2.xrOn() && app.xr.toast) app.xr.toast(text, ms);
             else {
               try {
-                app.deps.toast(text);
+                if (ms > 0) app.deps.toast(text, ms);
+                else app.deps.toast(text);
               } catch {
               }
             }
@@ -72733,7 +73055,7 @@ void main() {
     return e;
   }
   var VR_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 8.5C3 7.1 4.1 6 5.5 6h13C19.9 6 21 7.1 21 8.5v6c0 1.4-1.1 2.5-2.5 2.5h-3.2c-.8 0-1.5-.5-1.8-1.2l-.3-.8c-.2-.5-.7-.8-1.2-.8s-1 .3-1.2.8l-.3.8c-.3.7-1 1.2-1.8 1.2H5.5C4.1 17 3 15.9 3 14.5v-6zm2 .5v5.5c0 .3.2.5.5.5h2.6l.1-.3c.5-1.2 1.6-1.9 2.8-1.9s2.3.7 2.8 1.9l.1.3h2.6c.3 0 .5-.2.5-.5V9c0-.3-.2-.5-.5-.5h-13c-.3 0-.5.2-.5.5z"/></svg>';
-  var DESKTOP_HELP = "WASD laufen \xB7 Maus umsehen \xB7 Shift rennen \xB7 Leertaste springen \xB7 E nehmen \xB7 M mitnehmen (im Halte-Bild) \xB7 F schlagen \xB7 G werfen \xB7 R Waffen (1\u20134, Mausrad) \xB7 V Ansicht \xB7 T Emotes \xB7 Q zoomen \xB7 Esc Pause";
+  var DESKTOP_HELP = "WASD\xA0laufen \xB7 Maus\xA0umsehen \xB7 Shift\xA0rennen \xB7 Leertaste\xA0springen \xB7 E\xA0nehmen \xB7 M\xA0mitnehmen (im Halte-Bild) \xB7 F\xA0schlagen \xB7 G\xA0werfen \xB7 R\xA0Waffen (1\u20134, Mausrad) \xB7 V\xA0Ansicht \xB7 T\xA0Emotes \xB7 Q\xA0zoomen \xB7 Esc\xA0Pause";
   function touchHint(hint) {
     return String(hint == null ? "" : hint).replace(/E\s*\/\s*Klick\s*:\s*/i, "");
   }
@@ -73342,8 +73664,7 @@ void main() {
       vo.textContent = `Stimme: ${chosen ? shortVoiceName(chosen.name) : "Automatisch"}`;
       const vt = voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline);
       note.textContent = vt;
-      note.hidden = !vt;
-      note.style.visibility = a.getSound() ? "" : "hidden";
+      note.hidden = !vt || !a.getSound();
       const fk = a.fullscreenKind ? a.fullscreenKind() : "none";
       fs.hidden = fk !== "api" && fk !== "guide";
       fs.textContent = fk === "guide" ? "Vollbild \u2026" : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? "An" : "Aus"}`;
@@ -74289,6 +74610,13 @@ void main() {
   var SWING_DURS = { hand: SWING_DUR, belt: 0.36, whip: 0.55 };
   var HELD_WEAPONS = ["belt", "whip", "laser"];
   var WEAPON_POS = [0.27, -0.27, -0.44];
+  function weaponPos(fovDeg, aspect2, touch) {
+    const f = Number(fovDeg) > 0 ? Number(fovDeg) : 70;
+    const a = Number(aspect2) > 0 ? Number(aspect2) : 16 / 9;
+    const halfW = Math.tan(f * Math.PI / 360) * a * Math.abs(WEAPON_POS[2]);
+    const x = touch ? Math.min(WEAPON_POS[0], 0.15 * halfW) : Math.min(WEAPON_POS[0], 0.5 * halfW);
+    return [x, WEAPON_POS[1], WEAPON_POS[2]];
+  }
   var BELT_A = 9067056;
   var BELT_B = 7620650;
   var STEEL3 = 14936046;
@@ -74384,7 +74712,17 @@ void main() {
     let laserOn = false;
     let clock = 0;
     const weaponGroup = new Group();
-    weaponGroup.position.set(...WEAPON_POS);
+    let wpos = WEAPON_POS;
+    const coarse = () => typeof matchMedia === "function" && !!matchMedia("(pointer: coarse)").matches;
+    let placedFov = NaN;
+    let placedAspect = NaN;
+    const placeWeapon = () => {
+      if (camera.fov === placedFov && camera.aspect === placedAspect) return;
+      placedFov = camera.fov;
+      placedAspect = camera.aspect;
+      wpos = weaponPos(camera.fov, camera.aspect, coarse());
+    };
+    weaponGroup.position.set(...wpos);
     weaponGroup.visible = false;
     group.add(weaponGroup);
     let throwT = 0;
@@ -74407,7 +74745,8 @@ void main() {
       weapon = null;
       weaponGroup.visible = false;
       weaponGroup.rotation.set(0, 0, 0);
-      weaponGroup.position.set(...WEAPON_POS);
+      placeWeapon();
+      weaponGroup.position.set(...wpos);
     }
     function buildWeapon(id) {
       const list = [];
@@ -74557,17 +74896,18 @@ void main() {
     function updateWeapon() {
       const id = weapon.id;
       const wg = weaponGroup;
+      placeWeapon();
       const breathe = reduced2() ? 0 : Math.sin(clock * 1.7) * 4e-3;
       if (id === "belt") {
         const p = swingT > 0 && swingKind === "belt" ? 1 - swingT / swingDur : 0;
         const e = sin01(p);
-        wg.position.set(WEAPON_POS[0] - 0.04 * (1 - e) - 0.5 * p + 0.1 * e, WEAPON_POS[1] + 0.1 * (1 - e) + 0.1 * e + breathe, WEAPON_POS[2] - 0.12 * e);
+        wg.position.set(wpos[0] - 0.04 * (1 - e) - 0.5 * p + 0.1 * e, wpos[1] + 0.1 * (1 - e) + 0.1 * e + breathe, wpos[2] - 0.12 * e);
         wg.rotation.set(0.5 * (1 - e) - 0.2 * e, -0.2 - 1.5 * p + 0.5 * e, 0.4 * (1 - e));
       } else if (id === "whip") {
         const p = swingT > 0 && swingKind === "whip" ? 1 - swingT / swingDur : 0;
         const slash = p < 0.35 ? 0 : (p - 0.35) / 0.65;
         const rx = p === 0 ? 0.2 : p < 0.35 ? 0.2 + 1.1 * (p / 0.35) : 1.3 - 2 * Math.sin(Math.min(1, slash * 1.2) * Math.PI * 0.5) + 0.5 * slash;
-        wg.position.set(WEAPON_POS[0] - 0.12 * sin01(p), WEAPON_POS[1] + 0.2 * sin01(p) + breathe, WEAPON_POS[2] - 0.05 * sin01(slash));
+        wg.position.set(wpos[0] - 0.12 * sin01(p), wpos[1] + 0.2 * sin01(p) + breathe, wpos[2] - 0.05 * sin01(slash));
         wg.rotation.set(rx, -0.15, 0.1);
         const crack = p > 0 ? 0.4 : 0.03;
         weapon.segs.forEach((sg, i) => {
@@ -74576,7 +74916,7 @@ void main() {
         });
         skinWhip(weapon);
       } else if (id === "laser") {
-        wg.position.set(WEAPON_POS[0] - 0.04, WEAPON_POS[1] + 0.05 + breathe, WEAPON_POS[2] + 0.02);
+        wg.position.set(wpos[0] - 0.04, wpos[1] + 0.05 + breathe, wpos[2] + 0.02);
         wg.rotation.set(0.1, 0.12, 0);
         paintLens(weapon, laserOn && !reduced2() ? 1.5 + Math.sin(clock * 14) * 0.3 : laserOn ? 1.5 : 1);
       }

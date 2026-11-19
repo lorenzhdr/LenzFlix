@@ -42,6 +42,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) {
   --lfx-store-z-bar: 1250;
   --lfx-store-safe-top: env(safe-area-inset-top, 0px);
   --lfx-store-safe-x: max(12px, env(safe-area-inset-left, 0px));
+  --lfx-store-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --lfx-store-safe-right: env(safe-area-inset-right, 0px);
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv).lfx-store-home-on, html.lfx-js.lfx-theme-store:not(.layout-tv).lfx-store-home-on body:not(.dashboardDocument) {
@@ -798,7 +800,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-stage .lfx-store-m3 {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
   z-index: 5;
   box-sizing: border-box;
-  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) 12px 12px;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) max(12px, var(--lfx-store-safe-right, 0px)) max(12px, var(--lfx-store-safe-bottom, 0px)) max(12px, var(--lfx-store-safe-x, 0px));
   pointer-events: auto;
   background: rgba(7, 10, 28, .6);
   justify-content: center;
@@ -824,6 +826,18 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
   display: flex;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+
+@media (max-height: 900px) and (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
+    gap: 5px;
+    padding: 14px 20px;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel > .lfx-store-act {
+    min-height: 34px;
+    padding: 5px 16px;
+  }
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-title {
@@ -974,6 +988,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-drag:active {
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel {
+  right: max(24px, calc(var(--lfx-store-safe-right, 0px) + 12px));
   background: var(--lfx-store-glass, rgba(13, 19, 48, .62));
   border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
   pointer-events: auto;
@@ -987,7 +1002,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel {
   display: flex;
   position: absolute;
   top: 50%;
-  right: 24px;
   overflow-y: auto;
   transform: translateY(-50%);
 }
@@ -3358,7 +3372,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-aux {
   right: calc(var(--lfx-store-gp-r) + var(--lfx-store-gp-jump) + 2 * var(--lfx-store-gp-small) + 3 * var(--lfx-store-gp-gap));
 }
 
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns button:not(.lfx-store-gp-jump) {
+  letter-spacing: 0;
+  font-size: .5rem;
+}
+
 @media (orientation: portrait) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns button:not(.lfx-store-gp-jump) {
+    letter-spacing: 0;
+    font-size: .46rem;
+  }
+
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp {
     --lfx-store-gp-r: max(12px, calc(env(safe-area-inset-right, 0px) + 8px));
     --lfx-store-gp-b: max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px));
@@ -3505,7 +3529,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social > .lfx-mp-count {
   display: flex;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social[hidden] {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social[hidden], html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social > .lfx-mp-count[hidden] {
   display: none;
 }
 
@@ -3513,6 +3537,10 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social.is-desk {
   right: auto;
   left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
   flex-direction: row;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) :has(.lfx-store-viewbtn:not([hidden])) > .lfx-mp-social.is-desk {
+  left: calc(max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px)) + 54px);
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-tag {
@@ -3590,6 +3618,20 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-touch {
   top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 62px);
   max-width: min(44vw, 360px);
   font-size: .74rem;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-touch {
+    max-width: min(44vw, 360px, max(140px, 50vw - 250px));
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-desk.is-open {
+  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px) + 8px) + 44px + 8px);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) :has( > .lfx-store-char) > .lfx-mp-chatlog {
+  visibility: hidden;
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-open {
@@ -3926,7 +3968,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-hudbtn[hidden] {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
   z-index: 40;
   box-sizing: border-box;
-  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) var(--lfx-store-safe-x) 10px;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) max(var(--lfx-store-safe-x), var(--lfx-store-safe-right, 0px)) max(10px, var(--lfx-store-safe-bottom, 0px)) var(--lfx-store-safe-x);
   color: var(--lfx-store-text);
   font-family: var(--lfx-font);
   pointer-events: none;
@@ -4519,7 +4561,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char-flash.is-soft {
 
 @media (max-height: 520px) and (min-aspect-ratio: 11 / 10) {
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
-    padding: max(6px, var(--lfx-store-safe-top)) var(--lfx-store-safe-x) 6px;
+    padding: max(6px, var(--lfx-store-safe-top)) max(var(--lfx-store-safe-x), var(--lfx-store-safe-right, 0px)) max(6px, var(--lfx-store-safe-bottom, 0px)) var(--lfx-store-safe-x);
     gap: 8px;
   }
 
@@ -5197,6 +5239,24 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-whub {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+@media (max-width: 420px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-whub {
+    padding: 8px;
+    font-size: .7rem;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wslot {
+    overflow-wrap: normal;
+    word-break: normal;
+    -webkit-hyphens: none;
+    hyphens: none;
+    gap: 1px;
+    min-width: 0;
+    padding: 2px;
+    font-size: max(.55rem, min(2.2vmin, .9rem));
+  }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {

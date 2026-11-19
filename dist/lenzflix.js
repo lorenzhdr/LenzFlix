@@ -23074,15 +23074,16 @@
 
   // src/js/features/store/weather.js
   var TIMEOUT_MS4 = 6e3;
-  var OK_TTL_MS = 15 * 60 * 1e3;
+  var OK_TTL_MS = 14 * 60 * 1e3;
   var FAIL_TTL_MS2 = 5 * 60 * 1e3;
   var ERR_TTL_MS = 60 * 1e3;
   var KINDS2 = ["clear", "cloudy", "fog", "drizzle", "rain", "heavy", "snow", "storm"];
   var fin = (v) => typeof v === "number" && Number.isFinite(v);
   function parse(d) {
     if (!d || d.v !== 1 || !KINDS2.includes(d.k)) return null;
-    if (![d.i, d.sd, d.fog, d.t, d.day, d.ts].every(fin)) return null;
-    return { k: d.k, i: d.i, sd: d.sd, fog: d.fog, t: d.t, day: d.day ? 1 : 0, ts: d.ts, stale: d.stale ? 1 : 0 };
+    if (![d.i, d.sd, d.fog, d.day, d.ts].every(fin)) return null;
+    if (d.t !== null && d.t !== void 0 && !fin(d.t)) return null;
+    return { k: d.k, i: d.i, sd: d.sd, fog: d.fog, t: fin(d.t) ? d.t : null, day: d.day ? 1 : 0, ts: d.ts, stale: d.stale ? 1 : 0 };
   }
   function createWeatherSource() {
     let pending2 = null;
@@ -23093,6 +23094,7 @@
       if (!base || !a.token) return null;
       const ctrl = typeof AbortController === "function" ? new AbortController() : null;
       const timer2 = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS4) : null;
+      const t0 = Date.now();
       let v = null;
       let ttl = ERR_TTL_MS;
       try {
@@ -23111,7 +23113,7 @@
       } finally {
         if (timer2) clearTimeout(timer2);
       }
-      cached2 = { v, exp: Date.now() + ttl, key };
+      cached2 = { v, exp: t0 + ttl, key };
       return v;
     }
     return () => {
@@ -24202,7 +24204,7 @@
         }
       },
       play: (item, o = {}) => play(item, o.noCover ? { resume: Boolean(o.resume), noCover: true } : { resume: Boolean(o.resume) }),
-      toast: (text) => toast(text),
+      toast: (text, ms) => toast(text, ms > 0 ? { duration: ms } : void 0),
       classicView: () => {
         window.location.hash = CLASSIC_HASH;
       },
