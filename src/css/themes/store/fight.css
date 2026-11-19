@@ -267,8 +267,13 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-whub {
     font-size: 0.7rem;
   }
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-wslot {
-    font-size: clamp(0.6rem, 2.2vmin, 0.9rem);
-    overflow-wrap: anywhere;
+    font-size: clamp(0.55rem, 2.2vmin, 0.9rem);
+    padding: 2px;
+    gap: 1px;
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
   }
 }
 @media (orientation: landscape) and (max-height: 500px) {
