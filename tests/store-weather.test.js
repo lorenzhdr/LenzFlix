@@ -59,7 +59,7 @@ describe('createWeatherSource()', () => {
     vi.stubGlobal('fetch', f);
     const src = createWeatherSource();
     await src();
-    await vi.advanceTimersByTimeAsync(14 * 60 * 1000);
+    await vi.advanceTimersByTimeAsync(13 * 60 * 1000);
     await src();
     expect(f).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(61 * 1000);
@@ -122,5 +122,28 @@ describe('createWeatherSource()', () => {
     const [a, b] = await Promise.all([src(), src()]);
     expect(f).toHaveBeenCalledTimes(1);
     expect(a).toBe(b);
+  });
+
+  it('t:null oder fehlendes t = Temperatur unbekannt (Antwort bleibt gültig), t:"x" verworfen', async () => {
+    for (const t of [null, undefined]) {
+      vi.stubGlobal('fetch', vi.fn(async () => reply(200, { ...good, t })));
+      expect((await createWeatherSource()()).t).toBeNull();
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => reply(200, { ...good, t: 'x' })));
+    expect(await createWeatherSource()()).toBeNull();
+  });
+  it('Cache läuft ab Abrufstart und unter dem 3D-Intervall (15 min) ab: der Refresh trifft nie den alten Wert', async () => {
+    vi.useFakeTimers();
+    const f = vi.fn(() => new Promise((res) => setTimeout(() => res(reply(200, good)), 5000))); // 5 s Latenz
+    vi.stubGlobal('fetch', f);
+    const src = createWeatherSource();
+    const p = src();
+    await vi.advanceTimersByTimeAsync(5000);
+    await p;
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000 - 5000); // Abrufstart + 15 min = Refresh des 3D-Teils
+    const p2 = src();
+    await vi.advanceTimersByTimeAsync(5000);
+    await p2;
+    expect(f).toHaveBeenCalledTimes(2);
   });
 });

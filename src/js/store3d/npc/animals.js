@@ -119,7 +119,11 @@ export function createPigeons(n) {
       wings.instanceMatrix.needsUpdate = true;
     },
     setCount(c) { bodies.count = c; wings.count = c * 2; },
-    dispose() { bodies.dispose(); wings.dispose(); },
+    dispose() {
+      bodies.dispose(); wings.dispose();
+      // Geometrien gehören dieser Instanz (sonst blieben sie bei jedem Stufenwechsel bis zum Modul-Ende liegen)
+      for (const g of [body, wing]) { g.dispose(); const k = geos.indexOf(g); if (k >= 0) geos.splice(k, 1); }
+    },
   };
 }
 

@@ -101,7 +101,7 @@ export default {
     const getReal = ctx.deps && typeof ctx.deps.weather === 'function' && !debugWx ? ctx.deps.weather : null;
     let real = null;
     let mp = null;
-    let pending = !!getReal; // bis zur Antwort (höchstens 1,5 s) kein Zufallsregen, damit nichts aufblitzt
+    let pending = !!getReal; // bis zur Antwort (höchstens PENDING_MAX_MS) kein Zufallsregen, damit nichts aufblitzt
     // Letzter echter Wert bleibt bei Folgeabfragen ohne Ergebnis (null/Fehler) höchstens 2 h gültig (REAL_KEEP_MS), danach Rückfall auf mp/lokal.
     const REAL_KEEP_MS = 2 * 3600 * 1000;
     let realAt = 0;
@@ -151,29 +151,57 @@ export default {
       });
       if (ready) { apply(); syncVisible(); emit(); }
     }
-    // --- echtes Wetter holen: beim Start (höchstens 1,5 s Wartezeit), danach alle 15 min aktiver Zeit und beim Fortsetzen (wenn älter) ---
+    // --- echtes Wetter holen: beim Start (Platzhalter 'trocken' bis zur Antwort, höchstens PENDING_MAX_MS), danach alle 15 min aktiver Zeit,
+    //     beim Fortsetzen und beim Sichtbarwerden des Tabs (wenn älter); nach einem Abruf ohne Ergebnis schon nach ~65 s erneut (höchstens 5 Versuche in Folge) ---
     const REFRESH_S = 900;
+    const RETRY_S = 65; // knapp über der 60-s-Fehlerfrist der Hülle (sonst träfe der Versuch deren Negativ-Cache)
+    const RETRY_MAX = 5;
+    const PENDING_MAX_MS = 8000; // Sicherung: hängt die Quelle ganz, gilt danach der Rückfall (die Hülle bricht selbst nach 6 s ab)
     let fetchedAt = 0;
     let activeS = 0;
+    let failStreak = 0; // Abrufe in Folge ohne Ergebnis
+    let fetching = false;
     let gone = false;
     let waitTimer = null;
+    /** Sekunden bis zum nächsten Abruf (aktive bzw. Wandzeit seit dem letzten Abrufstart). */
+    const dueS = () => (failStreak > 0 && failStreak <= RETRY_MAX ? RETRY_S : REFRESH_S);
+    function endPending() {
+      const was = pending;
+      pending = false;
+      recompute();
+      if (was) pushPrecip(); // erster Wert nach der Wartezeit: precip übernimmt ihn sofort (kein 15-s-Einblenden)
+    }
     function fetchReal() {
-      if (!getReal) return;
+      if (!getReal || fetching) return;
+      fetching = true;
       fetchedAt = Date.now();
       activeS = 0;
       let p;
       try { p = getReal(); } catch { p = null; }
       // null/Fehler = keine neue Info: letzten echten Wert behalten (realFresh begrenzt auf 2 h)
       Promise.resolve(p).then((v) => {
+        fetching = false;
         if (gone) return;
-        if (v && typeof v === 'object') { real = v; realAt = Number.isFinite(v.ts) && v.ts > 1e12 && v.ts <= Date.now() ? v.ts : Date.now(); }
-        pending = false;
-        recompute();
-      }, () => { if (!gone) { pending = false; recompute(); } });
+        if (v && typeof v === 'object') {
+          real = v;
+          // Alter ab Empfang messen (eine vorgehende Geräteuhr verwirft sonst frische Werte); nur ein vom Server als veraltet gemeldeter Wert behält seinen Zeitstempel.
+          realAt = v.stale && Number.isFinite(v.ts) && v.ts > 1e12 && v.ts <= Date.now() ? v.ts : Date.now();
+          failStreak = 0;
+        } else failStreak++;
+        endPending();
+      }, () => { fetching = false; if (!gone) { failStreak++; endPending(); } });
     }
+    let onVis = null;
     if (getReal) {
-      waitTimer = setTimeout(() => { waitTimer = null; if (pending) { pending = false; recompute(); } }, 1500);
+      waitTimer = setTimeout(() => { waitTimer = null; if (pending) endPending(); }, PENDING_MAX_MS);
       fetchReal();
+      // Tab war verborgen oder der Rechner im Ruhezustand: Alter neu bewerten und bei Bedarf sofort neu abrufen (die Szene zählt nur sichtbare Zeit).
+      onVis = () => {
+        if (typeof document === 'undefined' || document.hidden || gone) return;
+        recompute();
+        if (!suspended && Date.now() - fetchedAt >= dueS() * 1000) fetchReal();
+      };
+      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
     }
     const listeners = new Set();
     /** Meldet Änderungen des Wetters (raining, später weitere Felder); Rückgabe = Abmeldefunktion. */
@@ -261,6 +289,7 @@ uniform float uTime;`)
     let near = false;
     let suspended = false;
     function pushPrecip() {
+      if (pending) return; // Platzhalter ('trocken') nicht weitergeben: sonst verbraucht er den 'ersten Wert gilt sofort' von precip
       const pr = ctx.use('precip');
       if (pr && typeof pr.setWeather === 'function') pr.setWeather(weather.precip);
     }
@@ -278,7 +307,7 @@ uniform float uTime;`)
       update(dt, t) {
         nowT = t;
         out.follow(cam);
-        if (getReal && !suspended) { activeS += dt; if (activeS >= REFRESH_S) fetchReal(); }
+        if (getReal && !suspended) { activeS += dt; if (activeS >= dueS()) fetchReal(); }
         if (t - checkT > 0.4) {
           checkT = t;
           const was = near;
@@ -294,12 +323,13 @@ uniform float uTime;`)
         suspended = false;
         const now = timeOfDay(hourOpt);
         if (now !== tod) { tod = now; weather.tod = now; apply(); emit(); }
-        if (getReal && Date.now() - fetchedAt > REFRESH_S * 1000) fetchReal();
+        if (getReal && Date.now() - fetchedAt >= dueS() * 1000) fetchReal();
         syncVisible();
       },
       dispose() {
         gone = true;
         if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
+        if (onVis && typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
         listeners.clear();
         const pr = ctx.use('precip');
         if (pr && typeof pr.setWeather === 'function') pr.setWeather(null);
