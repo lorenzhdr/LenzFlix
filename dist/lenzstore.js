@@ -31263,7 +31263,7 @@ void main() {
     low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], precip: [260, 180], fogNear: 34, fogFar: 56 },
     mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
     high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
-    // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Tablet (phone=true) nutzt dieselben Werte.
+    // Ultra (Desktop/Tablet; am Handy nur als speicherschonende Handy-Ultra-Spalte, siehe presetFor compact): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Tablet (phone=true) nutzt dieselben Werte wie der Desktop.
     ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 44, fogFar: 59 }
   };
   function city(lv, phone) {
@@ -31271,7 +31271,7 @@ void main() {
     const k = phone ? 1 : 0;
     return { npcMax: c.npcMax[k], carsMax: c.carsMax[k], propsMax: c.propsMax[k], birds: c.birds[k], rainLines: c.rainLines[k], precip: c.precip[k], fogNear: c.fogNear, fogFar: c.fogFar };
   }
-  function presetFor(level, phone = false) {
+  function presetFor(level, phone = false, compact = false) {
     let lv = LEVELS.includes(level) ? level : "mid";
     if (lv === "low") {
       return { level: lv, pixelRatio: phone ? 1 : 0.9, shadows: false, anisotropy: 1, atlas: 512, maxAtlases: phone ? 24 : 32, loadRadius: phone ? 9 : 11, signMips: false, ...city(lv, phone) };
@@ -31280,16 +31280,17 @@ void main() {
       return { level: lv, pixelRatio: 1.25, shadows: false, anisotropy: 4, atlas: 1024, maxAtlases: phone ? 14 : 40, loadRadius: phone ? 13 : 17, signMips: true, ...city(lv, phone) };
     }
     if (lv === "ultra") {
+      if (compact) return { level: lv, pixelRatio: 2, shadows: true, anisotropy: 16, atlas: 1024, maxAtlases: 40, hiMax: 2, loadRadius: 26, signMips: true, ...city("ultra", true) };
       return { level: lv, pixelRatio: 2, shadows: true, anisotropy: 16, atlas: 1024, maxAtlases: 80, hiMax: 6, loadRadius: 34, signMips: true, ...city(lv, false) };
     }
     return { level: lv, pixelRatio: 1.75, shadows: !phone, anisotropy: 8, atlas: 1024, maxAtlases: phone ? 16 : 56, loadRadius: phone ? 20 : 28, signMips: true, ...city(lv, phone) };
   }
   var AutoQuality = class {
-    /** opts.max: höchste erlaubte Stufe (Standard 'ultra'); setLevel und das Hochschalten klemmen darauf. */
+    /** opts.max: höchste erlaubte Stufe (Standard 'ultra'); setLevel klemmt darauf. opts.autoMax: Decke fürs Hochschalten (Standard = max). */
     constructor(level = "mid", opts = {}) {
       this.maxIdx = LEVELS.includes(opts.max) ? LEVELS.indexOf(opts.max) : LEVELS.length - 1;
       this.level = LEVELS[Math.min(rank(level), this.maxIdx)];
-      this.ceiling = this.maxIdx;
+      this.ceiling = LEVELS.includes(opts.autoMax) ? Math.min(LEVELS.indexOf(opts.autoMax), this.maxIdx) : this.maxIdx;
       this.settleLeft = 0;
       this.frames = 0;
       this.elapsed = 0;
@@ -31360,10 +31361,10 @@ void main() {
 
   // src/js/store3d/engine/renderer.js
   var DEG = Math.PI / 180;
-  function createEngine({ host, level, auto, phone, maxLevel = "high", onContextLost, onContextRestored, onAutoLevel, holdAuto }) {
+  function createEngine({ host, level, auto, phone, compact = false, maxLevel = "high", autoMax, onContextLost, onContextRestored, onAutoLevel, holdAuto }) {
     const clampLv = (l) => rank(l) > rank(maxLevel) ? maxLevel : l;
     level = clampLv(level);
-    let preset = presetFor(level, phone);
+    let preset = presetFor(level, phone, compact);
     const canvas = document.createElement("canvas");
     canvas.className = "lfx-store-canvas";
     host.appendChild(canvas);
@@ -31394,7 +31395,7 @@ void main() {
     const camera = new PerspectiveCamera(70, 1, 0.05, 90);
     camera.rotation.order = "YXZ";
     rig.add(camera);
-    const aq = new AutoQuality(level, { max: maxLevel });
+    const aq = new AutoQuality(level, { max: maxLevel, autoMax });
     let autoOn = !!auto;
     let tick = null;
     let running = false;
@@ -31483,7 +31484,7 @@ void main() {
       l = clampLv(l);
       const prev = preset;
       levelNow = l;
-      preset = presetFor(l, phone || xrBudget);
+      preset = presetFor(l, phone || xrBudget, compact && !xrBudget);
       aq.setLevel(preset.level);
       applyRatio();
       resize();
@@ -41144,7 +41145,7 @@ float lfxNoise(vec2 p) {
         cm = buildCityMeshes(out, L2.city, L2);
         out.city = cm;
       }
-      let fr = fogRange(presetFor(ctx.quality(), ctx.isPhone), L2);
+      let fr = fogRange(presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact), L2);
       const fog = new Fog(9225458, fr.near, fr.far);
       ctx.scene.fog = fog;
       out.fog = fog;
@@ -41310,7 +41311,7 @@ float lfxNoise(vec2 p) {
         onQuality(lv) {
           level = lv;
           cullShelves();
-          fr = fogRange(presetFor(lv, ctx.isPhone), L2);
+          fr = fogRange(presetFor(lv, ctx.isPhone, ctx.isCompact), L2);
           fog.near = fr.near;
           fog.far = fr.far;
         },
@@ -41772,7 +41773,8 @@ void main() {
     name: "precip",
     init(ctx) {
       const phone = !!ctx.isPhone;
-      const maxN = Math.max(...["low", "mid", "high", "ultra"].map((lv) => presetFor(lv, phone).precip || 0));
+      const compact = !!ctx.isCompact;
+      const maxN = Math.max(...["low", "mid", "high", "ultra"].map((lv) => presetFor(lv, phone, compact).precip || 0));
       const geo = buildPrecipGeometry(maxN);
       const boxes = shelterBoxes(ctx.layout);
       const packed = packBoxes(boxes);
@@ -41809,7 +41811,7 @@ void main() {
       let want = { kind: null, i: 0 };
       let first = true;
       let level = ctx.quality();
-      let precipMax = presetFor(level, phone).precip;
+      let precipMax = presetFor(level, phone, compact).precip;
       let near = false;
       let suspended = false;
       let checkT = 0;
@@ -41892,7 +41894,7 @@ void main() {
         },
         onQuality(lv) {
           level = lv;
-          precipMax = presetFor(lv, phone).precip;
+          precipMax = presetFor(lv, phone, compact).precip;
         },
         onSuspend() {
           suspended = true;
@@ -44241,7 +44243,7 @@ void main() {
       const shapes = createShapes(makeCanvas);
       const baseMat = out.tint(new MeshBasicMaterial({ vertexColors: true }));
       const src = L2.cidx ? { index: L2.cidx, dyn: L2.dyn } : L2.colliders;
-      const maxActive = () => presetFor(ctx.quality(), ctx.isPhone).propsMax || 40;
+      const maxActive = () => presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact).propsMax || 40;
       const world = createWorld({ src, maxActive: maxActive() });
       const hoop = L2.city ? resolveHoop(L2.city.yard) : null;
       const plan = planProps(L2, hoop);
@@ -44538,7 +44540,7 @@ void main() {
           }
         },
         onQuality(level) {
-          world.setMaxActive(presetFor(level, ctx.isPhone).propsMax || 40);
+          world.setMaxActive(presetFor(level, ctx.isPhone, ctx.isCompact).propsMax || 40);
           cullDist = CULL_DIST[level] || 32;
         },
         dispose() {
@@ -54048,7 +54050,7 @@ void main() {
       };
       let pool = null;
       const statics = (city2 && city2.colliders ? city2.colliders : []).filter((c) => !c.dynamic);
-      let preset = presetFor(ctx.quality(), ctx.isPhone);
+      let preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact);
       const raining = () => {
         const w = weather();
         return !!(w.wet !== void 0 ? w.wet : w.raining);
@@ -54825,7 +54827,7 @@ void main() {
           }
         },
         onQuality() {
-          preset = presetFor(ctx.quality(), ctx.isPhone);
+          preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact);
           adjustWalkers();
           disposePigeons();
           if (enabled && city2) buildPigeons();
@@ -55264,7 +55266,7 @@ void main() {
         if (s && s.play) s.play(n);
       };
       const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
-      let preset = presetFor(ctx.quality(), ctx.isPhone);
+      let preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact);
       let px = 0;
       let pz = 0;
       let py = 0;
@@ -55467,7 +55469,7 @@ void main() {
           }
         },
         onQuality() {
-          preset = presetFor(ctx.quality(), ctx.isPhone);
+          preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact);
           adjust();
           clearParked();
           buildParked();
@@ -72790,7 +72792,9 @@ void main() {
       } catch {
         set = "auto";
       }
-      return set === "auto" || set === "ultra" || set === void 0 || set === null;
+      if (set === "ultra") return true;
+      if (ctx.opts.ultraAuto === false) return false;
+      return set === "auto" || set === void 0 || set === null;
     };
     const wantBuild = () => reachable() ? atLeast(level(), "high") : level() === "ultra";
     const gateOk = (e) => {
@@ -73040,6 +73044,7 @@ void main() {
         deps: app.deps,
         opts: app.opts,
         isPhone: app.phone,
+        isCompact: app.ultraCompact,
         isTouch: app.touch,
         quality: () => app.engine.preset.level,
         /** Gewählte Einstellung ('auto'|'low'|'mid'|'high'|'ultra'), nicht die aufgelöste Stufe (Ultra-Vorbau nur bei auto/ultra). */
@@ -73762,7 +73767,7 @@ void main() {
     root.appendChild(vrBtn);
     host.appendChild(root);
     hint.hidden = true;
-    cross.hidden = touch;
+    cross.hidden = true;
     let noteTimer = 0;
     return {
       root,
@@ -73776,7 +73781,6 @@ void main() {
         hint.hidden = false;
       },
       setCross(on, aimed) {
-        if (touch) return;
         cross.hidden = !on;
         cross.classList.toggle("is-aimed", !!aimed);
       },
@@ -82922,6 +82926,8 @@ void main() {
       this.phone = !!this.opts.phone;
       this.touch = !!this.opts.touch;
       this.ultraOk = this.opts.ultraOk === true;
+      this.ultraCompact = this.opts.ultraCompact === true;
+      this.reportedLevel = null;
       this.qualitySetting = QUALITY_SETTINGS.includes(this.opts.quality) ? this.opts.quality : "auto";
       this.savedQuality = this.qualitySetting;
       this.qualityChosen = false;
@@ -82967,7 +82973,11 @@ void main() {
           level: resolveLevel(this.qualitySetting, this.ultraOk),
           auto: this.qualitySetting === "auto",
           phone: this.phone,
+          compact: this.ultraOk && this.ultraCompact,
           maxLevel: this.ultraOk ? "ultra" : "high",
+          // manuelle Wahl
+          autoMax: this.ultraOk && this.opts.ultraAuto !== false ? "ultra" : "high",
+          // Automatik-Decke (Absturzschutz der Hülle: ultraAuto false)
           onContextLost: () => this.onContextLost(),
           onContextRestored: () => this.onContextRestored(),
           onAutoLevel: () => this.applyPreset(this.engine.preset),
@@ -82977,6 +82987,7 @@ void main() {
         this.fail(err);
         return;
       }
+      this.reportLevel();
       this.xr = new XrMode(this);
       this.cinema2d = new PalastCinema(this);
       this.hud = createHud2(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), onView: () => this.doView(), getTouchScheme: () => this.touchScheme });
@@ -83363,7 +83374,7 @@ void main() {
       }
       const play = this.mode === "play";
       const locked = this.desktop ? this.desktop.locked || this.desktop.dragLook : true;
-      this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
+      this.hud.setCross(this.crossOn(), !!this.aim);
       this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
       this.hud.showMenuBtn(play);
       this.hud.showViewBtn(play);
@@ -83726,13 +83737,19 @@ void main() {
       this.holdview.open(c.id, null, false);
       return true;
     }
+    /** Fadenkreuz sichtbar? Desktop nur mit Pointer-Lock/Drag-Umsehen, Touch (alle Schemata, 1.19.1) immer im Spiel; VR regelt syncUi. */
+    crossOn() {
+      if (this.mode !== "play") return false;
+      if (this.desktop) return !!(this.desktop.locked || this.desktop.dragLook);
+      return !!this.touch;
+    }
     clearAim() {
       this.aim = null;
       if (this.touchCtl) this.touchCtl.setAimed(false);
       if (this.highlight) this.highlight.visible = false;
       if (this.hud) {
         this.hud.setHint(null);
-        this.hud.setCross(this.mode === "play" && !!this.desktop, false);
+        this.hud.setCross(this.crossOn(), false);
       }
     }
     updateAim() {
@@ -83968,11 +83985,22 @@ void main() {
       if (!this.ultraOk || !wd || this.lastLevelAt == null || !wd.busy()) return false;
       return performance.now() - this.lastLevelAt <= HOLD_AUTO_MAX_MS;
     }
+    /** Wirksame Stufe an die Hülle melden (deps.onLevel, Absturzschutz); nur bei Änderung, force = erneut (resume). */
+    reportLevel(force = false) {
+      const lv = this.engine && this.engine.preset && this.engine.preset.level;
+      if (!lv || !force && lv === this.reportedLevel) return;
+      this.reportedLevel = lv;
+      try {
+        if (typeof this.deps.onLevel === "function") this.deps.onLevel(lv);
+      } catch {
+      }
+    }
     applyPreset(preset) {
       if (preset.level !== this.appliedLevel) {
         this.appliedLevel = preset.level;
         this.lastLevelAt = performance.now();
       }
+      this.reportLevel();
       if (this.covers) this.covers.setPreset(preset);
       if (this.tex) this.tex.setAnisotropy(preset.anisotropy);
       if (this.lights) this.lights.setShadows(preset.shadows);
@@ -84146,6 +84174,7 @@ void main() {
         if (this.covers) this.covers.resume();
         if (this.mods) this.mods.hook("onResume");
         if (this.fs) this.fs.resume();
+        this.reportLevel(true);
         return;
       }
       if (this.desktop) this.desktop.attach();
@@ -84156,6 +84185,7 @@ void main() {
         this.engine.resize();
         this.engine.start((dt, now2, frame) => this.tick(dt, now2, frame));
       }
+      this.reportLevel(true);
       if (this.fs) this.fs.resume();
       this.syncUi();
       if (this.afterResume) {

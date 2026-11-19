@@ -252,3 +252,26 @@ describe('themeroute: vorläufiges LENZFLIX beim ersten Start', () => {
     expect(themeroute.match(route('#/home?lfx=title&id=1'))).toBe(true);
   });
 });
+
+describe('themeroute: Klassische Ansicht (lfx=classic) nach Designwechsel (1.19.1)', () => {
+  it('match ausser unter store, nicht waehrend des Design-Ladens', () => {
+    for (const id of ['flix', 'plus', 'prime', 'retro']) {
+      theme = id;
+      expect(themeroute.match(route('#/home?lfx=classic'))).toBe(true);
+    }
+    theme = 'store';
+    expect(themeroute.match(route('#/home?lfx=classic'))).toBe(false);
+    theme = 'flix';
+    pendingTheme = true;
+    expect(themeroute.match(route('#/home?lfx=classic'))).toBe(false);
+  });
+
+  it('leitet ohne History-Eintrag auf #/home um', () => {
+    theme = 'flix';
+    window.location.hash = '#/home?lfx=classic';
+    const len = window.history.length;
+    themeroute.mount(route('#/home?lfx=classic'));
+    expect(window.location.hash).toBe('#/home');
+    expect(window.history.length).toBe(len);
+  });
+});

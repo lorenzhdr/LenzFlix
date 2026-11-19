@@ -222,7 +222,7 @@ export default {
     const later = (sec, fn) => { timers.push({ t: clock + sec, fn }); };
     let pool = null;
     const statics = (city && city.colliders ? city.colliders : []).filter((c) => !c.dynamic);
-    let preset = presetFor(ctx.quality(), ctx.isPhone);
+    let preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact);
 
     const raining = () => { const w = weather(); return !!(w.wet !== undefined ? w.wet : w.raining); }; // 1.19.0: Regen UND Schnee (Schirm, Eile, weniger Leute)
     const tod = () => weather().tod || 'day';
@@ -827,7 +827,7 @@ export default {
           if (pendingEv) { if (clock > pendingEv.until) pendingEv = null; else if (visible(g && g.street) && reactPeople(EVENT_REACT[pendingEv.kind].anim, EVENT_REACT[pendingEv.kind].cat, EVENT_REACT[pendingEv.kind].secs, 2) > 0) pendingEv = null; }
         }
       },
-      onQuality() { preset = presetFor(ctx.quality(), ctx.isPhone); adjustWalkers(); disposePigeons(); if (enabled && city) buildPigeons(); },
+      onQuality() { preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact); adjustWalkers(); disposePigeons(); if (enabled && city) buildPigeons(); },
       onSuspend() { for (const s of [...walkers]) { bubbles.hideFor(s.handle); if (s.act) endAct(s, 'walk'); } },
       dispose() {
         for (const off of offs) { try { off(); } catch { /* egal */ } }

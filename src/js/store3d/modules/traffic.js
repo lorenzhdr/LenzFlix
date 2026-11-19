@@ -35,7 +35,7 @@ export default {
     const found = (id) => { const d = ctx.use('discover'); if (d && d.found) { try { d.found(id); } catch { /* egal */ } } };
     const sound = (n) => { const s = ctx.use('sound'); if (s && s.play) s.play(n); };
     const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
-    let preset = presetFor(ctx.quality(), ctx.isPhone);
+    let preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact);
     let px = 0; let pz = 0; let py = 0; let havePose = false;
     const zebraWalk = new Map(); // Zebra-Fund: id → { entry: ±1, walk: bool }
 
@@ -225,7 +225,7 @@ export default {
         if (acc > 0.2) { acc = 0; trackZebra(sig); }
       },
       onQuality() {
-        preset = presetFor(ctx.quality(), ctx.isPhone);
+        preset = presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact);
         adjust();
         clearParked();
         buildParked();

@@ -68,7 +68,7 @@ export default {
     }
 
     // --- Nebel (dauerhaft: kein Umschalten, das Shader neu kompiliert) ---
-    let fr = fogRange(presetFor(ctx.quality(), ctx.isPhone), L);
+    let fr = fogRange(presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact), L);
     const fog = new Fog(0x8cc4f2, fr.near, fr.far);
     ctx.scene.fog = fog;
     out.fog = fog;
@@ -206,7 +206,7 @@ export default {
       onQuality(lv) {
         level = lv;
         cullShelves();
-        fr = fogRange(presetFor(lv, ctx.isPhone), L);
+        fr = fogRange(presetFor(lv, ctx.isPhone, ctx.isCompact), L);
         fog.near = fr.near;
         fog.far = fr.far;
       },

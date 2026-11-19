@@ -46,6 +46,21 @@ describe('Ultra-Registry', () => {
       expect(t.jobs.length).toBe(0);
     }
   });
+  it('ultraAuto false (Absturzschutz): Einstellung auto baut auf high nichts vorab, Einstellung ultra schon', () => {
+    const mk = (setting) => {
+      const state = { level: 'high' };
+      const ctx = { scene: { add() {} }, quality: () => state.level, qualitySetting: () => setting, opts: { ultraOk: true, ultraAuto: false } };
+      const jobs = [];
+      const u = createUltra(ctx, { schedule: (fn) => { const j = { fn, cancel() {} }; jobs.push(j); return j; } });
+      const e = entry();
+      u.api.register('a', e.build);
+      while (jobs.length) jobs.shift().fn(100);
+      return e.build;
+    };
+    expect(mk('auto')).not.toHaveBeenCalled();
+    expect(mk(undefined)).not.toHaveBeenCalled();
+    expect(mk('ultra')).toHaveBeenCalledTimes(1);
+  });
   it('Tablet (isPhone, aber ultraOk) baut auf high vorab', () => {
     const t = setup('high', undefined, { isPhone: true });
     const e = entry();

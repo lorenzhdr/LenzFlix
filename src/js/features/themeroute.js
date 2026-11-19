@@ -16,6 +16,9 @@ const tvModeUnavailable = () => isTheme('store') || isTv();
 // 1.13.0: Seiten Serien/Filme (nur flix) und Meine Liste (flix, retro); sonst native Ziele bzw. #/home.
 const PAGE_KINDS = ['series', 'movies', 'mylist'];
 const CT_OF = { series: 'tvshows', movies: 'movies' };
+// „Klassische Ansicht“ der VIDEOTHEK (#/home?lfx=classic): nach einem Designwechsel bliebe der Parameter stehen und die
+// Startseiten der anderen Designs (nur ohne lfx) würden nicht mounten → außerhalb von store auf #/home umleiten (1.19.1).
+const isClassic = (route) => Boolean(route && route.path === '/home' && route.params && route.params.get('lfx') === 'classic');
 const isFavTab = (route) => route && route.path === '/home' && route.params && !route.params.get('lfx') && route.params.get('tab') === '1';
 function pageUnavailable(kind) {
   if (isTv() || isTheme('store')) return true;
@@ -91,7 +94,9 @@ function redirect(route) {
   if (key === lastKey) return; // gleiche Route: nicht doppelt umleiten
   lastKey = key;
   const mine = ++seq;
-  if (isFavTab(route)) {
+  if (isClassic(route)) {
+    replaceTo('#/home');
+  } else if (isFavTab(route)) {
     replaceTo(myListHref());
   } else if (PAGE_KINDS.includes(r.kind)) {
     if (isTv() || isTheme('store')) return replaceTo('#/home');
@@ -122,6 +127,7 @@ const themeroute = {
     if (kind === 'tv') return tvModeUnavailable();
     if (PAGE_KINDS.includes(kind)) return pageUnavailable(kind);
     if (isThemePending()) return false; // Design-Routen erst nach dem Commit auswerten (sonst Umleitung im Reveal-Fenster)
+    if (isClassic(route)) return !isTheme('store');
     if (isFavTab(route)) return !isTv() && (isTheme('flix') || isTheme('retro'));
     return (isTheme('flix') && REDIRECT_KINDS.includes(kind)) || (isTheme('store') && STORE_REDIRECT_KINDS.includes(kind))
       || (isTheme('prime') && PRIME_REDIRECT_KINDS.includes(kind));

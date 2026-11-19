@@ -137,7 +137,8 @@ export default {
   name: 'precip',
   init(ctx) {
     const phone = !!ctx.isPhone;
-    const maxN = Math.max(...['low', 'mid', 'high', 'ultra'].map((lv) => presetFor(lv, phone).precip || 0));
+    const compact = !!ctx.isCompact;
+    const maxN = Math.max(...['low', 'mid', 'high', 'ultra'].map((lv) => presetFor(lv, phone, compact).precip || 0));
     const geo = buildPrecipGeometry(maxN);
     const boxes = shelterBoxes(ctx.layout);
     const packed = packBoxes(boxes);
@@ -173,7 +174,7 @@ export default {
     let want = { kind: null, i: 0 };
     let first = true;
     let level = ctx.quality();
-    let precipMax = presetFor(level, phone).precip; // Dichte der Stufe, nur bei onQuality neu bestimmt (kein presetFor-Objekt pro Frame)
+    let precipMax = presetFor(level, phone, compact).precip; // Dichte der Stufe, nur bei onQuality neu bestimmt (kein presetFor-Objekt pro Frame)
     let near = false;
     let suspended = false;
     let checkT = 0;
@@ -242,7 +243,7 @@ export default {
         geo.setDrawRange(0, n * 6);
         mesh.visible = true;
       },
-      onQuality(lv) { level = lv; precipMax = presetFor(lv, phone).precip; },
+      onQuality(lv) { level = lv; precipMax = presetFor(lv, phone, compact).precip; },
       onSuspend() { suspended = true; mesh.visible = false; },
       onResume() { suspended = false; },
       dispose() { cancelWarm(); if (mq && mq.removeEventListener) mq.removeEventListener('change', onMotion); if (window.__lfxM4) delete window.__lfxM4.precip; },

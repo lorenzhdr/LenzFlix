@@ -68,6 +68,74 @@ describe('presetFor ultra', () => {
   });
 });
 
+describe('presetFor ultra compact (Handy-Ultra, 1.19.1)', () => {
+  it('speicherschonende Spalte: Desktop-Optik, knappe Budgets, Handy-Dichten', () => {
+    const c = presetFor('ultra', true, true);
+    expect(c).toMatchObject({ level: 'ultra', pixelRatio: 2, shadows: true, anisotropy: 16, atlas: 1024, maxAtlases: 40, hiMax: 2, loadRadius: 26, signMips: true, npcMax: 14, carsMax: 4, propsMax: 24, birds: 8, precip: 700 });
+    const t = presetFor('ultra', true);
+    expect(c.maxAtlases).toBeLessThan(t.maxAtlases);
+    expect(c.hiMax).toBeLessThan(t.hiMax);
+    expect(c.loadRadius).toBeLessThan(t.loadRadius);
+    expect(c.maxAtlases).toBeGreaterThan(presetFor('high', true).maxAtlases);
+  });
+  it('compact wirkt nur auf ultra; Tablet/Desktop bleiben exakt', () => {
+    for (const lv of ['low', 'mid', 'high']) expect(presetFor(lv, true, true)).toEqual(presetFor(lv, true));
+    expect(presetFor('ultra', false, false)).toEqual(presetFor('ultra', false));
+    expect(presetFor('ultra', true, false)).toEqual(presetFor('ultra', false));
+  });
+});
+
+describe('AutoQuality autoMax (Absturzschutz)', () => {
+  it('autoMax high: Automatik steigt nicht auf ultra, setLevel(ultra) bleibt möglich', () => {
+    const q = new AutoQuality('mid', { max: 'ultra', autoMax: 'high' });
+    const r = run(q, 60, 80, 0);
+    expect(r.changes).toEqual(['high']);
+    q.setLevel('ultra');
+    expect(q.level).toBe('ultra');
+    const r2 = run(q, 60, 40, r.now);
+    expect(r2.changes).toEqual([]);
+    expect(q.level).toBe('ultra');
+  });
+  it('ohne autoMax gilt max als Decke (wie bisher)', () => {
+    const q = new AutoQuality('mid', { max: 'ultra' });
+    expect(run(q, 60, 40, 0).changes).toEqual(['high', 'ultra']);
+  });
+  it('manuelles Ultra bei ultraAuto false bleibt ultra (setQuality ignoriert ultraAuto)', () => {
+    const engine = { setAuto: vi.fn(), setLevel: vi.fn((l) => ({ level: l })), preset: { level: 'mid' } };
+    const a = Object.assign(Object.create(StoreApp.prototype), { engine, ultraOk: true, ultraCompact: true, opts: { ultraAuto: false }, xr: null, applyPreset: vi.fn(), qualitySetting: 'auto' });
+    a.setQuality('ultra');
+    expect(a.qualitySetting).toBe('ultra');
+    expect(engine.setLevel).toHaveBeenCalledWith('ultra');
+  });
+  it('VR klemmt auch Handy-Ultra auf mid', () => {
+    const engine = { setAuto: vi.fn(), setLevel: vi.fn((l) => ({ level: l })), preset: { level: 'ultra' } };
+    const a = Object.assign(Object.create(StoreApp.prototype), { engine, ultraOk: true, ultraCompact: true, opts: {}, xr: { presenting: true }, applyPreset: vi.fn(), qualitySetting: 'ultra' });
+    a.setQuality('ultra');
+    expect(a.qualitySetting).toBe('mid');
+  });
+});
+
+describe('reportLevel (deps.onLevel)', () => {
+  const mk = (level, onLevel) => Object.assign(Object.create(StoreApp.prototype), { engine: { preset: { level } }, deps: onLevel ? { onLevel } : {}, reportedLevel: null });
+  it('meldet Start, Wechsel und force, aber nicht doppelt', () => {
+    const f = vi.fn();
+    const a = mk('mid', f);
+    a.reportLevel();
+    a.reportLevel();
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(f).toHaveBeenLastCalledWith('mid');
+    a.engine.preset = { level: 'ultra' };
+    a.reportLevel();
+    expect(f).toHaveBeenLastCalledWith('ultra');
+    a.reportLevel(true);
+    expect(f).toHaveBeenCalledTimes(3);
+  });
+  it('ohne onLevel oder bei Fehler im Rückruf: still', () => {
+    expect(() => mk('mid').reportLevel()).not.toThrow();
+    expect(() => mk('mid', () => { throw new Error('x'); }).reportLevel()).not.toThrow();
+  });
+});
+
 describe('AutoQuality mit ultra', () => {
   it('steigt von high bis ultra und bleibt dort', () => {
     const q = new AutoQuality('mid');

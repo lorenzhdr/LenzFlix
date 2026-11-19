@@ -24,6 +24,15 @@ function read(store, key) {
 function write(store, key, value) {
   try { window[store].setItem(key, value); } catch { /* Speicher gesperrt */ }
 }
+function remove(store, key) {
+  try { window[store].removeItem(key); } catch { /* Speicher gesperrt */ }
+}
+
+/** Absturzschutz Handy-Ultra (features/store/ultraguard.js): Merker „Ultra läuft“ und Sperre der Ultra-Automatik; je Benutzer, nur Vorhandensein zählt. */
+export const getUltraLive = () => read('localStorage', storageKey('ultraLive')) === '1';
+export function setUltraLive(on) { if (on) write('localStorage', storageKey('ultraLive'), '1'); else remove('localStorage', storageKey('ultraLive')); }
+export const getUltraBlock = () => read('localStorage', storageKey('ultraBlock')) === '1';
+export function setUltraBlock(on) { if (on) write('localStorage', storageKey('ultraBlock'), '1'); else remove('localStorage', storageKey('ultraBlock')); }
 
 export function getQuality() {
   const v = read('localStorage', storageKey('quality'));

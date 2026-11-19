@@ -97,7 +97,7 @@ export function createHud(host, { touch, onMenu, onVr, onView, getTouchScheme })
   root.appendChild(vrBtn);
   host.appendChild(root);
   hint.hidden = true;
-  cross.hidden = touch;
+  cross.hidden = true; // erst im Spiel sichtbar (setCross); seit 1.19.1 auch am Touch-Gerät
   let noteTimer = 0;
 
   return {
@@ -109,7 +109,6 @@ export function createHud(host, { touch, onMenu, onVr, onView, getTouchScheme })
       hint.hidden = false;
     },
     setCross(on, aimed) {
-      if (touch) return;
       cross.hidden = !on;
       cross.classList.toggle('is-aimed', !!aimed);
     },

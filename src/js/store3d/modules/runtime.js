@@ -54,7 +54,7 @@ export class ModuleHost {
     const self = this;
     const ctx = {
       scene: app.engine.scene, camera: app.engine.camera, renderer: app.engine.renderer, layout: app.layout,
-      catalog: app.deps.catalog, deps: app.deps, opts: app.opts, isPhone: app.phone, isTouch: app.touch,
+      catalog: app.deps.catalog, deps: app.deps, opts: app.opts, isPhone: app.phone, isCompact: app.ultraCompact, isTouch: app.touch,
       quality: () => app.engine.preset.level,
       /** Gewählte Einstellung ('auto'|'low'|'mid'|'high'|'ultra'), nicht die aufgelöste Stufe (Ultra-Vorbau nur bei auto/ultra). */
       qualitySetting: () => app.qualitySetting,

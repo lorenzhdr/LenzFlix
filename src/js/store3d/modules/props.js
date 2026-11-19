@@ -146,7 +146,7 @@ export default {
     const shapes = createShapes(makeCanvas);
     const baseMat = out.tint(new MeshBasicMaterial({ vertexColors: true }));
     const src = L.cidx ? { index: L.cidx, dyn: L.dyn } : L.colliders;
-    const maxActive = () => presetFor(ctx.quality(), ctx.isPhone).propsMax || 40;
+    const maxActive = () => presetFor(ctx.quality(), ctx.isPhone, ctx.isCompact).propsMax || 40;
     const world = createWorld({ src, maxActive: maxActive() });
     const hoop = L.city ? resolveHoop(L.city.yard) : null;
     const plan = planProps(L, hoop);
@@ -397,7 +397,7 @@ export default {
         }
       },
       onQuality(level) {
-        world.setMaxActive(presetFor(level, ctx.isPhone).propsMax || 40);
+        world.setMaxActive(presetFor(level, ctx.isPhone, ctx.isCompact).propsMax || 40);
         cullDist = CULL_DIST[level] || 32;
       },
       dispose() {

@@ -17,7 +17,7 @@ const CITY = {
   low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], precip: [260, 180], fogNear: 34, fogFar: 56 },
   mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
   high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
-  // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Tablet (phone=true) nutzt dieselben Werte.
+  // Ultra (Desktop/Tablet; am Handy nur als speicherschonende Handy-Ultra-Spalte, siehe presetFor compact): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Tablet (phone=true) nutzt dieselben Werte wie der Desktop.
   ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 44, fogFar: 59 },
 };
 function city(lv, phone) {
@@ -27,9 +27,9 @@ function city(lv, phone) {
 }
 
 /** Einstellungen je Stufe. Atlas-Auflösung = Kantenlänge der Cover-Atlanten; maxAtlases = Texturbudget (LRU). */
-export function presetFor(level, phone = false) {
+export function presetFor(level, phone = false, compact = false) {
   let lv = LEVELS.includes(level) ? level : 'mid';
-  // Ultra bei phone=true: Desktop-Ultra-Spalte (Tablet); wer Ultra nicht darf, wird über maxLevel/ultraOk geklemmt (Handy/VR nie).
+  // Ultra bei phone=true ohne compact: Desktop-Ultra-Spalte (Tablet); compact (Handy, opts.ultraCompact der Hülle): Handy-Ultra-Spalte. Wer Ultra nicht darf (TV), wird über maxLevel/ultraOk geklemmt, VR bleibt bei low/mid.
   if (lv === 'low') {
     return { level: lv, pixelRatio: phone ? 1 : 0.9, shadows: false, anisotropy: 1, atlas: 512, maxAtlases: phone ? 24 : 32, loadRadius: phone ? 9 : 11, signMips: false, ...city(lv, phone) };
   }
@@ -37,6 +37,8 @@ export function presetFor(level, phone = false) {
     return { level: lv, pixelRatio: 1.25, shadows: false, anisotropy: 4, atlas: 1024, maxAtlases: phone ? 14 : 40, loadRadius: phone ? 13 : 17, signMips: true, ...city(lv, phone) };
   }
   if (lv === 'ultra') {
+    // Handy-Ultra (compact): Desktop-Optik (Pixeldichte 2, Schatten, 16x), aber knappe Texturbudgets und kleiner Ladekreis gegen Speicherabstürze; Außenwelt in der Handy-Spalte.
+    if (compact) return { level: lv, pixelRatio: 2, shadows: true, anisotropy: 16, atlas: 1024, maxAtlases: 40, hiMax: 2, loadRadius: 26, signMips: true, ...city('ultra', true) };
     // Startwerte (Messung legt fest): Pixeldichte 2, 16x Anisotropie, Cover-Atlas 1024, mehr Atlanten, größerer Ladekreis.
     return { level: lv, pixelRatio: 2, shadows: true, anisotropy: 16, atlas: 1024, maxAtlases: 80, hiMax: 6, loadRadius: 34, signMips: true, ...city(lv, false) };
   }
@@ -50,11 +52,11 @@ export function presetFor(level, phone = false) {
  * `sample(dtSekunden, jetztMs)` gibt bei Wechsel die neue Stufe zurück, sonst null.
  */
 export class AutoQuality {
-  /** opts.max: höchste erlaubte Stufe (Standard 'ultra'); setLevel und das Hochschalten klemmen darauf. */
+  /** opts.max: höchste erlaubte Stufe (Standard 'ultra'); setLevel klemmt darauf. opts.autoMax: Decke fürs Hochschalten (Standard = max). */
   constructor(level = 'mid', opts = {}) {
     this.maxIdx = LEVELS.includes(opts.max) ? LEVELS.indexOf(opts.max) : LEVELS.length - 1;
     this.level = LEVELS[Math.min(rank(level), this.maxIdx)];
-    this.ceiling = this.maxIdx;
+    this.ceiling = LEVELS.includes(opts.autoMax) ? Math.min(LEVELS.indexOf(opts.autoMax), this.maxIdx) : this.maxIdx; // opts.autoMax: Decke nur fürs Hochschalten (manuell gewählte Stufen bis max bleiben möglich)
     this.settleLeft = 0;
     this.frames = 0;
     this.elapsed = 0;

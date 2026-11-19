@@ -63,7 +63,9 @@ export class StoreApp {
     this.vr = this.opts.vr;
     this.phone = !!this.opts.phone;
     this.touch = !!this.opts.touch;
-    this.ultraOk = this.opts.ultraOk === true; // Gerätesperre allein über die Hülle (features/store/home.js ultraAllowed): Handy/TV nie, Tablet ja
+    this.ultraOk = this.opts.ultraOk === true; // Gerätesperre allein über die Hülle (features/store/home.js ultraAllowed): TV nie
+    this.ultraCompact = this.opts.ultraCompact === true; // Handy-Ultra-Spalte (presetFor compact), nur mit ultraOk wirksam
+    this.reportedLevel = null; // zuletzt an deps.onLevel gemeldete Stufe
     this.qualitySetting = QUALITY_SETTINGS.includes(this.opts.quality) ? this.opts.quality : 'auto';
     this.savedQuality = this.qualitySetting; // gespeicherte Wahl bleibt erhalten, bis der Nutzer selbst wählt (setQuality aus dem Menü)
     this.qualityChosen = false;
@@ -111,7 +113,9 @@ export class StoreApp {
         level: resolveLevel(this.qualitySetting, this.ultraOk),
         auto: this.qualitySetting === 'auto',
         phone: this.phone,
-        maxLevel: this.ultraOk ? 'ultra' : 'high',
+        compact: this.ultraOk && this.ultraCompact,
+        maxLevel: this.ultraOk ? 'ultra' : 'high', // manuelle Wahl
+        autoMax: this.ultraOk && this.opts.ultraAuto !== false ? 'ultra' : 'high', // Automatik-Decke (Absturzschutz der Hülle: ultraAuto false)
         onContextLost: () => this.onContextLost(),
         onContextRestored: () => this.onContextRestored(),
         onAutoLevel: () => this.applyPreset(this.engine.preset),
@@ -121,6 +125,7 @@ export class StoreApp {
       this.fail(err);
       return;
     }
+    this.reportLevel();
     this.xr = new XrMode(this);
     this.cinema2d = new PalastCinema(this); // 2D-Kino im LENZ PALAST (cinema/palast.js); Module: ctx.use('cinema2d')
     this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), onView: () => this.doView(), getTouchScheme: () => this.touchScheme });
@@ -401,7 +406,7 @@ export class StoreApp {
     }
     const play = this.mode === 'play';
     const locked = this.desktop ? this.desktop.locked || this.desktop.dragLook : true;
-    this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
+    this.hud.setCross(this.crossOn(), !!this.aim);
     this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
     this.hud.showMenuBtn(play);
     this.hud.showViewBtn(play);
@@ -728,11 +733,18 @@ export class StoreApp {
     return true;
   }
 
+  /** Fadenkreuz sichtbar? Desktop nur mit Pointer-Lock/Drag-Umsehen, Touch (alle Schemata, 1.19.1) immer im Spiel; VR regelt syncUi. */
+  crossOn() {
+    if (this.mode !== 'play') return false;
+    if (this.desktop) return !!(this.desktop.locked || this.desktop.dragLook);
+    return !!this.touch;
+  }
+
   clearAim() {
     this.aim = null;
     if (this.touchCtl) this.touchCtl.setAimed(false);
     if (this.highlight) this.highlight.visible = false;
-    if (this.hud) { this.hud.setHint(null); this.hud.setCross(this.mode === 'play' && !!this.desktop, false); }
+    if (this.hud) { this.hud.setHint(null); this.hud.setCross(this.crossOn(), false); }
   }
 
   updateAim() {
@@ -947,8 +959,17 @@ export class StoreApp {
     return performance.now() - this.lastLevelAt <= HOLD_AUTO_MAX_MS;
   }
 
+  /** Wirksame Stufe an die Hülle melden (deps.onLevel, Absturzschutz); nur bei Änderung, force = erneut (resume). */
+  reportLevel(force = false) {
+    const lv = this.engine && this.engine.preset && this.engine.preset.level;
+    if (!lv || (!force && lv === this.reportedLevel)) return;
+    this.reportedLevel = lv;
+    try { if (typeof this.deps.onLevel === 'function') this.deps.onLevel(lv); } catch { /* egal */ }
+  }
+
   applyPreset(preset) {
     if (preset.level !== this.appliedLevel) { this.appliedLevel = preset.level; this.lastLevelAt = performance.now(); }
+    this.reportLevel();
     if (this.covers) this.covers.setPreset(preset);
     if (this.tex) this.tex.setAnisotropy(preset.anisotropy);
     if (this.lights) this.lights.setShadows(preset.shadows);
@@ -1109,6 +1130,7 @@ export class StoreApp {
       if (this.covers) this.covers.resume();
       if (this.mods) this.mods.hook('onResume');
       if (this.fs) this.fs.resume();
+      this.reportLevel(true);
       return;
     }
     if (this.desktop) this.desktop.attach();
@@ -1116,6 +1138,7 @@ export class StoreApp {
     if (this.covers) this.covers.resume();
     if (this.mods) this.mods.hook('onResume');
     if (this.engine) { this.engine.resize(); this.engine.start((dt, now, frame) => this.tick(dt, now, frame)); }
+    this.reportLevel(true); // Hülle löscht den Absturz-Merker beim Aussetzen: wirksame Stufe erneut melden
     if (this.fs) this.fs.resume();
     this.syncUi();
     if (this.afterResume) { const f = this.afterResume; this.afterResume = null; f(); }

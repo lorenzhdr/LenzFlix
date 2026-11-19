@@ -67,7 +67,9 @@ export function createUltra(ctx, o = {}) {
     if (!(ctx && ctx.opts && ctx.opts.ultraOk === true)) return false;
     let set = 'auto';
     try { if (typeof ctx.qualitySetting === 'function') set = ctx.qualitySetting(); } catch { set = 'auto'; }
-    return set === 'auto' || set === 'ultra' || set === undefined || set === null; // fest gewähltes low/mid/high: Ultra nicht erreichbar, kein Vorbau
+    if (set === 'ultra') return true;
+    if (ctx.opts.ultraAuto === false) return false; // Absturzschutz der Hülle: Automatik steigt nicht auf Ultra, also kein Vorbau (manuelles Ultra baut weiter)
+    return set === 'auto' || set === undefined || set === null; // fest gewähltes low/mid/high: Ultra nicht erreichbar, kein Vorbau
   };
   const wantBuild = () => (reachable() ? atLeast(level(), 'high') : level() === 'ultra');
   const gateOk = (e) => { if (!e.gate) return true; try { return !!e.gate(); } catch { return true; } };

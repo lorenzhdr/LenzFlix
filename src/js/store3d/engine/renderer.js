@@ -4,11 +4,11 @@ import { presetFor, AutoQuality, rank } from './quality.js';
 
 const DEG = Math.PI / 180;
 
-/** holdAuto: optionaler Haken, liefert true, solange die Automatik nicht werten soll (verlängert das Einschwingen um 0,5 s je Bild). maxLevel: höchste erlaubte Stufe ('ultra' nur, wenn die Hülle das Gerät freigibt; sonst 'high'); setLevel und die Automatik klemmen darauf. */
-export function createEngine({ host, level, auto, phone, maxLevel = 'high', onContextLost, onContextRestored, onAutoLevel, holdAuto }) {
+/** holdAuto: optionaler Haken, liefert true, solange die Automatik nicht werten soll (verlängert das Einschwingen um 0,5 s je Bild). maxLevel: höchste erlaubte Stufe ('ultra' nur, wenn die Hülle das Gerät freigibt; sonst 'high'); setLevel klemmt darauf. autoMax: Decke nur für das Hochschalten der Automatik (Standard maxLevel; 'high' = Automatik steigt nicht auf Ultra, manuelles Ultra bleibt möglich). compact: Handy-Ultra-Spalte (nie in XR). */
+export function createEngine({ host, level, auto, phone, compact = false, maxLevel = 'high', autoMax, onContextLost, onContextRestored, onAutoLevel, holdAuto }) {
   const clampLv = (l) => (rank(l) > rank(maxLevel) ? maxLevel : l);
   level = clampLv(level);
-  let preset = presetFor(level, phone);
+  let preset = presetFor(level, phone, compact);
   const canvas = document.createElement('canvas');
   canvas.className = 'lfx-store-canvas';
   host.appendChild(canvas);
@@ -43,7 +43,7 @@ export function createEngine({ host, level, auto, phone, maxLevel = 'high', onCo
   camera.rotation.order = 'YXZ';
   rig.add(camera);
 
-  const aq = new AutoQuality(level, { max: maxLevel });
+  const aq = new AutoQuality(level, { max: maxLevel, autoMax });
   let autoOn = !!auto;
   let tick = null;
   let running = false;
@@ -134,7 +134,7 @@ export function createEngine({ host, level, auto, phone, maxLevel = 'high', onCo
     l = clampLv(l);
     const prev = preset;
     levelNow = l;
-    preset = presetFor(l, phone || xrBudget);
+    preset = presetFor(l, phone || xrBudget, compact && !xrBudget);
     aq.setLevel(preset.level);
     applyRatio();
     resize();

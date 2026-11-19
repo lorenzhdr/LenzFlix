@@ -19,6 +19,7 @@ import { fatalText } from '../tvdata/deps.js';
 import { closeProfileMenu, hudButton, profileButton, toggleProfileMenu, wordmark } from './hud.js';
 import { findHomeTab, ON_CLASS, ROOT_ID, storeHomeRoute } from './home-route.js';
 import * as prefs from './prefs.js';
+import { startUltraGuard, reportUltraLevel, clearUltraGuard, manualUltraChosen } from './ultraguard.js';
 import { createTicket } from './mp.js';
 import { createWeatherSource } from './weather.js';
 import { getChartsUrl } from '../../core/charts.js';
@@ -66,6 +67,7 @@ function releaseParked() {
   if (!cur || !cur.parked) return;
   cur.parked = false;
   try { cur.instance.suspend(); cur.suspended = true; } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
+  clearUltraGuard();
   unparkStage();
   clearTimeout(cur.disposeTimer);
   cur.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
@@ -133,6 +135,7 @@ function disposeInstance() {
   if (cur.unsubTheme) cur.unsubTheme();
   if (cur.offPlay) cur.offPlay();
   try { cur.instance.dispose(); } catch (e) { console.warn('[LenzFlix] store dispose', e && e.message); }
+  clearUltraGuard();
   unparkStage();
   if (bridge) bridge.activate(false);
   xr.presenting = false;
@@ -333,7 +336,8 @@ function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
       fadeTimer = setTimeout(() => { fadeTimer = null; el.remove(); }, FADE_MS);
     }),
     onState: ret((s) => prefs.saveState(s)),
-    onPrefs: ret((p) => prefs.savePrefs(p)),
+    onPrefs: ret((p) => { prefs.savePrefs(p); if (p && p.quality === 'ultra') manualUltraChosen(); }),
+    onLevel: ret((lv) => reportUltraLevel(lv)),
     onBigCovers: ret((on) => onBigCovers(on)),
     onXr: ret((s) => onXr(s)),
     onCinema2d: ret((s) => onCinema2d(s)),
@@ -342,18 +346,22 @@ function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
   };
 }
 
-/** Ultra nur auf Desktop/Laptop/Tablet: kein TV, kein kleiner Touch-Bildschirm (Feature-Erkennung, kein UA-Sniffing). */
+/** Ultra auf allen Geräten außer TV (seit 1.19.1 auch am Handy, dort als Handy-Ultra mit Absturzschutz). */
 export function ultraAllowed() {
-  try {
-    if (isTv()) return false;
-    const touchSmall = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) && Math.min(screen.width, screen.height) < 600;
-    return !touchSmall;
-  } catch { return false; }
+  try { return !isTv(); } catch { return false; }
+}
+
+/** Handy-Ultra-Spalte: kleiner Touch-Bildschirm (coarse, min(screen) < 600; Feature-Erkennung, kein UA-Sniffing). */
+export function ultraCompact() {
+  try { return Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) && Math.min(screen.width, screen.height) < 600; } catch { return false; }
 }
 
 function buildOpts(r) {
+  const compact = ultraCompact();
   return {
     ultraOk: ultraAllowed(),
+    ultraCompact: compact,
+    ultraAuto: startUltraGuard(compact), // false nach einem Absturz auf Handy-Ultra: Automatik steigt nicht auf Ultra
     quality: prefs.getQuality(),
     sound: prefs.getSound(),
     showFps: prefs.getFps(),
@@ -547,6 +555,7 @@ export function destroyStore() {
   clearTimeout(waitTimer);
   waitTimer = null;
   disposeInstance();
+  clearUltraGuard();
   unparkStage();
   onCinema2d(null);
   if (prof) { prof.p.dispose(); prof = null; }
@@ -599,6 +608,7 @@ const storeHome = {
       }
       if (!parkedNow) {
         try { inst.instance.suspend(); inst.suspended = true; } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
+        clearUltraGuard();
         clearDisposeTimer();
         inst.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
       }

@@ -420,7 +420,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.19.0";
+  var VERSION = "1.19.1";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -3674,6 +3674,7 @@
   var tvModeUnavailable = () => isTheme("store") || isTv();
   var PAGE_KINDS = ["series", "movies", "mylist"];
   var CT_OF = { series: "tvshows", movies: "movies" };
+  var isClassic = (route) => Boolean(route && route.path === "/home" && route.params && route.params.get("lfx") === "classic");
   var isFavTab = (route) => route && route.path === "/home" && route.params && !route.params.get("lfx") && route.params.get("tab") === "1";
   function pageUnavailable(kind2) {
     if (isTv() || isTheme("store")) return true;
@@ -3744,7 +3745,9 @@
     if (key === lastKey) return;
     lastKey = key;
     const mine = ++seq3;
-    if (isFavTab(route)) {
+    if (isClassic(route)) {
+      replaceTo("#/home");
+    } else if (isFavTab(route)) {
       replaceTo(myListHref());
     } else if (PAGE_KINDS.includes(r.kind)) {
       if (isTv() || isTheme("store")) return replaceTo("#/home");
@@ -3774,6 +3777,7 @@
       if (kind2 === "tv") return tvModeUnavailable();
       if (PAGE_KINDS.includes(kind2)) return pageUnavailable(kind2);
       if (isThemePending()) return false;
+      if (isClassic(route)) return !isTheme("store");
       if (isFavTab(route)) return !isTv() && (isTheme("flix") || isTheme("retro"));
       return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2) || isTheme("prime") && PRIME_REDIRECT_KINDS.includes(kind2);
     },
@@ -7479,10 +7483,10 @@
       }
       next();
     }
-    const onVis = () => {
+    const onVis2 = () => {
       if (!paused2() && !dead && !busy3) later(tick, 0);
     };
-    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("visibilitychange", onVis2);
     const resume = () => {
       if (!dead && !busy3 && !paused2()) later(tick, 0);
     };
@@ -7513,7 +7517,7 @@
         clearTimeout(rTimer);
         if (mo3) mo3.disconnect();
         if (idleId != null && typeof cancelIdleCallback === "function") cancelIdleCallback(idleId);
-        document.removeEventListener("visibilitychange", onVis);
+        document.removeEventListener("visibilitychange", onVis2);
         offs.splice(0).forEach((f) => f());
       },
       notify() {
@@ -8331,7 +8335,7 @@
         hovering = false;
         scheduleRotate();
       };
-      const onVis = () => {
+      const onVis2 = () => {
         if (!document.hidden) scheduleRotate();
       };
       const onCardClick = (e) => {
@@ -8341,12 +8345,12 @@
       card3.addEventListener("click", onCardClick);
       card3.addEventListener("mouseenter", onEnter);
       card3.addEventListener("mouseleave", onLeave);
-      document.addEventListener("visibilitychange", onVis);
+      document.addEventListener("visibilitychange", onVis2);
       document.addEventListener("visibilitychange", syncMedia);
       const mo3 = new MutationObserver(syncMedia);
       mo3.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
       cleanupFns.push(() => {
-        document.removeEventListener("visibilitychange", onVis);
+        document.removeEventListener("visibilitychange", onVis2);
         document.removeEventListener("visibilitychange", syncMedia);
         mo3.disconnect();
       });
@@ -13015,7 +13019,7 @@
         schedule4();
       }
     };
-    const onVis = () => document.hidden ? stop8() : schedule4();
+    const onVis2 = () => document.hidden ? stop8() : schedule4();
     const onKey4 = (e) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       e.preventDefault();
@@ -13031,7 +13035,7 @@
     el4.addEventListener("focusin", onFocusIn);
     el4.addEventListener("focusout", onFocusOut);
     el4.addEventListener("keydown", onKey4);
-    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("visibilitychange", onVis2);
     paint2();
     schedule4();
     return {
@@ -13051,7 +13055,7 @@
         el4.removeEventListener("focusin", onFocusIn);
         el4.removeEventListener("focusout", onFocusOut);
         el4.removeEventListener("keydown", onKey4);
-        document.removeEventListener("visibilitychange", onVis);
+        document.removeEventListener("visibilitychange", onVis2);
         el4.remove();
       }
     };
@@ -16042,7 +16046,7 @@
     let held2 = false;
     let stopped = false;
     let io = null;
-    const sync4 = () => {
+    const sync5 = () => {
       if (stopped || !video2) return;
       const want = visible && !held2 && !document.hidden;
       try {
@@ -16056,28 +16060,28 @@
       } catch {
       }
     };
-    const onVis = () => sync4();
+    const onVis2 = () => sync5();
     const onHold = (e) => {
       held2 = Boolean(e.detail && e.detail.on);
-      sync4();
+      sync5();
     };
     if (typeof IntersectionObserver === "function") {
       io = new IntersectionObserver((entries) => {
         const e = entries[entries.length - 1];
         if (!e) return;
         visible = e.isIntersecting && e.intersectionRatio >= VISIBLE_RATIO;
-        sync4();
+        sync5();
       }, { threshold: [0, VISIBLE_RATIO, 1] });
       io.observe(video2);
     }
-    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("visibilitychange", onVis2);
     if (respectHold) document.addEventListener(HOLD_EVENT, onHold);
     return {
       stop() {
         stopped = true;
         if (io) io.disconnect();
         io = null;
-        document.removeEventListener("visibilitychange", onVis);
+        document.removeEventListener("visibilitychange", onVis2);
         document.removeEventListener(HOLD_EVENT, onHold);
       }
     };
@@ -16432,11 +16436,11 @@
         const dx = t.clientX - sx;
         if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(t.clientY - sy) * 1.5) step(dx < 0 ? 1 : -1);
       }, { passive: true });
-      const onVis = () => {
+      const onVis2 = () => {
         if (!document.hidden) scheduleRotate();
       };
-      document.addEventListener("visibilitychange", onVis);
-      cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
+      document.addEventListener("visibilitychange", onVis2);
+      cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis2));
       cleanupFns.push(onItemsChanged(onChanged2));
     }
     function build13() {
@@ -16479,13 +16483,13 @@
         hovering = false;
         scheduleRotate();
       };
-      const onVis = () => {
+      const onVis2 = () => {
         if (!document.hidden) scheduleRotate();
       };
       hero.addEventListener("mouseenter", onEnter);
       hero.addEventListener("mouseleave", onLeave);
-      document.addEventListener("visibilitychange", onVis);
-      cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
+      document.addEventListener("visibilitychange", onVis2);
+      cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis2));
       cleanupFns.push(onItemsChanged(onChanged2));
     }
     async function init2() {
@@ -17478,13 +17482,13 @@
     el4.innerHTML = markup;
     return el4;
   }
-  function circleButton2({ label, icon: icon5, mod = "", onClick: onClick2, hidden = false }) {
+  function circleButton2({ label, icon: icon5, mod = "", onClick: onClick2, hidden: hidden2 = false }) {
     const b = h("button", {
       type: "button",
       class: `lfx-pt__circle${mod ? ` lfx-pt__circle--${mod}` : ""}`,
       "aria-label": label,
       title: label,
-      hidden: hidden || null
+      hidden: hidden2 || null
     });
     b.append(iconEl2(icon5));
     if (onClick2) {
@@ -18032,7 +18036,7 @@
       if (!s.manual) stopVideo(s);
     };
     s.cleanups.push(onDataSaverChange(onSaver3), onDataSaverPartsChange(onSaver3));
-    const onVis = () => {
+    const onVis2 = () => {
       if (!s.video) return;
       try {
         if (document.hidden) s.video.pause();
@@ -18044,8 +18048,8 @@
       } catch {
       }
     };
-    document.addEventListener("visibilitychange", onVis);
-    s.cleanups.push(() => document.removeEventListener("visibilitychange", onVis));
+    document.addEventListener("visibilitychange", onVis2);
+    s.cleanups.push(() => document.removeEventListener("visibilitychange", onVis2));
     s.cleanups.push(onItemsChanged(({ removed = [], updated = [] }) => {
       if (s.dead) return;
       if (removed.includes(main.Id)) {
@@ -18472,18 +18476,18 @@
       "aria-label": cfg.label,
       title: cfg.label
     }, [svgIcon2(cfg.icon)]);
-    const sync4 = () => {
+    const sync5 = () => {
       const on = getPref(pref);
       el4.setAttribute("aria-pressed", on ? "true" : "false");
       el4.classList.toggle("is-on", on);
     };
-    const onPrefs = () => sync4();
+    const onPrefs = () => sync5();
     el4.addEventListener("click", () => {
       togglePref(pref);
     });
     document.addEventListener(PREFS_EVENT, onPrefs);
-    sync4();
-    return { el: el4, sync: sync4, destroy() {
+    sync5();
+    return { el: el4, sync: sync5, destroy() {
       document.removeEventListener(PREFS_EVENT, onPrefs);
     } };
   }
@@ -19183,11 +19187,11 @@
       hero.addEventListener("mouseleave", onLeave);
       hero.addEventListener("focusin", onEnter);
       hero.addEventListener("focusout", onLeave);
-      const onVis = () => {
+      const onVis2 = () => {
         if (!document.hidden) scheduleRotate();
       };
-      document.addEventListener("visibilitychange", onVis);
-      cleanups6.push(() => document.removeEventListener("visibilitychange", onVis));
+      document.addEventListener("visibilitychange", onVis2);
+      cleanups6.push(() => document.removeEventListener("visibilitychange", onVis2));
       let sx = 0;
       let sy = 0;
       hero.addEventListener("touchstart", (e) => {
@@ -21271,7 +21275,7 @@
       if (el4) el4.remove();
       el4 = null;
     }
-    function sync4(on) {
+    function sync5(on) {
       document.documentElement.classList.toggle(NO_CRT_CLASS, !on);
       if (on) mount2();
       else unmount2();
@@ -21296,7 +21300,7 @@
         if (el4) el4.classList.remove("is-shaking");
       }, ms);
     }
-    return { mount: mount2, unmount: unmount2, sync: sync4, glitchStrip, shake, get el() {
+    return { mount: mount2, unmount: unmount2, sync: sync5, glitchStrip, shake, get el() {
       return el4;
     } };
   }
@@ -22983,6 +22987,22 @@
     } catch {
     }
   }
+  function remove(store3, key) {
+    try {
+      window[store3].removeItem(key);
+    } catch {
+    }
+  }
+  var getUltraLive = () => read3("localStorage", storageKey6("ultraLive")) === "1";
+  function setUltraLive(on) {
+    if (on) write3("localStorage", storageKey6("ultraLive"), "1");
+    else remove("localStorage", storageKey6("ultraLive"));
+  }
+  var getUltraBlock = () => read3("localStorage", storageKey6("ultraBlock")) === "1";
+  function setUltraBlock(on) {
+    if (on) write3("localStorage", storageKey6("ultraBlock"), "1");
+    else remove("localStorage", storageKey6("ultraBlock"));
+  }
   function getQuality() {
     const v = read3("localStorage", storageKey6("quality"));
     return QUALITIES.includes(v) ? v : DEFAULTS3.quality;
@@ -23089,6 +23109,61 @@
   function saveState(state24) {
     if (!state24 || typeof state24 !== "object") return;
     write3("sessionStorage", SESSION_STATE, JSON.stringify(state24));
+  }
+
+  // src/js/features/store/ultraguard.js
+  var compact2 = false;
+  var lastLevel = null;
+  var armed = false;
+  var hidden = () => {
+    try {
+      return document.hidden === true;
+    } catch {
+      return false;
+    }
+  };
+  function sync4() {
+    setUltraLive(compact2 && lastLevel === "ultra" && !hidden());
+  }
+  var onVis = () => sync4();
+  var onPageHide = () => setUltraLive(false);
+  var onPageShow = () => sync4();
+  function arm() {
+    if (armed) return;
+    armed = true;
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onPageShow);
+  }
+  function disarm() {
+    if (!armed) return;
+    armed = false;
+    document.removeEventListener("visibilitychange", onVis);
+    window.removeEventListener("pagehide", onPageHide);
+    window.removeEventListener("pageshow", onPageShow);
+  }
+  function startUltraGuard(isCompact) {
+    compact2 = isCompact === true;
+    if (!compact2) return true;
+    if (getUltraLive()) {
+      setUltraLive(false);
+      setUltraBlock(true);
+    }
+    return !getUltraBlock();
+  }
+  function reportUltraLevel(level) {
+    if (!compact2) return;
+    lastLevel = level;
+    arm();
+    sync4();
+  }
+  function clearUltraGuard() {
+    lastLevel = null;
+    disarm();
+    if (compact2) setUltraLive(false);
+  }
+  function manualUltraChosen() {
+    if (compact2) setUltraBlock(false);
   }
 
   // src/js/features/store/mp.js
@@ -23896,11 +23971,11 @@
       clearTimeout(timer2);
       timer2 = dead ? null : setTimeout(() => {
         timer2 = null;
-        sync4().catch(() => {
+        sync5().catch(() => {
         });
       }, ms);
     }
-    function sync4() {
+    function sync5() {
       if (busy3) return busy3;
       let sent = 0;
       busy3 = updateCustom(PREFS_ID2, KEY6, (raw2) => {
@@ -23965,7 +24040,7 @@
             clearTimeout(t);
             res(state24);
           };
-          sync4().then(done, done);
+          sync5().then(done, done);
         });
       },
       dispose() {
@@ -24015,6 +24090,7 @@
     } catch (e) {
       console.warn("[LenzFlix] store suspend", e && e.message);
     }
+    clearUltraGuard();
     unparkStage();
     clearTimeout(cur3.disposeTimer);
     cur3.disposeTimer = setTimeout(disposeInstance2, SUSPEND_MS);
@@ -24090,6 +24166,7 @@
     } catch (e) {
       console.warn("[LenzFlix] store dispose", e && e.message);
     }
+    clearUltraGuard();
     unparkStage();
     if (bridge) bridge.activate(false);
     xr.presenting = false;
@@ -24301,7 +24378,11 @@
         }, FADE_MS2);
       }),
       onState: ret2((s) => saveState(s)),
-      onPrefs: ret2((p) => savePrefs2(p)),
+      onPrefs: ret2((p) => {
+        savePrefs2(p);
+        if (p && p.quality === "ultra") manualUltraChosen();
+      }),
+      onLevel: ret2((lv) => reportUltraLevel(lv)),
       onBigCovers: ret2((on) => onBigCovers(on)),
       onXr: ret2((s) => onXr(s)),
       onCinema2d: ret2((s) => onCinema2d(s)),
@@ -24311,16 +24392,25 @@
   }
   function ultraAllowed() {
     try {
-      if (isTv()) return false;
-      const touchSmall = Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches) && Math.min(screen.width, screen.height) < 600;
-      return !touchSmall;
+      return !isTv();
+    } catch {
+      return false;
+    }
+  }
+  function ultraCompact() {
+    try {
+      return Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches) && Math.min(screen.width, screen.height) < 600;
     } catch {
       return false;
     }
   }
   function buildOpts2(r) {
+    const compact3 = ultraCompact();
     return {
       ultraOk: ultraAllowed(),
+      ultraCompact: compact3,
+      ultraAuto: startUltraGuard(compact3),
+      // false nach einem Absturz auf Handy-Ultra: Automatik steigt nicht auf Ultra
       quality: getQuality(),
       sound: getSound(),
       showFps: getFps(),
@@ -24508,6 +24598,7 @@
     clearTimeout(waitTimer9);
     waitTimer9 = null;
     disposeInstance2();
+    clearUltraGuard();
     unparkStage();
     onCinema2d(null);
     if (prof) {
@@ -24568,6 +24659,7 @@
           } catch (e) {
             console.warn("[LenzFlix] store suspend", e && e.message);
           }
+          clearUltraGuard();
           clearDisposeTimer();
           inst2.disposeTimer = setTimeout(disposeInstance2, SUSPEND_MS);
         }
@@ -24651,7 +24743,7 @@
       destroyDataSaver();
       stopTheme();
     }
-    function sync4() {
+    function sync5() {
       if (destroyed) return;
       if (cssActive()) {
         startTheme();
@@ -24682,20 +24774,20 @@
     watchTimer = setInterval(() => {
       if (++fastN >= FAST_TICKS) {
         clearInterval(watchTimer);
-        watchTimer = setInterval(sync4, WATCH_MS);
+        watchTimer = setInterval(sync5, WATCH_MS);
       }
-      sync4();
+      sync5();
     }, FAST_MS);
-    window.addEventListener("hashchange", sync4);
-    window.addEventListener("popstate", sync4);
-    document.addEventListener("viewshow", sync4);
-    sync4();
+    window.addEventListener("hashchange", sync5);
+    window.addEventListener("popstate", sync5);
+    document.addEventListener("viewshow", sync5);
+    sync5();
     function destroy2() {
       destroyed = true;
       clearInterval(watchTimer);
-      window.removeEventListener("hashchange", sync4);
-      window.removeEventListener("popstate", sync4);
-      document.removeEventListener("viewshow", sync4);
+      window.removeEventListener("hashchange", sync5);
+      window.removeEventListener("popstate", sync5);
+      document.removeEventListener("viewshow", sync5);
       stopFeatures();
       closeThemePicker();
       clearToast();
