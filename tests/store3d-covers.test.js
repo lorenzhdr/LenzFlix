@@ -14,7 +14,7 @@ const { shelfSpec } = await import('../src/js/store3d/world/layout.js');
 
 const preset = (over = {}) => ({ level: 'high', atlas: 1024, anisotropy: 1, maxAtlases: 100, loadRadius: 30, ...over });
 
-function setup({ phone = false, n = 14, pre = preset(), maxTex = 4096, big = false, zs = () => -3 } = {}) {
+function setup({ phone = false, n = 14, pre = preset(), maxTex = 4096, big = false, zs = () => -3, rend = null } = {}) {
   const clock = { t: 1000 };
   const items = new Map();
   const faceViews = Array.from({ length: n }, (_, i) => {
@@ -29,7 +29,7 @@ function setup({ phone = false, n = 14, pre = preset(), maxTex = 4096, big = fal
   const m = new CoverManager({
     faceViews, items, deps, preset: pre, blankTex: { blank: true }, phone, spec: shelfSpec(big),
     now: () => clock.t,
-    renderer: maxTex === null ? null : { capabilities: { maxTextureSize: maxTex }, initTexture() {} },
+    renderer: rend || (maxTex === null ? null : { capabilities: { maxTextureSize: maxTex }, initTexture() {} }),
   });
   m.clockRef = clock;
   return { m, faceViews, deps, clock };
@@ -150,6 +150,32 @@ describe('store3d CoverManager Schärfestufe', { timeout: 20000 }, () => {
     expect(sp).not.toHaveBeenCalled(); // Kontext verloren: nur vergessen
     expect(e.m.hiPending).toBe(0);
     expect(e.faceViews.every((fv) => fv.material.map === e.m.blank)).toBe(true);
+  });
+
+  it('Hi mit Streifen-Upload (copyTextureToTexture): Textur erst nach allen Streifen am Material, abgebrochene Streifen werden freigegeben', async () => {
+    const copy = vi.fn();
+    const rend = { capabilities: { maxTextureSize: 4096 }, initTexture() {}, copyTextureToTexture: copy };
+    const d = setup({ n: 2, rend });
+    let f = null;
+    for (let i = 0; i < 400 && !f; i++) {
+      if (i % 8 === 0) { d.clock.t += 250; d.m.update(0, 0, 0, { zoom: 1, pitch: 0 }); await new Promise((r) => globalThis.setImmediate(r)); }
+      d.clock.t += 31.25;
+      d.m.tick();
+      f = d.m.faces.find((x) => x.hiLoading && x.hiLoading.stripe) || null;
+    }
+    expect(f).toBeTruthy();
+    expect(f.hiTex).toBeNull();
+    expect(f.fv.material.map).not.toBe(f.hiLoading.stripe.tex);
+    const up = f.hiLoading.stripe;
+    const before = copy.mock.calls.length;
+    for (let k = 0; k < 40 && f.hiLoading; k++) { d.clock.t += 31.25; d.m.tick(); }
+    expect(copy.mock.calls.length - before).toBeGreaterThanOrEqual(1);
+    expect(f.hiLoading).toBeNull();
+    expect(f.hiTex).toBe(up.tex);
+    expect(f.fv.material.map).toBe(up.tex);
+    expect(d.m.counters.hiUp).toBeGreaterThan(0);
+    d.m.dispose();
+    expect(d.m.hiPending).toBe(0);
   });
 
   it('laufender Hi-Load wird beim Herabstufen abgebrochen', async () => {

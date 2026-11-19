@@ -8,6 +8,7 @@
 // Grund-Atlas fertig ist, Herabstufen tauscht zuerst auf den Grund-Atlas zurück und gibt dann die große Textur frei.
 import { CanvasTexture, SRGBColorSpace, LinearMipmapLinearFilter } from 'three';
 import { drawAtlas } from './atlas.js';
+import { createStripeUpload } from './stripe.js';
 import { loadBitmap, closeBitmap } from './loader.js';
 import { shelfSpec } from '../world/layout.js';
 import { makeCanvas } from '../world/textures.js';
@@ -334,6 +335,7 @@ export class CoverManager {
     const now = this.now();
     this.frame++;
     this.trackFrame(now);
+    this.stepHiStripes(now);
     if (this.frame - this.lastUploadFrame < 2) return; // höchstens ein Atlas-Upload alle 2 Frames
     const low = this.lowEnabled ? this.pickLow() : null;
     let job = null;
@@ -408,6 +410,7 @@ export class CoverManager {
     l.ac.abort();
     l.bitmaps.forEach(closeBitmap);
     l.bitmaps.clear();
+    if (l.stripe) { try { l.stripe.dispose(); } catch { /* egal */ } l.stripe = null; }
     f.hiLoading = null;
     this.queue = this.queue.filter((j) => j.loading !== l);
     this.composeQueue = this.composeQueue.filter((j) => !(j.f === f && j.kind === 'hi'));
@@ -550,6 +553,9 @@ export class CoverManager {
     l.bitmaps.forEach(closeBitmap);
     l.bitmaps.clear();
     f.hiLoading = null;
+    // 1.19.0: 2048er-Upload in Streifen über mehrere Bilder (ein Stück blockiert den GPU-Prozess 25-56 ms); erst am Ende am Material einhängen; Handy: ganzer Upload (Teil-Upload aus DOM-Quellen dort ungeprüft)
+    const up = this.renderer && !this.phone ? createStripeUpload(this.renderer, canvas, { anisotropy: this.preset.anisotropy }) : null;
+    if (up) { f.hiLoading = { ac: { abort() {} }, bitmaps: new Map(), pending: 0, hi: true, stripe: up }; return; }
     const tex = this.makeTexture(canvas);
     f.fv.material.map = tex;
     f.hiTex = tex;
@@ -557,6 +563,29 @@ export class CoverManager {
     this.counters.hiUp++;
     this.counters.coverUploads++;
     try { if (this.renderer) this.renderer.initTexture(tex); } catch { /* wird beim ersten Rendern hochgeladen */ }
+  }
+
+  /** Pro Frame ein Streifen des laufenden 2048er-Uploads (composeHi); am Ende wird die fertige Textur eingehängt. */
+  stepHiStripes(now) {
+    for (const f of this.faces) {
+      const l = f.hiLoading;
+      if (!l || !l.stripe) continue;
+      if (f.state !== 'full' || !f.tex || !this.hiEnabled) { this.cancelHiLoad(f); continue; }
+      let done;
+      try { done = l.stripe.step(); } catch { this.cancelHiLoad(f); f.hiSkip = true; continue; }
+      if (done) {
+        const tex = l.stripe.tex;
+        l.stripe = null;
+        f.hiLoading = null;
+        f.fv.material.map = tex;
+        f.hiTex = tex;
+        f.hiChangedAt = now;
+        this.lastHiAt = now;
+        this.counters.hiUp++;
+        this.counters.coverUploads++;
+      }
+      return; // höchstens ein Streifen pro Bild
+    }
   }
 
   makeTexture(canvas, keepCanvas) {

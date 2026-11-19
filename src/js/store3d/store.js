@@ -5,6 +5,8 @@ import {
 import { buildLayout } from './world/layout.js';
 import { resolveRestore, areaAt } from './world/city.js';
 import { createEngine } from './engine/renderer.js';
+import { createWarmDraw } from './engine/warm.js';
+import { makeTarget, shadowsReady } from './world/mirror.js';
 import { makeTextures, makeCanvas, toTexture } from './world/textures.js';
 import { buildRoom, addLights } from './world/build-room.js';
 import { buildShelves, slotWorld } from './world/build-shelves.js';
@@ -877,13 +879,36 @@ export class StoreApp {
       this.covers.update(p.x, p.z, p.yaw, { zoom: this.zoom, pitch: p.pitch });
     }
     if (p.moved !== this.lastMoved && now - this.lastNotify >= 500) this.notifyState(false, now);
-    if (!this.ready && ++this.readyFrames >= 2) {
+    if (!inXr) this.stepWarmDraw();
+    if (!this.ready && !this.warmHold(now) && ++this.readyFrames >= 2) {
       this.ready = true;
       this.progress(1, 'Fertig');
       if (this.onReadyHook) this.onReadyHook();
       this.syncUi();
       try { this.deps.onReady(); } catch { /* egal */ }
     }
+  }
+
+  /** Bleibt das Ladebild stehen, bis das Vorwärmen fertig ist (höchstens 4 s, nur high/ultra)? */
+  warmHold(now) {
+    const wd = this.warmDraw;
+    if (!wd || !wd.busy()) return false;
+    if (this.warmT0 == null) this.warmT0 = now;
+    return now - this.warmT0 < 4000;
+  }
+
+  /** Programm-Vorwärmen der Basisszene (engine/warm.js createWarmDraw, nur high/ultra): zeichnet vor dem normalen Bild; vor der Spielfreigabe größere Häppchen. */
+  stepWarmDraw() {
+    const eng = this.engine;
+    if (!eng || this.disposed || this.suspended) return;
+    if (!this.warmDraw) {
+      this.warmDraw = createWarmDraw({
+        renderer: eng.renderer, camera: eng.camera, scene: () => (eng.scene === eng.storeScene ? eng.storeScene : null), makeRt: makeTarget,
+        level: () => eng.preset.level, roots: () => { const c = this.mods && this.mods.ctx.use('city'); return c && c.warmRoots ? c.warmRoots() : []; }, xr: () => !!(this.xr && this.xr.presenting), canDraw: () => eng.renderEnabled && !eng.lost,
+        boost: () => !this.ready || this.mode !== 'play' || !!(this.mods && this.mods.locked), shadowsReady: () => shadowsReady(eng.renderer, eng.storeScene), debug: !!this.opts.debug,
+      });
+    }
+    this.warmDraw.step();
   }
 
   getState() {
@@ -1096,6 +1121,7 @@ export class StoreApp {
     try { if (this.touchCtl) this.touchCtl.detach(); } catch { /* egal */ }
     try { if (this.rotate) this.rotate.destroy(); } catch { /* egal */ }
     if (this.engine) this.engine.stop();
+    if (this.warmDraw) { this.warmDraw.dispose(); this.warmDraw = null; }
     if (this.mods) this.mods.dispose();
     if (this.holdview) this.holdview.dispose(true);
     if (this.covers) this.covers.dispose();
@@ -1146,6 +1172,7 @@ export class StoreApp {
       spawns() { return app.layout.city ? JSON.parse(JSON.stringify(app.layout.city.spawns)) : {}; },
       area() { return areaAt(app.layout, app.player.x, app.player.z, app.player.y || 0); },
       city() { return app.layout.city; },
+      warmDraw() { return app.warmDraw ? app.warmDraw.state() : null; }, // Programm-Vorwärmen: { done, pending, drawn, chunks, ms, maxChunkMs, keys, failed }
       ultra() { return app.mods && app.mods.ultra ? app.mods.ultra.api.list() : []; }, // Ultra-Details: [{ key, built, visible, ms }]
       stats() {
         const info = app.engine.renderer.info;
