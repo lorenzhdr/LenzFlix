@@ -135,6 +135,19 @@ describe('npc: Schirme folgen dem Wetter', () => {
     tick(8);
     expect(calls.filter((v) => v === true).length).toBe(0);
   });
+
+  it('N2c: Regenende waehrend der Blendung (Schirm bleibt am Handle): nach der Wiederherstellung kein Schirm mehr', async () => {
+    await build();
+    tick(2);
+    setWet(true); tick(8);
+    const api = host.ctx.use('npc');
+    const q = walkers().find((w) => api.temperOf(w.handle) !== 'hot' && w.handle.hasUmbrella && w.handle.hasUmbrella());
+    expect(q).toBeTruthy();
+    expect(api.laserHit(q.handle)).toBe(true);
+    setWet(false);
+    tick(40);
+    expect(q.handle.hasUmbrella()).toBe(false);
+  });
 });
 
 describe('createPigeons: dispose entsorgt die Geometrien', () => {

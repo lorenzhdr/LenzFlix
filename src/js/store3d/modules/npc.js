@@ -270,7 +270,7 @@ export default {
     const canAttack = () => !xrOn() && countAttackers() < MAX_ATTACKERS && !protectedNow();
     function restoreItem(e) {
       const h = e.handle;
-      try { if (h.getHandItem && h.getHandItem()) h.setHandItem(null); if (e.look) { e.look.umbrella = raining() && !!e.umb; if (e.look.umbrella) h.setUmbrella(true); } } catch { /* egal */ }
+      try { if (h.getHandItem && h.getHandItem()) h.setHandItem(null); if (e.look) { e.look.umbrella = raining() && !!e.umb; h.setUmbrella(e.look.umbrella); } } catch { /* egal */ }
     }
     function provokeCat(e, kind, action, ev) {
       if (e.temper === 'hot') return action === 'attack' ? 'attackHot' : 'provokeHot';
