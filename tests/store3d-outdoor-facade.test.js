@@ -111,12 +111,16 @@ describe('Modul city: Fassade, Stadt, Nebel, Partition', () => {
     expect(w.scene.getObjectByName('lfx-rig').parent).toBe(w.scene);
     expect(w.providers.get('areas').current()).toBe('shop');
     expect(shell.visible && shelves.visible).toBe(true);
+    expect(city.shellVisible()).toBe(true);
+    expect(city.visibleRef()).toEqual(city.visible()); // gleiche Werte, aber ohne Kopie
+    expect(city.visibleRef()).toBe(city.visibleRef());
 
     const sp = w.L.city.spawns;
     Object.assign(w.p, { x: sp.yard.x, z: sp.yard.z });
     h.update(0.2);
     expect(w.providers.get('areas').current()).toBe('yard');
     expect(shell.visible).toBe(false);
+    expect(city.shellVisible()).toBe(false); // Ultra-Innenraum koppelt hieran (modules/ultra-room.js)
     expect(shelves.visible).toBe(false);
     expect(city.groups.yard.visible).toBe(true);
     expect(city.groups.palastInterior.visible).toBe(false);

@@ -45,10 +45,12 @@ export function fogRange(preset, layout) {
  * Nebelbereich bei Wetter-Nebel (fog 0..1, 1.19.0): draußen near 20 → 6 m, far 58 → 22 m (nie weiter als der Normalbereich `base`),
  * drinnen (Laden, Palast, Salon) und ohne Nebel unverändert.
  */
-export function fogTarget(base, fog, indoor) {
+export function fogTarget(base, fog, indoor, out = {}) {
   const f = Number.isFinite(fog) ? Math.min(1, Math.max(0, fog)) : 0;
-  if (indoor || f <= 0) return { near: base.near, far: base.far };
-  return { near: Math.min(base.near, 20 - 14 * f), far: Math.min(base.far, 58 - 36 * f) };
+  if (indoor || f <= 0) { out.near = base.near; out.far = base.far; return out; }
+  out.near = Math.min(base.near, 20 - 14 * f);
+  out.far = Math.min(base.far, 58 - 36 * f);
+  return out;
 }
 const INDOOR_AREAS = new Set(['shop', 'palastHall', 'palastFoyer', 'salon']);
 
@@ -87,6 +89,7 @@ export default {
     let sees = true;
     let poseZ = 0;
     let sigAcc = 1;
+    const fogTmp = { near: 0, far: 0 }; // wiederverwendetes Nebel-Ziel (kein Objekt pro Frame)
 
     function applyVisibility() {
       const all = xrOn;
@@ -148,6 +151,10 @@ export default {
       groups: cm ? cm.groups : null,
       signals: () => signalAt(Date.now() / 1000),
       visible: () => ({ ...vis }),
+      /** Dieselben Werte ohne Kopie (nur lesen, nie behalten): für Frame-Pfade ohne Allokation. */
+      visibleRef: () => vis,
+      /** Wird die Ladenhülle (Innenraum samt Ultra-Innenraum) gerade gezeichnet? Allokationsfrei, pro Frame lesbar. */
+      shellVisible: () => !shopShell || shopShell.visible !== false,
       /** Szene aufteilen (store.js ruft das nach mods.init): Laden-Hülle und Regale werden je Bereich ein-/ausgeblendet. */
       partition() {
         if (shopShell || !cm) { refresh(); return; }
@@ -184,7 +191,7 @@ export default {
         if (acc >= 0.15) { acc = 0; refresh(); }
         // Wetter-Nebel: nur Fog-Parameter, weich in ~1 s (kein Neukompilieren)
         const wx = ctx.use('weather');
-        const tg = fogTarget(fr, wx && wx.fog, INDOOR_AREAS.has(area));
+        const tg = fogTarget(fr, wx && wx.fog, INDOOR_AREAS.has(area), fogTmp);
         if (Math.abs(tg.near - fog.near) > 0.02 || Math.abs(tg.far - fog.far) > 0.02) {
           const k = 1 - Math.exp(-Math.min(dt, 0.25) * 3.5);
           fog.near += (tg.near - fog.near) * k;

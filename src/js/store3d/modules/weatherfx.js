@@ -12,6 +12,7 @@ import { getOutdoor } from './outdoor.js';
 import { scheduleWarm } from '../engine/warm.js';
 import { OUTDOOR_AREAS, areaAt } from '../world/city.js';
 import { prefersReducedMotion } from './m4-util.js';
+import { atLeast } from '../engine/quality.js';
 import { winterNext } from '../weather/state.js';
 import {
   lightningGap, flashAt, FLASH_LEN, thunderPlan, lightningOn, lightningVisual, boltVisible, breathOn, breathPhase, BREATH_MAX, thermoText as thermoStr, hash01,
@@ -83,6 +84,7 @@ export default {
     let thermo = null;
     let thermoTex = null;
     let thermoShown = null;
+    let warmer = null; // scheduleWarm-Abbruchfunktion (retry nach Stufenwechsel/gesetzter Map)
     const f = L.facade;
     if (f && f.door) {
       const mat = new MeshBasicMaterial({ toneMapped: false });
@@ -104,6 +106,7 @@ export default {
         thermo.material.map = thermoTex;
         thermo.material.needsUpdate = true;
         if (old) old.dispose();
+        if (!old && warmer) warmer.retry(); // erste Map gesetzt: jetzt erst das Programm samt Textur vorwärmen
       }
       thermo.visible = true;
     }
@@ -216,8 +219,14 @@ export default {
     /** Sichtbar samt Eltern-Gruppen (Salon, Palast-Innenraum werden aus der Ferne ausgeblendet; die Atem-Points hängen nicht darunter). */
     const shownChain = (o) => { for (let q = o; q; q = q.parent) if (q.visible === false) return false; return true; };
     /** Atem nur im Freien: geheizte Innenräume (Laden, Salon, Palast) bleiben ohne Wölkchen. */
+    const wv = new Vector3();
     const outside = (p, h) => {
-      try { return OUTDOOR_AREAS.includes(areaAt(L, p.x, p.z, (h.root && h.root.position && h.root.position.y) || 0)); } catch { return false; }
+      try {
+        let y = 0;
+        if (typeof h.root.getWorldPosition === 'function') { h.root.getWorldPosition(wv); y = wv.y; } // Weltposition (root.position.y ist lokal zur Eltern-Gruppe)
+        else if (h.root.position) y = h.root.position.y;
+        return OUTDOOR_AREAS.includes(areaAt(L, p.x, p.z, Number.isFinite(y) ? y : 0));
+      } catch { return false; }
     };
     function pickSlots() {
       const np = ctx.use('npc');
@@ -289,8 +298,14 @@ export default {
       onWeather();
     }
     hook();
-    // Blitz-Strahl, Atem-Points und Thermometer erscheinen erst bei Ereignissen: Programme im Leerlauf nach dem Start vorwärmen
-    const cancelWarm = scheduleWarm(ctx, () => [bolt, breath, thermo].filter(Boolean).map((object) => ({ object })));
+    // Blitz-Strahl, Atem-Points und Thermometer erscheinen erst bei Ereignissen: Programme im Leerlauf nach dem Start vorwärmen,
+    // aber nur, was auf der aktuellen Stufe gezeichnet werden kann (Blitz ab mid, Atem ab high, Thermometer erst mit Map).
+    const cancelWarm = scheduleWarm(ctx, () => [
+      { object: bolt, ok: () => boltVisible(level) },
+      { object: breath, ok: () => atLeast(level, 'high') },
+      thermo ? { object: thermo, ok: () => !!thermo.material.map } : null,
+    ].filter(Boolean));
+    warmer = cancelWarm;
 
     return {
       update(dt, t) {
@@ -307,7 +322,7 @@ export default {
         lightning(t, w);
         breathUpdate(t, dt, w);
       },
-      onQuality(lv) { level = lv; },
+      onQuality(lv) { level = lv; cancelWarm.retry(); },
       onSuspend() { suspended = true; const w = W(); if (flashing) endFlash(w); breath.visible = false; },
       onResume() { suspended = false; onWeather(); },
       dispose() {

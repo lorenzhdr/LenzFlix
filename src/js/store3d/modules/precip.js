@@ -173,6 +173,7 @@ export default {
     let want = { kind: null, i: 0 };
     let first = true;
     let level = ctx.quality();
+    let precipMax = presetFor(level, phone).precip; // Dichte der Stufe, nur bei onQuality neu bestimmt (kein presetFor-Objekt pro Frame)
     let near = false;
     let suspended = false;
     let checkT = 0;
@@ -230,7 +231,7 @@ export default {
         stepBlend(st, want, clamp(dt, 0, 0.25));
         const vis = st.kind !== null && st.a > 0.001 && near && !suspended;
         if (!vis) { if (mesh.visible) mesh.visible = false; return; }
-        const n = countFor(presetFor(level, phone).precip, st.a);
+        const n = countFor(precipMax, st.a);
         if (!n) { mesh.visible = false; return; }
         if (curKind !== st.kind) applyKind(st.kind);
         cam.getWorldPosition(wp);
@@ -241,7 +242,7 @@ export default {
         geo.setDrawRange(0, n * 6);
         mesh.visible = true;
       },
-      onQuality(lv) { level = lv; },
+      onQuality(lv) { level = lv; precipMax = presetFor(lv, phone).precip; },
       onSuspend() { suspended = true; mesh.visible = false; },
       onResume() { suspended = false; },
       dispose() { cancelWarm(); if (mq && mq.removeEventListener) mq.removeEventListener('change', onMotion); if (window.__lfxM4) delete window.__lfxM4.precip; },

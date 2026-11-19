@@ -224,6 +224,11 @@ export const ULTRA_TEX = {
   ceiling: ceilingCanvas,
 };
 
+/** Erzeugt EINE Ultra-Textur (Schlüssel aus ULTRA_TEX). */
+export function makeUltraTexture(key, aniso = 4) {
+  return toTexture(ULTRA_TEX[key](), { repeat: true, aniso });
+}
+
 /** Erzeugt alle Ultra-Texturen: { key: CanvasTexture }. aniso = Anisotropie. */
 export function makeUltraTextures(aniso = 4) {
   const out = {};

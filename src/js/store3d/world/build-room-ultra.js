@@ -92,7 +92,8 @@ function posterAtlas() {
 export function buildPosters(layout, o = {}) {
   const group = new Group();
   group.name = 'ultra-posters';
-  const tex = toTexture(posterAtlas(), { aniso: o.aniso || 4 });
+  let tex = null;
+  let mesh = null;
   const parts = posterSpots(layout).map((p) => {
     const col = p.cell % 4;
     const row = Math.floor(p.cell / 4);
@@ -100,8 +101,28 @@ export function buildPosters(layout, o = {}) {
     const v1 = 1 - row * 0.5;
     return quad({ w: p.w, h: p.h, x: p.x, y: p.y, z: p.z, ry: p.ry, uv: [u0, v1 - 0.5, u0 + 0.25, v1] });
   });
-  if (parts.length) group.add(new Mesh(merge(parts), new MeshLambertMaterial({ map: tex, vertexColors: true })));
-  return { object: group, dispose() { disposeTree(group); tex.dispose(); } };
+  const mat = new MeshLambertMaterial({ vertexColors: true });
+  if (parts.length) {
+    mesh = new Mesh(merge(parts), mat);
+    mesh.visible = false; // erst mit dem Atlas zeigen (Teilschritt more()), sonst blitzen kurz weiße Flächen
+    group.add(mesh);
+  }
+  let done = false;
+  return {
+    object: group,
+    /** Teilschritt (engine/ultra.js): der Plakat-Atlas (Canvas) ist der teure Teil und kommt in einem eigenen Häppchen. */
+    more() {
+      if (done) return false;
+      done = true;
+      tex = toTexture(posterAtlas(), { aniso: o.aniso || 4 });
+      mat.map = tex;
+      mat.needsUpdate = true;
+      if (mesh) mesh.visible = true;
+      return false;
+    },
+    get textures() { return tex ? [tex] : []; },
+    dispose() { disposeTree(group); mat.dispose(); if (tex) tex.dispose(); },
+  };
 }
 
 /** 'clutter': Tresen-Kleinkram, Preisschilder/Genre-Leisten, Sockelleisten, Fußmatte – 1 Mesh. */

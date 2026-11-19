@@ -8,6 +8,10 @@
 //   isActive() → bool (Stufe === 'ultra')   has(key) → bool   keys() → string[]   list() → [{ key, built, visible, ms }]
 // Bau: LAZY in Leerlauf-Häppchen (requestIdleCallback, Rückfall setTimeout, je Häppchen höchstens ~6 ms; ein Eintrag wird nie geteilt),
 // sobald die Stufe >= 'high' ist (damit der Wechsel auf Ultra keinen Hänger erzeugt) oder Ultra aktiv wird.
+// Teilschritte (1.19.0): liefert build() zusätzlich api.more() (→ true, solange noch Arbeit übrig ist), läuft es danach je EIN Aufruf pro Häppchen
+//   (große Einträge sprengen so das 6-ms-Budget nicht); das Vorwärmen beginnt erst, wenn more() fertig meldet. Optional opts.gate() → bool:
+//   zusätzliche Sichtbarkeitsbedingung (z. B. Bereichs-Culling der Ladenhülle), pro Frame geprüft; solange false, kein update und kein Zeichnen.
+// Vorbau nur, wenn Ultra erreichbar ist: Decke ultra (opts.ultraOk) UND Einstellung auto oder ultra (ctx.qualitySetting(); fehlt es: wie auto).
 // Sichtbar = (Stufe === 'ultra') && !abgeschaltet(key). Umschalten setzt nur `visible`, die Basiswelt wird nie neu gebaut.
 // update(dt, t) läuft nur für gebaute, sichtbare Einträge. Dev: ctx.opts.dev.ufx = '-key1,-key2' (aus) bzw. 'only:key' (nur dieses).
 import { atLeast } from './quality.js';
@@ -59,9 +63,15 @@ export function createUltra(ctx, o = {}) {
   const isActive = () => level() === 'ultra';
   const allowed = (key) => (flt.only ? key === flt.only : !flt.off.has(key));
   // Ultra erreichbar? (gleiche Regel wie store.js: nur opts.ultraOk der Hülle). Sonst nur bauen, wenn die Stufe wirklich 'ultra' ist.
-  const reachable = () => !!(ctx && ctx.opts && ctx.opts.ultraOk === true);
+  const reachable = () => {
+    if (!(ctx && ctx.opts && ctx.opts.ultraOk === true)) return false;
+    let set = 'auto';
+    try { if (typeof ctx.qualitySetting === 'function') set = ctx.qualitySetting(); } catch { set = 'auto'; }
+    return set === 'auto' || set === 'ultra' || set === undefined || set === null; // fest gewähltes low/mid/high: Ultra nicht erreichbar, kein Vorbau
+  };
   const wantBuild = () => (reachable() ? atLeast(level(), 'high') : level() === 'ultra');
-  const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built;
+  const gateOk = (e) => { if (!e.gate) return true; try { return !!e.gate(); } catch { return true; } };
+  const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built && gateOk(e);
 
   function setShown(e, v) {
     if (!!e.shown === v) return;
@@ -87,6 +97,7 @@ export function createUltra(ctx, o = {}) {
       if (!api || !api.object) throw new Error('build() liefert kein { object }');
       e.api = api;
       e.built = true;
+      e.more = typeof api.more === 'function';
       api.object.visible = false;
       (e.parent || ctx.scene).add(api.object);
       api.object.visible = visibleNow(e);
@@ -98,15 +109,24 @@ export function createUltra(ctx, o = {}) {
     e.ms = +(now() - t0).toFixed(2);
   }
 
+  /** Einträge mit Arbeit: noch ungebaut oder (gebaut) mit offenen Teilschritten (api.more). */
   function pending() {
     if (!wantBuild()) return [];
-    return [...entries.values()].filter((e) => !e.built && !e.failed && allowed(e.key));
+    return [...entries.values()].filter((e) => !e.failed && allowed(e.key) && (!e.built || e.more));
+  }
+
+  function moreOne(e) {
+    const t0 = now();
+    try {
+      if (!e.api || typeof e.api.more !== 'function' || !e.api.more()) e.more = false;
+    } catch (err) { e.more = false; warn(`Ultra-Detail "${e.key}".more`, err); }
+    e.ms = +(e.ms + now() - t0).toFixed(2);
   }
 
   /** Gebaute Einträge, die noch nicht vorgewärmt wurden (nur ab Stufe >= high, wie der Bau). */
   function warmPending() {
     if (!wantBuild()) return [];
-    return [...entries.values()].filter((e) => e.built && !e.failed && e.warm === undefined && allowed(e.key));
+    return [...entries.values()].filter((e) => e.built && !e.more && !e.failed && e.warm === undefined && allowed(e.key));
   }
 
   function warmOne(e) {
@@ -114,9 +134,12 @@ export function createUltra(ctx, o = {}) {
     if (!r || !ctx.camera || !e.api) { e.warm = false; return; }
     e.warm = true; // sofort markieren (kein Doppelstart), bei Fehler unten zurücksetzen
     const t0 = now();
+    const mine = e.api;
+    // Spätes then nach dispose/Neubau: nichts mehr setzen (e.warm gehört dann schon dem Nachfolger oder ist zurückgesetzt)
+    const live = () => !disposed && e.api === mine && e.warm === true;
     try {
-      warmObject(r, e.api.object, ctx.camera, ctx.scene, { textures: e.api.textures, debug: !!(ctx.opts && ctx.opts.debug) })
-        .then((did) => { if (!did) e.warm = false; }, () => { e.warm = false; });
+      warmObject(r, mine.object, ctx.camera, ctx.scene, { textures: mine.textures, debug: !!(ctx.opts && ctx.opts.debug) })
+        .then((did) => { if (live() && !did) e.warm = false; }, () => { if (live()) e.warm = false; });
     } catch (err) { e.warm = false; warn(`Ultra-Detail "${e.key}" warm`, err); }
     e.warmMs = +(now() - t0).toFixed(2);
   }
@@ -133,9 +156,9 @@ export function createUltra(ctx, o = {}) {
     const t0 = now();
     const budget = Math.min(BUDGET_MS, Number.isFinite(avail) && avail >= 0 ? avail : BUDGET_MS);
     let todo = pending();
-    // Mindestens ein Eintrag je Häppchen (Fortschritt garantiert), weitere nur solange das Zeitbudget reicht.
+    // Mindestens ein Eintrag bzw. Teilschritt je Häppchen (Fortschritt garantiert), weitere nur solange das Zeitbudget reicht.
     while (todo.length) {
-      buildOne(todo[0]);
+      if (todo[0].built) moreOne(todo[0]); else buildOne(todo[0]);
       todo = pending();
       if (now() - t0 >= budget) break;
     }
@@ -156,6 +179,7 @@ export function createUltra(ctx, o = {}) {
       if (e.api.object && e.api.object.removeFromParent) e.api.object.removeFromParent();
     } catch (err) { warn(`Ultra-Detail "${e.key}" dispose`, err); }
     e.built = false;
+    e.more = false;
     e.warm = undefined;
     e.shown = false;
     e.api = null;
@@ -164,7 +188,7 @@ export function createUltra(ctx, o = {}) {
   const api = {
     register(key, build, opts = {}) {
       if (disposed || typeof build !== 'function' || typeof key !== 'string' || !key || entries.has(key)) return () => {};
-      const e = { key, build, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0, shown: false, warm: undefined, warmMs: 0 };
+      const e = { key, build, parent: opts && opts.parent ? opts.parent : null, gate: opts && typeof opts.gate === 'function' ? opts.gate : null, more: false, built: false, failed: false, api: null, ms: 0, shown: false, warm: undefined, warmMs: 0 };
       entries.set(key, e);
       kick();
       return () => {
@@ -188,6 +212,10 @@ export function createUltra(ctx, o = {}) {
       if (act !== lastActive) { lastActive = act; applyVisibility(); }
       if (!act) return;
       for (const e of entries.values()) {
+        if (e.gate && e.built && e.api && e.api.object) { // Gate geändert (Bereichswechsel): Sichtbarkeit nachziehen
+          const v = visibleNow(e);
+          if (e.api.object.visible !== v) { e.api.object.visible = v; setShown(e, v); }
+        }
         if (!e.built || !e.api || typeof e.api.update !== 'function' || !visibleNow(e)) continue;
         try { e.api.update(dt, t); } catch (err) { warn(`Ultra-Detail "${e.key}".update`, err); }
       }

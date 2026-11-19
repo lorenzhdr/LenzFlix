@@ -45,14 +45,17 @@ export function airShadowScale(h) {
 
 const lerp = (a, b, k) => a + (b - a) * Math.min(1, k);
 
-function weatherOf(ctx) {
+// Wiederverwendetes Ergebnisobjekt je ctx (kein Objekt pro Frame und Aufruf); Aufrufer lesen es synchron und behalten es nie.
+const WEATHER_OF = new WeakMap();
+export function weatherOf(ctx) {
   const w = ctx.use && ctx.use('weather');
-  return {
-    tod: (w && w.tod) || 'day',
-    raining: !!(w && w.raining),
-    cover: w && Number.isFinite(w.cover) ? w.cover : 0,
-    fog: w && Number.isFinite(w.fog) ? w.fog : 0,
-  };
+  let r = WEATHER_OF.get(ctx);
+  if (!r) { r = { tod: 'day', raining: false, cover: 0, fog: 0 }; WEATHER_OF.set(ctx, r); }
+  r.tod = (w && w.tod) || 'day';
+  r.raining = !!(w && w.raining);
+  r.cover = w && Number.isFinite(w.cover) ? w.cover : 0;
+  r.fog = w && Number.isFinite(w.fog) ? w.fog : 0;
+  return r;
 }
 
 // ---------------------------------------------------------------------------------------------------- Quellen (rein)
@@ -241,11 +244,13 @@ export function buildNeon(ctx) {
   if (mq && mq.addEventListener) mq.addEventListener('change', applyMotion);
   let t0 = null; // Zeitbasis ab erstem Update: uTime bleibt klein (float32 im Shader)
   let cur = -1;
-  let lastSig = '';
+  let lastMain = null;
+  let lastSide = null;
+  let sigAcc = 1;
   function setSignals(sig) {
-    const key = `${sig.main}|${sig.side}`;
-    if (key === lastSig) return;
-    lastSig = key;
+    if (sig.main === lastMain && sig.side === lastSide) return; // Phasen direkt vergleichen (kein Schlüssel-String pro Frame)
+    lastMain = sig.main;
+    lastSide = sig.side;
     const attr = geo.attributes.aA;
     signals.forEach((s, i) => {
       const phase = s.signal === 'main' ? sig.main : sig.side;
@@ -266,6 +271,9 @@ export function buildNeon(ctx) {
       mat.uniforms.uStrength.value = cur;
       if (t0 === null) t0 = t;
       mat.uniforms.uTime.value = shaderTime(t, t0);
+      sigAcc += dt;
+      if (sigAcc < 0.25) return; // Ampelphasen wechseln im Sekundentakt; wie das Modul city höchstens 4x pro Sekunde lesen
+      sigAcc = 0;
       const city = ctx.use && ctx.use('city');
       if (city && typeof city.signals === 'function') { try { setSignals(city.signals()); } catch { /* egal */ } }
     },
@@ -332,6 +340,7 @@ export const SHADOW_DYN_MAX = 56;
 export const SHADOW_PARKED_MAX = 4; // geparkte Autos (traffic: höchstens 3 Stellplätze)
 export const SHADOW_FAR = 30;
 const FLOOR_Y = 0.03;
+const ALL_VISIBLE = { street: true, shopShell: true };
 
 function shown(o) {
   for (let p = o; p; p = p.parent) if (p.visible === false) return false;
@@ -390,14 +399,16 @@ export function buildShadows(ctx) {
 
   function rebuild() {
     const city = ctx.use && ctx.use('city');
-    const vis = city && typeof city.visible === 'function' ? city.visible() : { street: true, shopShell: true };
+    const vis = city && typeof city.visibleRef === 'function' ? city.visibleRef() : city && typeof city.visible === 'function' ? city.visible() : ALL_VISIBLE;
     let i = 0;
     for (const s of stat) {
       if (s.group === 'street' ? !vis.street : !vis.shopShell) continue;
       put(i++, s.x, s.y, s.z, s.sx, s.sz);
     }
     if (vis.street) {
-      for (const r of parkedNow().slice(0, SHADOW_PARKED_MAX)) {
+      const parked = parkedNow();
+      for (let pi = 0, pn = Math.min(parked.length, SHADOW_PARKED_MAX); pi < pn; pi++) {
+        const r = parked[pi];
         put(i++, (r.x0 + r.x1) / 2, 0, (r.z0 + r.z1) / 2, Math.max(1.0, (r.x1 - r.x0) * 1.2), Math.max(1.0, (r.z1 - r.z0) * 1.2));
       }
     }
