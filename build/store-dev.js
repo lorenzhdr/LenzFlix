@@ -139,7 +139,7 @@
     var h = Math.round(w * 1.5);
     var c = document.createElement('canvas');
     c.width = w; c.height = h;
-    var x = c.getContext('2d');
+    var x = c.getContext('2d', { willReadFrequently: true }); // CPU-Leinwand: toDataURL ohne GPU-Rücklesen (sonst 10-1000 ms Hänger je neuem Cover im Harness)
     var base = colorOf(it.Genres[0] + id.length);
     var g = x.createLinearGradient(0, 0, w, h);
     g.addColorStop(0, base); g.addColorStop(1, '#10122a');
