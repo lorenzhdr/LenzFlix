@@ -11,7 +11,7 @@
 //   Debug: window.__devMp = Fake-Welt (stats(), bots.stats(), setPrefs()). Welle 2: ?mpadmin=1 (ich bin Jellyfin-Admin im Fake: Kick-Knöpfe), ?mpbotadmin=<Index> (dieser Bot ist Admin, Standard keiner),
 //   ?botsocial=0 (Bots chatten/emoten nicht von selbst), ?mpchat=0 (Chat-Schalter aus). window.__devMp.bots.say(i,text)/emote(i,code)/park(i,xcm,zcm)/inbox(i)/kick(i,c);
 //   window.__devFigs = alle per npc.figure() angelegten Figuren (fig.getNetState().a = Animationscode, nur Mehrspieler-Läufe mit ?mp=…).
-// Ultra (1.19.0): ?quality=ultra (Stufe erzwingen; ohne Freigabe wird auf high geklemmt), ?ultra=0 (opts.ultraOk=false erzwingen; sonst ultraOk = !(phone||touch)),
+// Ultra (1.19.0): ?quality=ultra (Stufe erzwingen; ohne Freigabe wird auf high geklemmt), ?ultra=0 (opts.ultraOk=false erzwingen; sonst ultraOk = !(phone||touch) bzw. mit ?tablet=1 + ?touch=1 erlaubt wie auf einem Tablet),
 //   ?ufx=-key1,-key2 (Ultra-Details aus) bzw. ?ufx=only:key (nur dieses Detail; Lesen: engine/ultra.js). Debug: __lfxStore.ultra() → [{ key, built, visible, ms }].
 // opts.dev: alle Query-Parameter (1.17.0), Module lesen ihre eigenen
 // Raufen (1.18.0), alle Werte stehen in ctx.opts.dev (Wert als String); wer liest was:
@@ -31,6 +31,7 @@
   var q = new URLSearchParams(location.search);
   var touch = q.get('touch') === '1';
   var phone = q.get('phone') === '1';
+  var tablet = q.get('tablet') === '1'; // Touch + großer Bildschirm: Ultra erlaubt (wie die Hülle: coarse + min(screen) >= 600)
   var total = Number(q.get('n')) || 831;
 
   function rng(seed) {
@@ -651,7 +652,7 @@
     }
     if (q.get('discover') === 'reset') { try { Object.keys(localStorage).filter(function (k) { return k.indexOf('lfx.store.discover.') === 0; }).forEach(function (k) { localStorage.removeItem(k); }); } catch { /* egal */ } }
     inst = window.LenzFlixStore3D.create(host, deps, Object.assign({
-      quality: q.get('quality') || 'auto', ultraOk: !(phone || touch) && q.get('ultra') !== '0', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch, touchControl: prefs.touchControl,
+      quality: q.get('quality') || 'auto', ultraOk: q.get('ultra') !== '0' && !(phone && !tablet) && !(touch && !tablet), sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch, touchControl: prefs.touchControl,
       skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
       openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true, touchApi: q.get('tapi') === 'pointer' ? 'pointer' : undefined,
       spawn: ['shop', 'street', 'palast', 'yard', 'roof', 'kiosk', 'alley', 'salon'].indexOf(q.get('spawn')) >= 0 ? q.get('spawn') : null,

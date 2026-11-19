@@ -53,9 +53,12 @@ describe('presetFor ultra', () => {
     for (const k of ['npcMax', 'carsMax', 'propsMax', 'birds', 'precip']) expect(u[k], k).toBeGreaterThan(h[k]);
     expect(u.hiMax).toBeGreaterThan(4);
   });
-  it('Handy und XR-Budget: exakt wie high', () => {
-    expect(presetFor('ultra', true)).toEqual(presetFor('high', true));
-    expect(presetFor('ultra', true).level).toBe('high');
+  it('Tablet (phone=true) bekommt die Desktop-Ultra-Spalte, low/mid/high-Handywerte bleiben', () => {
+    expect(presetFor('ultra', true)).toEqual(presetFor('ultra', false));
+    expect(presetFor('ultra', true).level).toBe('ultra');
+    expect(presetFor('high', true)).toMatchObject({ pixelRatio: 1.75, shadows: false, anisotropy: 8, maxAtlases: 16, loadRadius: 20, npcMax: 14, carsMax: 4 });
+    expect(presetFor('mid', true)).toMatchObject({ pixelRatio: 1.25, anisotropy: 4, maxAtlases: 14, loadRadius: 13, npcMax: 10 });
+    expect(presetFor('low', true)).toMatchObject({ pixelRatio: 1, anisotropy: 1, maxAtlases: 24, loadRadius: 9, npcMax: 5 });
   });
   it('abhängige Tabellen kennen ultra (mindestens wie high)', () => {
     expect(mirrorHz('ultra')).toBeGreaterThan(mirrorHz('high'));
@@ -181,5 +184,48 @@ describe('Ultra-Sichtweite vs. Himmelskuppel', () => {
       expect(c.fogNear).toBeLessThan(c.fogFar);
       expect(c.fogFar).toBeLessThanOrEqual(FAR_R - 1);
     }
+  });
+});
+
+describe('Gespeicherte Ultra-Wahl und Tablet-Freigabe (W6-Fix)', () => {
+  const mk = (quality, extra = {}) => {
+    const onPrefs = vi.fn();
+    const a = Object.create(StoreApp.prototype);
+    // Konstruktor-Teil ohne three: Felder wie im echten Konstruktor ableiten
+    const opts = { quality, ...extra };
+    a.opts = opts; a.phone = !!opts.phone; a.ultraOk = opts.ultraOk === true;
+    a.qualitySetting = ['auto', 'low', 'mid', 'high', 'ultra'].includes(quality) ? quality : 'auto';
+    a.savedQuality = a.qualitySetting; a.qualityChosen = false;
+    if (a.qualitySetting === 'ultra' && !a.ultraOk) a.qualitySetting = 'high';
+    Object.assign(a, { deps: { onPrefs }, sound: true, showFps: false, bigCovers: true, voiceOnline: false, voiceName: '', voicePitch: 'tief', touchChosen: false, touchTune: {}, vr: {} });
+    return { a, onPrefs };
+  };
+  it('gespeichertes ultra ohne Freigabe: wirksam high, gespeichert bleibt ultra', () => {
+    const { a, onPrefs } = mk('ultra', { ultraOk: false });
+    expect(a.qualitySetting).toBe('high');
+    a.savePrefs();
+    expect(onPrefs.mock.calls[0][0].quality).toBe('ultra');
+  });
+  it('echte Nutzerwahl überschreibt die gemerkte Wahl', () => {
+    const { a, onPrefs } = mk('ultra', { ultraOk: false });
+    a.engine = { setAuto: vi.fn(), setLevel: vi.fn((l) => ({ level: l })), preset: { level: 'mid' } };
+    a.xr = null; a.applyPreset = vi.fn();
+    a.qualityChosen = true; a.setQuality('mid'); a.savePrefs();
+    expect(onPrefs.mock.calls[0][0].quality).toBe('mid');
+  });
+  it('Tablet (phone=true, ultraOk von der Hülle) darf Ultra wählen', () => {
+    const { a } = mk('auto', { phone: true, ultraOk: true });
+    expect(a.ultraOk).toBe(true);
+    a.engine = { setAuto: vi.fn(), setLevel: vi.fn((l) => ({ level: l })), preset: { level: 'mid' } };
+    a.xr = null; a.applyPreset = vi.fn();
+    a.setQuality('ultra');
+    expect(a.qualitySetting).toBe('ultra');
+  });
+  it('Handy/TV ohne Freigabe: nie Ultra', () => {
+    const { a } = mk('auto', { phone: true, ultraOk: false });
+    a.engine = { setAuto: vi.fn(), setLevel: vi.fn((l) => ({ level: l })), preset: { level: 'mid' } };
+    a.xr = null; a.applyPreset = vi.fn();
+    a.setQuality('ultra');
+    expect(a.qualitySetting).toBe('high');
   });
 });
