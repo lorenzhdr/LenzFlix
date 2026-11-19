@@ -156,7 +156,7 @@ export class ModuleHost {
         panel: { open: (spec) => self.panelOpen(spec) },
         toast: (text, ms) => {
           if (self.xrOn() && app.xr.toast) app.xr.toast(text, ms);
-          else { try { app.deps.toast(text); } catch { /* egal */ } }
+          else { try { if (ms > 0) app.deps.toast(text, ms); else app.deps.toast(text); } catch { /* egal */ } }
         },
         bubble: () => (app.xr && typeof app.xr.bubble === 'function' ? app.xr.bubble() : { show() {}, hide() {}, dispose() {} }),
         exitThen: (label, fn) => {

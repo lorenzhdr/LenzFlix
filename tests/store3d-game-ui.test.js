@@ -38,9 +38,9 @@ describe('Pause-Menü', () => {
     document.body.appendChild(host);
     const p = createPause(host, { ...base(), help: DESKTOP_HELP });
     const help = host.querySelector('.lfx-store-pause-help');
-    expect(help.textContent).toContain('Leertaste springen');
-    expect(help.textContent).toContain('F schlagen');
-    expect(help.textContent).toContain('G werfen');
+    expect(help.textContent).toMatch(/Leertaste\sspringen/);
+    expect(help.textContent).toMatch(/F\sschlagen/);
+    expect(help.textContent).toMatch(/G\swerfen/);
     p.destroy();
     document.body.innerHTML = '';
     const host2 = document.createElement('div');
@@ -52,9 +52,9 @@ describe('Pause-Menü', () => {
 
 describe('HUD-Texte', () => {
   it('Desktop-Hilfe nennt Springen, Schlagen, Werfen', () => {
-    expect(DESKTOP_HELP).toMatch(/Leertaste springen/);
-    expect(DESKTOP_HELP).toMatch(/F schlagen/);
-    expect(DESKTOP_HELP).toMatch(/G werfen/);
+    expect(DESKTOP_HELP).toMatch(/Leertaste\sspringen/);
+    expect(DESKTOP_HELP).toMatch(/F\sschlagen/);
+    expect(DESKTOP_HELP).toMatch(/G\swerfen/);
     document.body.innerHTML = '';
     const host = document.createElement('div');
     document.body.appendChild(host);

@@ -18,7 +18,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social > .lfx-mp-count {
   line-height: 1;
   white-space: nowrap;
 }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social[hidden] {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social > .lfx-mp-count[hidden] {
   display: none;
 }
 /* Desktop: oben links (Touch: oben rechts, W0-Platz) */
@@ -26,6 +27,10 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social.is-desk {
   right: auto;
   left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
   flex-direction: row;
+}
+/* Ist der Ansicht-Knopf (44 px + 10 px Abstand) sichtbar, rückt die Pille rechts daneben, statt darüber zu liegen */
+html.lfx-js.lfx-theme-store:not(.layout-tv) :has(.lfx-store-viewbtn:not([hidden])) > .lfx-mp-social.is-desk {
+  left: calc(max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px)) + 54px);
 }
 
 /* Namensschild über der Figur (Lage setzt net/tags.js inline) */
@@ -101,6 +106,20 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-touch {
   top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 62px);
   max-width: min(44vw, 360px);
   font-size: 0.74rem;
+}
+/* Handy quer: Richards Blase steht oben mittig (bis ca. 376 px breit) → Log bleibt links davon */
+@media (orientation: landscape) and (max-height: 520px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-touch {
+    max-width: min(44vw, 360px, max(140px, calc(50vw - 250px)));
+  }
+}
+/* Offene Eingabe (Desktop): Log über die Eingabezeile (44 px hoch, bottom wie .lfx-mp-chatrow) schieben */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-desk.is-open {
+  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px) + 8px) + 44px + 8px);
+}
+/* Figur-Editor offen: Log nicht durch das Glaspanel scheinen lassen */
+html.lfx-js.lfx-theme-store:not(.layout-tv) :has(> .lfx-store-char) > .lfx-mp-chatlog {
+  visibility: hidden;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-open {
   max-height: 40vh;

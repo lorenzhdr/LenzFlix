@@ -49,4 +49,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) {
   --lfx-store-z-bar: 1250;
   --lfx-store-safe-top: env(safe-area-inset-top, 0px);
   --lfx-store-safe-x: max(12px, env(safe-area-inset-left, 0px));
+  --lfx-store-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --lfx-store-safe-right: env(safe-area-inset-right, 0px);
 }

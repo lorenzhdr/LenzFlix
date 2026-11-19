@@ -121,15 +121,14 @@ describe('Pause-Menue: Stimmen-Diagnosezeile', () => {
     expect(note(host).textContent).toBe('Stimme: wartet auf ersten Tipp');
     p.destroy();
   });
-  it('bei Ton aus unsichtbar, aber Platz reserviert; ohne Info versteckt', () => {
+  it('bei Ton aus ohne Platz (hidden); ohne Info versteckt', () => {
     const { host, p, setSound } = make();
     setSound(false);
     p.refresh();
-    expect(note(host).hidden).toBe(false);
-    expect(note(host).style.visibility).toBe('hidden');
+    expect(note(host).hidden).toBe(true);
     setSound(true);
     p.refresh();
-    expect(note(host).style.visibility).toBe('');
+    expect(note(host).hidden).toBe(false);
     const m = make({ getVoiceInfo: undefined });
     expect(note(m.host).hidden).toBe(true);
     p.destroy();

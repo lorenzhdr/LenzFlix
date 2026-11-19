@@ -277,7 +277,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
   justify-content: center;
   box-sizing: border-box;
   /* Oberkante unterhalb der Leiste (HUD), Panel zentriert im Rest */
-  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) 12px 12px;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) max(12px, var(--lfx-store-safe-right, 0px)) max(12px, var(--lfx-store-safe-bottom, 0px)) max(12px, var(--lfx-store-safe-x, 0px));
   background: rgba(7, 10, 28, 0.6);
   pointer-events: auto;
 }
@@ -294,6 +294,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
   background: var(--lfx-store-night-2, #141c48);
   border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+/* Rechner mit niedrigem Fenster (z. B. 1472x800): kompaktere Abstände, damit das Menü ohne Scrollen passt; Touch behält 44-px-Ziele, kleinere Höhen scrollen weiter */
+@media (max-height: 900px) and (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
+    gap: 5px;
+    padding: 14px 20px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel > .lfx-store-act {
+    min-height: 34px;
+    padding: 5px 16px;
+  }
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-title {
   margin-bottom: 4px;
@@ -425,7 +436,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-drag:active {
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel {
   position: absolute;
-  right: 24px;
+  right: max(24px, calc(var(--lfx-store-safe-right, 0px) + 12px));
   top: 50%;
   transform: translateY(-50%);
   width: min(380px, 38vw);

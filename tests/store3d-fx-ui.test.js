@@ -24,7 +24,7 @@ describe('Hände: getragene Hülle', () => {
 });
 
 describe('Hilfetexte', () => {
-  it('Q5#6: Tastenhilfe nennt M', () => { expect(DESKTOP_HELP).toMatch(/M mitnehmen/); });
+  it('Q5#6: Tastenhilfe nennt M', () => { expect(DESKTOP_HELP).toMatch(/M\smitnehmen/); });
   it('Q6#3: touchHint entfernt „E / Klick:“', () => {
     expect(touchHint('E / Klick: Probieren')).toBe('Probieren');
     expect(touchHint('Top-Tipp · E / Klick: Hülle holen')).toBe('Top-Tipp · Hülle holen');

@@ -163,8 +163,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-aux {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-aux {
   right: calc(var(--lfx-store-gp-r) + var(--lfx-store-gp-jump) + 2 * var(--lfx-store-gp-small) + 3 * var(--lfx-store-gp-gap));
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns button:not(.lfx-store-gp-jump) {
+  font-size: 0.5rem;
+  letter-spacing: 0;
+}
 /* Hochformat: eigene Spalte rechts (Springen unten, darüber Benutzen, Schlagen/Werfen, Zoom), Stick kleiner */
 @media (orientation: portrait) {
+  /* Beschriftung passt in die 52-/44-px-Kreise (BENUTZEN/SCHLAGEN/ANSICHT ragten sonst über den Ring) */
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns button:not(.lfx-store-gp-jump) {
+    font-size: 0.46rem;
+    letter-spacing: 0;
+  }
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp {
     --lfx-store-gp-r: max(12px, calc(env(safe-area-inset-right, 0px) + 8px));
     --lfx-store-gp-b: max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px));
