@@ -13,6 +13,7 @@ import { makeCanvas, toTexture } from './textures.js';
 import { glowCanvas } from '../modules/outdoor.js';
 import { CAR_LEN, CAR_W } from '../npc/cars-logic.js';
 import { groundHeight } from '../nav/collide.js';
+import { shaderTime } from '../weather/precip-logic.js';
 
 const PI = Math.PI;
 
@@ -264,7 +265,7 @@ export function buildNeon(ctx) {
       cur = cur < 0 ? target : lerp(cur, target, dt * 1.5);
       mat.uniforms.uStrength.value = cur;
       if (t0 === null) t0 = t;
-      mat.uniforms.uTime.value = t - t0;
+      mat.uniforms.uTime.value = shaderTime(t, t0);
       const city = ctx.use && ctx.use('city');
       if (city && typeof city.signals === 'function') { try { setSignals(city.signals()); } catch { /* egal */ } }
     },

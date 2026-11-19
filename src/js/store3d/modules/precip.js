@@ -13,7 +13,7 @@ import { OUTDOOR_AREAS } from '../world/city.js';
 import { clamp, prefersReducedMotion } from './m4-util.js';
 import { scheduleWarm } from '../engine/warm.js';
 import {
-  HALF, Y_BELOW, Y_ABOVE, MAX_BOXES, KINDS, normalizeWeather, countFor, stepBlend, shelterBoxes, packBoxes, calmFor,
+  HALF, Y_BELOW, Y_ABOVE, MAX_BOXES, KINDS, normalizeWeather, countFor, stepBlend, shelterBoxes, packBoxes, calmFor, shaderTime,
 } from '../weather/precip-logic.js';
 
 const VERT = /* glsl */ `
@@ -236,7 +236,7 @@ export default {
         cam.getWorldPosition(wp);
         U.uCam.value.copy(wp);
         if (t0 === null) t0 = t;
-        U.uTime.value = t - t0;
+        U.uTime.value = shaderTime(t, t0);
         U.uAlpha.value = KINDS[st.kind].alpha * (0.5 + 0.5 * Math.min(1, st.a));
         geo.setDrawRange(0, n * 6);
         mesh.visible = true;

@@ -303,3 +303,23 @@ describe('daytime + precip: weather.onChange und Provider-Kopplung', () => {
     expect(window.__lfxM4 && window.__lfxM4.precip).toBeUndefined();
   });
 });
+
+describe('shaderTime (C27, periodische Zeitbasis)', () => {
+  it('bleibt nach einem Tag klein und ist nie negativ', async () => {
+    const { shaderTime, TIME_PERIOD } = await import('../src/js/store3d/weather/precip-logic.js');
+    for (const t of [0, 5, 3600, 86400, 86400 * 7 + 0.37]) {
+      const v = shaderTime(1000 + t, 1000);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThan(TIME_PERIOD);
+    }
+    expect(shaderTime(1086400, 1000)).toBeLessThan(4000);
+  });
+  it('Pendelphasen sind beim Wrap stetig', async () => {
+    const { shaderTime, TIME_PERIOD } = await import('../src/js/store3d/weather/precip-logic.js');
+    for (const w of [0.8, 0.6]) {
+      const a = Math.sin(w * TIME_PERIOD), b = Math.sin(0);
+      expect(Math.abs(a - b)).toBeLessThan(1e-9);
+    }
+    expect(shaderTime(TIME_PERIOD + 2, 0)).toBeCloseTo(2, 6);
+  });
+});
