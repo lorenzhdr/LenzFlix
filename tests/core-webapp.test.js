@@ -190,6 +190,48 @@ describe('webapp: Manifest-Override', () => {
     } finally { dn.mockRestore(); }
   });
 
+  it('Fehlschlag plant selbst den nächsten Versuch (ohne weiteren Abgleich); stopWebApp räumt den Timer', async () => {
+    vi.useFakeTimers();
+    try {
+      let n = 0;
+      globalThis.fetch = vi.fn(async () => {
+        if (n++ === 0) throw new Error('503');
+        return { ok: true, status: 200, json: async () => SRC };
+      });
+      applyWebApp('plus');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1900);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(200); // 2 s Wartezeit abgelaufen, kein erneuter applyWebApp-Aufruf
+      expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+      expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toMatch(/^blob:/);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('Timer-Wiederholung endet nach MAX_FAILS; destroy und Designwechsel räumen auf', async () => {
+    vi.useFakeTimers();
+    try {
+      globalThis.fetch = vi.fn(async () => { throw new Error('offline'); });
+      applyWebApp('plus');
+      await vi.advanceTimersByTimeAsync(300000);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(5); // 1 + 4 Wiederholungen, dann aufgegeben
+      stopWebApp();
+      globalThis.fetch.mockClear();
+      applyWebApp('plus');
+      await vi.advanceTimersByTimeAsync(0);
+      stopWebApp(); // Fehlschlag geplant, dann destroy: kein weiterer Versuch
+      await vi.advanceTimersByTimeAsync(300000);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      applyWebApp('plus');
+      await vi.advanceTimersByTimeAsync(0);
+      applyWebApp('retro'); // Designwechsel: sofort neuer Versuch, alter Timer weg
+      await vi.advanceTimersByTimeAsync(0);
+      expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+      stopWebApp();
+    } finally { vi.useRealTimers(); }
+  });
+
   it('HTTP-Fehler lässt das Original stehen', async () => {
     globalThis.fetch = vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) }));
     applyWebApp('plus');

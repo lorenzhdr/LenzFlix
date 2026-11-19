@@ -59,7 +59,7 @@ describe('GET /mp/online', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN);
   });
 
-  it('Cache 30 s: nur ein DO-Aufruf, danach wieder einer', async () => {
+  it('Cache 45 s: nur ein DO-Aufruf, danach wieder einer', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(1_000_000);
     const { env, fetchDo } = makeEnv(2);
@@ -68,9 +68,20 @@ describe('GET /mp/online', () => {
     const r2 = await worker.fetch(req({ 'X-Emby-Token': 'b' }), env);
     expect((await r2.json()).n).toBe(2);
     expect(fetchDo).toHaveBeenCalledTimes(1);
-    vi.setSystemTime(1_031_000);
+    vi.setSystemTime(1_046_000);
     await worker.fetch(req({ 'X-Emby-Token': 'a' }), env);
     expect(fetchDo).toHaveBeenCalledTimes(2);
+  });
+
+  it('Einzelner Betrachter mit 30-s-Takt weckt das DO höchstens jede zweite Anfrage', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(2_000_000);
+    const { env, fetchDo } = makeEnv(1);
+    for (let i = 0; i < 10; i++) {
+      vi.setSystemTime(2_000_000 + i * 30_000);
+      expect((await worker.fetch(req({ 'X-Emby-Token': 'solo' }), env)).status).toBe(200);
+    }
+    expect(fetchDo).toHaveBeenCalledTimes(5);
   });
 
   it('503 wenn das DO ausfällt, kein Cache des Fehlers', async () => {

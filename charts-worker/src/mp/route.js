@@ -13,7 +13,8 @@ const rate = new Map(); // tokenHash -> Zeitstempel[]
 /** Eigenes Limit für GET /mp/online (nicht der Ticket-Limiter). */
 const ONLINE_RATE_MAX = 12;
 const ONLINE_RATE_MAX_IP = 60;
-const ONLINE_TTL_MS = 30 * 1000;
+// 45 s statt 30 s: der Picker fragt alle 30 s; bei einem einzelnen Betrachter trifft der Cache so jede zweite Anfrage (das DO schläft sonst nie).
+const ONLINE_TTL_MS = 45 * 1000;
 const onlineRate = new Map();
 let onlineCache = null; // { at, n } für alle Nutzer gemeinsam (je Isolate)
 export function clearMpRate() {
@@ -58,7 +59,7 @@ export async function handleTicket(request, env, ctx) {
   return jsonResponse({ v: 1, tk, exp, url: '/mp', pv: [1], s: now }, 200, request, env);
 }
 
-/** GET /mp/online (Header X-Emby-Token): Zahl verschiedener Konten in der Videothek. Isolate-Cache 30 s. */
+/** GET /mp/online (Header X-Emby-Token): Zahl verschiedener Konten in der Videothek. Isolate-Cache 45 s. */
 export async function handleOnline(request, env, ctx) {
   if (!mpEnabled(env)) return jsonResponse({ error: 'mp-disabled' }, 503, request, env);
   const token = request.headers.get('X-Emby-Token');
