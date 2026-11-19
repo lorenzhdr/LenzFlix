@@ -161,6 +161,9 @@ export default {
     let activeS = 0;
     let failStreak = 0; // Abrufe in Folge ohne Ergebnis
     let fetching = false;
+    let fetchId = 0; // Abrufnummer: eine nach der Sicherung (FETCH_MAX_MS) eintreffende späte Antwort wird verworfen
+    let fetchGuard = null;
+    const FETCH_MAX_MS = 15000; // Sicherung: bleibt getReal() offen (hängender Token-/Basis-URL-Schritt), wird 'fetching' trotzdem frei
     let gone = false;
     let waitTimer = null;
     /** Sekunden bis zum nächsten Abruf (aktive bzw. Wandzeit seit dem letzten Abrufstart). */
@@ -174,13 +177,23 @@ export default {
     function fetchReal() {
       if (!getReal || fetching) return;
       fetching = true;
+      const id = ++fetchId;
       fetchedAt = Date.now();
       activeS = 0;
+      const done = () => { fetching = false; if (fetchGuard) { clearTimeout(fetchGuard); fetchGuard = null; } };
+      fetchGuard = setTimeout(() => {
+        fetchGuard = null;
+        if (id !== fetchId || !fetching) return;
+        fetching = false;
+        fetchId++; // späte Antwort verwerfen
+        if (!gone) { failStreak++; endPending(); }
+      }, FETCH_MAX_MS);
       let p;
       try { p = getReal(); } catch { p = null; }
       // null/Fehler = keine neue Info: letzten echten Wert behalten (realFresh begrenzt auf 2 h)
       Promise.resolve(p).then((v) => {
-        fetching = false;
+        if (id !== fetchId) return;
+        done();
         if (gone) return;
         if (v && typeof v === 'object') {
           real = v;
@@ -189,7 +202,7 @@ export default {
           failStreak = 0;
         } else failStreak++;
         endPending();
-      }, () => { fetching = false; if (!gone) { failStreak++; endPending(); } });
+      }, () => { if (id !== fetchId) return; done(); if (!gone) { failStreak++; endPending(); } });
     }
     let onVis = null;
     if (getReal) {
@@ -328,6 +341,7 @@ uniform float uTime;`)
       },
       dispose() {
         gone = true;
+        if (fetchGuard) { clearTimeout(fetchGuard); fetchGuard = null; }
         if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
         if (onVis && typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
         listeners.clear();

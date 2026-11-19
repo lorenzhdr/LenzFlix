@@ -128,7 +128,7 @@ export default {
       const dz = pl.z - p.handle.root.position.z;
       const l = Math.hypot(dx, dz) || 1;
       let ok;
-      try { ok = f.hitPlayer({ dmg: AGGRO[who].dmg, knock: { x: dx / l, z: dz / l }, src: 'npc', from: { x: p.handle.root.position.x, z: p.handle.root.position.z } }); } catch { ok = false; }
+      try { ok = f.hitPlayer({ dmg: AGGRO[who].dmg, knock: { x: dx / l, z: dz / l }, src: 'npc', from: { x: p.handle.root.position.x, z: p.handle.root.position.z }, fromY: Number(p.handle.root.position.y) || 0 }); } catch { ok = false; }
       if (ok) sfx('slap');
     }
     function blinded(who) {

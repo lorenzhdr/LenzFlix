@@ -148,6 +148,7 @@ export default {
       const dmg = Number(o.dmg);
       if (!(dmg > 0)) return false;
       // 1.19.0: Bodenfiguren (Passanten, Bande) erreichen niemanden auf der Feuertreppe/dem Dach (Höhenunterschied > NPC_REACH_Y); Mitspieler (pvp) unverändert
+      // fromY = Fußhöhe des Angreifers (Aufrufer geben sie mit, Boden = 0); der Vergleich ist relativ dazu.
       if (o.src === 'npc' || o.src === 'gang') { let py = 0; try { py = Number(ctx.player.getPose().y) || 0; } catch { /* egal */ } if (py - (Number(o.fromY) || 0) > NPC_REACH_Y) return false; }
       // 1.18.1: Passanten, Personal und Bande ziehen nur die Hälfte an Energie ab (Rückstoß bleibt); Mitspieler (pvp) unverändert
       const r = energy.hit(dmg * (o.src === 'npc' || o.src === 'gang' ? NPC_DMG_SCALE : 1), T);

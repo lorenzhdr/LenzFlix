@@ -273,7 +273,7 @@ export default {
       const p = peers.list().find((x) => x.k === k && x.card);
       return !!p && peers.showCard(p.c);
     }
-    offs.push(on('msg:er', (e) => { if (e && e.y === 'ki') toast('Entfernen nicht möglich.'); }));
+    offs.push(on('msg:er', (e) => { if (e && e.y === 'ki') { try { ctx.xr.toast('Entfernen nicht möglich.'); } catch { /* egal */ } } }));
 
     // ---------------------------------------------------------------- Anzeige und Zählung
     function others() {

@@ -156,6 +156,12 @@ describe('fight: Treffer am Spieler und Schutz', () => {
     s.pose.y = 0.5;
     expect(s.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'gang' })).toBe(true);
   });
+  it('N6a: fromY macht den Höhenvergleich relativ zur Angreifer-Fußhöhe', () => {
+    const s = setup();
+    s.pose.y = 2.0;
+    expect(s.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'npc', fromY: 1.6 })).toBe(true);
+    expect(s.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'npc', fromY: 0 })).toBe(false);
+  });
   it('Treffer senkt die Energie, stößt zurück, Ton ouch; Anzeige erscheint', () => {
     const s = setup();
     expect(s.f.hitPlayer({ dmg: 20, knock: { x: 1, z: 0 }, src: 'npc' })).toBe(true);

@@ -9,7 +9,7 @@ import { makeCanvas, toTexture, FONT } from './textures.js';
 import { CEIL_H } from './layout.js';
 import { wallTrimSpans } from './build-room.js';
 import {
-  POSTER_ART, fitTitle, posterSpots, clutterBoxes, shelfTags, skirtingSpans, lampSpecs, dustPoints,
+  POSTER_ART, fitTitle, wrapWords, posterSpots, clutterBoxes, shelfTags, skirtingSpans, lampSpecs, dustPoints,
 } from './room-ultra-logic.js';
 
 const PI = Math.PI;
@@ -26,14 +26,7 @@ function starPath(ctx, cx, cy, R) {
 }
 
 function wrapLines(ctx, text, maxW) {
-  const lines = [];
-  let cur = '';
-  for (const w of text.split(' ')) {
-    const t = cur ? `${cur} ${w}` : w;
-    if (cur && ctx.measureText(t).width > maxW) { lines.push(cur); cur = w; } else cur = t;
-  }
-  if (cur) lines.push(cur);
-  return lines;
+  return wrapWords(text.split(' '), (t) => ctx.measureText(t).width, maxW);
 }
 
 /** Atlas 1024 × 768: 8 Plakate à 256 × 384 (Fantasietitel, Tagline, Sterne, Rahmen). */
@@ -70,7 +63,7 @@ function posterAtlas() {
     ctx.fillStyle = '#fff';
     const fit = fitTitle(a.title, 216, (t, px) => { ctx.font = `bold ${px}px ${FONT}`; return ctx.measureText(t).width; });
     ctx.font = `bold ${fit.px}px ${FONT}`;
-    const lines = wrapLines(ctx, fit.words.join(' '), 216);
+    const lines = wrapWords(fit.words, (t) => ctx.measureText(t).width, 216);
     const lh = Math.round(fit.px * 1.07);
     const y0 = y + 296 - ((lines.length - 1) * lh) / 2;
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6;
