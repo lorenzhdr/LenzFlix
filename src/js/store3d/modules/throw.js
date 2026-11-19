@@ -67,7 +67,7 @@ export default {
     // --- Ding aufheben / werfen ---
     function ensureHeldMat() {
       if (!heldMat) {
-        heldMat = getOutdoor(ctx).tint(new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true }));
+        heldMat = getOutdoor(ctx).tint(new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true }), [1, 1, 1], { snow: false }); // hängt an der Kamera: kein liegender Schnee (Weltposition wandert)
       }
       return heldMat;
     }

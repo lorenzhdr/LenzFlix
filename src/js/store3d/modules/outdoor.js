@@ -92,7 +92,8 @@ function buildOutdoor(ctx) {
   const T = (c, o) => { const t = toTexture(c, { aniso: 2, ...o }); textures.push(t); return t; };
   const tinted = []; // { mat, base:[r,g,b] }
   const snow = createSnow(L); // liegender Schnee (1.19.0): alle getönten Außenmaterialien bekommen den Patch (Figuren/Innenräume nie)
-  const tint = (mat, base = [1, 1, 1]) => { tinted.push({ mat, base }); snow.patch(mat); return mat; };
+  // opts.snow === false: kein liegender Schnee (kamera-gebundene/bewegte Materialien, z. B. das gehaltene Ding: der Patch rechnet mit der Weltposition)
+  const tint = (mat, base = [1, 1, 1], opts = null) => { tinted.push({ mat, base }); if (!(opts && opts.snow === false)) snow.patch(mat); return mat; };
   const windowSets = [];
   const hooks = [];
   const out = { group, tod: 'day', rain: false, wx: null, pal: null, windowSets, tinted, hooks, L, textures, tint, T, fog: null, fogBase: [0.85, 0.9, 1], facade: null, city: null, snow };

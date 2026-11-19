@@ -246,9 +246,9 @@ export function buildCityMeshes(out, city, layout) {
     (STREET_KINDS.has(q.kind) ? sg : yg).push(geo);
   }
   // Dachfläche (Oberseite grau) und Außenhaut des Ladens zu Gasse und Hof
-  yg.push(B(-T - 0.03, -T - 0.03, W + T, D + T, 3.0, 3.3, [0.32, 0.32, 0.36]));
-  yg.push(B(-T - 0.03, -T - 0.03, W + T, -T, 0, 3.0, [0.55, 0.3, 0.26]));
-  yg.push(B(-T - 0.03, -T, -T, D, 0, 3.0, [0.58, 0.34, 0.28]));
+  yg.push(B(-T - 0.03, -T - 0.03, W + T, D + T, 3.02, 3.3, [0.32, 0.32, 0.36])); // Unterseite 2 cm über der Decke (3,0): kein Z-Fighting von der Tür aus
+  yg.push(B(-T - 0.03, -T - 0.03, W + T, -T, 0, 3.02, [0.55, 0.3, 0.26]));
+  yg.push(B(-T - 0.03, -T, -T, D, 0, 3.02, [0.58, 0.34, 0.28]));
   put(yard, yg, flat, 'city-yard-props');
 
   // Absperrungen an den Straßenenden (rot-weiß) und dunkle Tunnelwände dahinter

@@ -98,7 +98,7 @@ for (const n of [80, 600]) {
       const sk = plan.skyline;
       expect(sk.blds.length).toBeGreaterThan(60);
       for (const b of sk.blds) {
-        const r = Math.hypot(b.x - sk.cx, b.z - sk.cz);
+        const r = Math.hypot(b.x, b.z); // relativ zum Ringmittelpunkt
         expect(r).toBeGreaterThan(SKY_RADII[0] - 0.5);
         expect(r).toBeLessThan(SKY_RADII[2] + 0.5);
       }

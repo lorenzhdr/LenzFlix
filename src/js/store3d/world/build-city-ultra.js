@@ -7,15 +7,16 @@
 import { Group, Mesh, MeshBasicMaterial, InstancedMesh, IcosahedronGeometry, Float32BufferAttribute, Matrix4, Quaternion, Euler, Vector3, Color } from 'three';
 import { Raw } from './ultra-geo.js';
 import { seeded } from '../modules/m4-util.js';
-import { SKY_RADII } from './ultra-plan.js';
+import { SKY_RADII, skylineRoot } from './ultra-plan.js';
 
 const PI = Math.PI;
 const shadeOf = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
 const lift = (c, k, a = 0) => [Math.min(1, c[0] * k + a), Math.min(1, c[1] * k + a), Math.min(1, c[2] * k + a)];
 
 // --- gemeinsame Helfer ---
-function tintedMat(out, base = [1, 1, 1]) {
+function tintedMat(out, base = [1, 1, 1], setup = null) {
   const m = new MeshBasicMaterial({ vertexColors: true });
+  if (setup) setup(m); // eigene Shader-Hooks VOR out.tint: der Schnee-Patch (snow.patch) verkettet sie samt Cache-Schlüssel
   out.tint(m, base);
   const sh = out.pal && out.pal.shade;
   if (sh) m.color.setRGB(base[0] * sh[0], base[1] * sh[1], base[2] * sh[2]);
@@ -302,15 +303,16 @@ function crownGeometry() {
   return g;
 }
 
-export function buildUltraTrees(out, city, plan) {
-  const root = new Group();
-  root.name = 'ultra-trees';
-  const trees = plan.trees;
-  const crowns = plan.crowns;
-  if (!trees.length) return { object: root, sync() {}, dispose() { root.removeFromParent(); } };
-  const uSway = { value: 0 };
-  const crownMat = tintedMat(out);
-  crownMat.onBeforeCompile = (sh) => {
+/** Wiege-Periode (s): 1,4·T = 28π und 1,1·T = 22π → beide Terme schließen nahtlos; uSway bleibt klein (float32). */
+export const SWAY_PERIOD = 20 * PI;
+/** Wiege-Zeit ab Modulstart t0, periodisch in [0, SWAY_PERIOD). */
+export function swayTime(t, t0 = 0) {
+  const d = (t - t0) % SWAY_PERIOD;
+  return d < 0 ? d + SWAY_PERIOD : d;
+}
+/** onBeforeCompile-Hook fürs Wiegen der Kronen (Instanzen). */
+export function swayHook(uSway) {
+  return (sh) => {
     sh.uniforms.uSway = uSway;
     sh.vertexShader = `uniform float uSway;\n${sh.vertexShader}`.replace('#include <begin_vertex>', `#include <begin_vertex>
 #ifdef USE_INSTANCING
@@ -320,7 +322,23 @@ export function buildUltraTrees(out, city, plan) {
   transformed.z += cos(uSway * 1.1 + lfxPh * 1.3) * 0.04 * lfxK;
 #endif`);
   };
-  crownMat.customProgramCacheKey = () => 'lfx-ultra-sway';
+}
+
+export function buildUltraTrees(out, city, plan) {
+  const root = new Group();
+  root.name = 'ultra-trees';
+  const trees = plan.trees;
+  const crowns = plan.crowns;
+  if (!trees.length) return { object: root, sync() {}, dispose() { root.removeFromParent(); } };
+  const uSway = { value: 0 };
+  // Wiegen: Zeitbasis ab Modulstart, nahtlos periodisch (SWAY_PERIOD); bei prefers-reduced-motion ruhig (Listener wird in dispose entfernt)
+  let t0 = null;
+  let mq = null;
+  try { mq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null; } catch { mq = null; }
+  let still = !!(mq && mq.matches);
+  const onMq = (e) => { still = !!(e && typeof e.matches === 'boolean' ? e.matches : mq && mq.matches); };
+  if (mq) { try { if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); } catch { /* egal */ } }
+  const crownMat = tintedMat(out, [1, 1, 1], (m) => { m.onBeforeCompile = swayHook(uSway); m.customProgramCacheKey = () => 'lfx-ultra-sway'; });
   const trunkMat = tintedMat(out);
   const crownGeo = crownGeometry();
   const tr = new Raw();
@@ -355,9 +373,15 @@ export function buildUltraTrees(out, city, plan) {
   return {
     object: root,
     meshes: [crownMesh, trunkMesh],
-    update(dt, t) { uSway.value = t; },
+    get still() { return still; },
+    update(dt, t) {
+      if (still) return;
+      if (t0 === null) t0 = t;
+      uSway.value = swayTime(t, t0);
+    },
     sync(groups) { root.children.forEach((c) => { c.visible = groups.street.visible; }); },
     dispose() {
+      if (mq) { try { if (mq.removeEventListener) mq.removeEventListener('change', onMq); else if (mq.removeListener) mq.removeListener(onMq); } catch { /* egal */ } }
       root.removeFromParent();
       crownMesh.dispose(); trunkMesh.dispose();
       crownGeo.dispose(); trunkGeo.dispose(); crownMat.dispose(); trunkMat.dispose();
@@ -372,6 +396,11 @@ export function buildUltraTrees(out, city, plan) {
 const WARM = [1, 0.8, 0.46];
 const COOL = [0.4, 0.56, 0.85];
 const FOG_MIX = [0.4, 0.52, 0.64]; // Anteil Horizontfarbe je Ring (Luftperspektive: weiter weg = nebliger)
+/** Anteil Horizontfarbe eines Rings bei Wetter-Nebel fog 0..1 (bei 1 ganz in Nebelfarbe). */
+export function fogMixOf(layer, fog) {
+  const f = fog > 0 ? Math.min(1, fog) : 0;
+  return FOG_MIX[layer] + (1 - FOG_MIX[layer]) * f;
+}
 
 export function buildUltraSkyline(out, city, plan, camera) {
   const sk = plan.skyline;
@@ -412,19 +441,23 @@ export function buildUltraSkyline(out, city, plan, camera) {
   root.add(mesh);
   const col = geo.attributes.color;
   const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+  // Wetter-Nebel (0..1): die Skyline läuft mit dichterem Nebel gegen die Horizontfarbe (= Nebelfarbe), weich nachgeführt
+  const fogOf = () => { const f = out.wx && Number.isFinite(out.wx.fog) ? out.wx.fog : 0; return f > 0 ? Math.min(1, f) : 0; };
+  let fk = fogOf();
+  const fogMix = (layer) => fogMixOf(layer, fk);
   function recolor(tod, rain, pal) {
     if (!pal) return;
     const hor = pal.sky[2];
     const shade = pal.shade;
     const litP = tod === 'night' ? 0.15 : tod === 'dusk' ? 0.08 : 0;
     for (const bd of bodies) {
-      const m = FOG_MIX[bd.layer];
+      const m = fogMix(bd.layer);
       const base = [(0.17 + bd.tone * 0.1) * shade[0], (0.19 + bd.tone * 0.08) * shade[1], (0.25 + bd.tone * 0.07) * shade[2]];
       const c = mix(base, hor, m);
       for (let v = bd.v0; v < bd.v1; v++) col.setXYZ(v, c[0] * shadeArr[v * 3], c[1] * shadeArr[v * 3], c[2] * shadeArr[v * 3]);
     }
     for (const w of wins) {
-      const m = FOG_MIX[w.layer];
+      const m = fogMix(w.layer);
       let c;
       if (w.lit < litP) c = mix(w.lit < litP * 0.7 ? WARM : COOL, hor, m * 0.35);
       else c = mix([0.1 * shade[0] + 0.02, 0.13 * shade[1] + 0.03, 0.2 * shade[2] + 0.05], hor, m);
@@ -438,10 +471,16 @@ export function buildUltraSkyline(out, city, plan, camera) {
   return {
     object: root,
     meshes: [mesh],
-    update() {
+    update(dt) {
+      const tg = fogOf();
+      if (tg !== fk) {
+        fk = Math.abs(tg - fk) < 0.01 ? tg : fk + (tg - fk) * Math.min(1, (dt > 0 ? dt : 0.016) * 3);
+        recolor(out.tod, out.rain, out.pal);
+      }
       const cam = camera;
       if (!cam) return;
-      root.position.set(sk.cx + (cam.position.x - sk.cx) * sk.follow, 0, sk.cz + (cam.position.z - sk.cz) * sk.follow);
+      const p = skylineRoot(sk, cam.position.x, cam.position.z);
+      root.position.set(p.x, 0, p.z);
       root.updateMatrixWorld(true);
     },
     /** Drinnen (Saal, Foyer, Salon) nicht zeichnen. */
