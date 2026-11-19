@@ -60,8 +60,8 @@ describe('W6 CSS-Regeln', () => {
   const net = fs.readFileSync('src/css/themes/store/net.css', 'utf8');
   it('Log über der offenen Eingabe, Pille neben dem Ansicht-Knopf, Log im Editor versteckt', () => {
     expect(net).toMatch(/\.lfx-mp-chatlog\.is-desk\.is-open \{\s*bottom: calc\(/);
-    expect(net).toMatch(/+ 54px/);
-    expect(net).toMatch(/:has(.lfx-store-viewbtn[hidden]) > .lfx-mp-social.is-desk/);
+    expect(net).toContain('+ 54px');
+    expect(net).toContain(':has(.lfx-store-viewbtn[hidden]) > .lfx-mp-social.is-desk');
     expect(net).toMatch(/:has\(> \.lfx-store-char\) > \.lfx-mp-chatlog/);
   });
 });
