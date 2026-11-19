@@ -121,7 +121,7 @@ function signTexture() {
   x.fillStyle = '#ffd166'; x.fillRect(0, 0, 512, 8); x.fillRect(0, 120, 512, 8);
   x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
   x.font = `bold 56px ${FONT}`;
-  x.fillText('VIDEOTHEK LENZ', 256, 68);
+  x.fillText('VIDEOTHEK LENZ', 256, 68, 460);
   return toTexture(c, { aniso: 2 });
 }
 

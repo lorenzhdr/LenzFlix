@@ -39,6 +39,30 @@ export function posterSpots(layout) {
   return out;
 }
 
+/**
+ * Plakattitel einpassen (reine Funktion, `measure(text, px)` → Breite): Schriftgröße von `max` bis `min` verkleinern, bis das breiteste
+ * Wort in `maxW` passt; passt es bei `min` immer noch nicht, wird das Wort mit Bindestrich getrennt. Rückgabe { px, words }.
+ */
+export function fitTitle(title, maxW, measure, max = 30, min = 17) {
+  const words = String(title).split(' ');
+  const widest = (ws, px) => ws.reduce((m, w) => Math.max(m, measure(w, px)), 0);
+  let px = max;
+  while (px > min && widest(words, px) > maxW) px -= 1;
+  if (widest(words, px) <= maxW) return { px, words };
+  const out = [];
+  for (const w of words) {
+    let rest = w;
+    while (rest.length > 3 && measure(rest, px) > maxW) {
+      let n = rest.length - 1;
+      while (n > 2 && measure(rest.slice(0, n) + '-', px) > maxW) n--;
+      out.push(rest.slice(0, n) + '-');
+      rest = rest.slice(n);
+    }
+    out.push(rest);
+  }
+  return { px, words: out };
+}
+
 const C = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
 
 /**

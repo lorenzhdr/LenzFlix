@@ -9,7 +9,7 @@ import { makeCanvas, toTexture, FONT } from './textures.js';
 import { CEIL_H } from './layout.js';
 import { wallTrimSpans } from './build-room.js';
 import {
-  POSTER_ART, posterSpots, clutterBoxes, shelfTags, skirtingSpans, lampSpecs, dustPoints,
+  POSTER_ART, fitTitle, posterSpots, clutterBoxes, shelfTags, skirtingSpans, lampSpecs, dustPoints,
 } from './room-ultra-logic.js';
 
 const PI = Math.PI;
@@ -68,11 +68,13 @@ function posterAtlas() {
     // Titel
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
-    ctx.font = `bold 30px ${FONT}`;
-    const lines = wrapLines(ctx, a.title, 216);
-    const y0 = y + 296 - (lines.length - 1) * 16;
+    const fit = fitTitle(a.title, 216, (t, px) => { ctx.font = `bold ${px}px ${FONT}`; return ctx.measureText(t).width; });
+    ctx.font = `bold ${fit.px}px ${FONT}`;
+    const lines = wrapLines(ctx, fit.words.join(' '), 216);
+    const lh = Math.round(fit.px * 1.07);
+    const y0 = y + 296 - ((lines.length - 1) * lh) / 2;
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 6;
-    lines.forEach((ln, k) => ctx.fillText(ln, x + 128, y0 + k * 32));
+    lines.forEach((ln, k) => ctx.fillText(ln, x + 128, y0 + k * lh));
     ctx.shadowBlur = 0;
     // Tagline
     ctx.font = `italic 12px ${FONT}`;

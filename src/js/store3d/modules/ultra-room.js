@@ -32,7 +32,8 @@ function buildTex(ctx) {
     for (const s of swapped) {
       const t = neu[s.key];
       if (!t || s.mat.map === t) continue;
-      t.anisotropy = s.old.anisotropy || 1; // Preset-Wert der Basistextur (Ultra: 16)
+      const an = s.old.anisotropy || 1; // Preset-Wert der Basistextur (Ultra: 16)
+      if (t.anisotropy !== an) { t.anisotropy = an; t.needsUpdate = true; } // three liest sie nur beim Upload (bei high vorab mit 1 gewärmt)
       s.mat.map = t; // gleicher Programmtyp: kein needsUpdate des Materials (kein Neu-Kompilieren)
     }
   }
