@@ -4,7 +4,7 @@ import * as api from '../../core/api.js';
 import { getChartsUrl } from '../../core/charts.js';
 
 const TIMEOUT_MS = 6000;
-const OK_TTL_MS = 15 * 60 * 1000;
+const OK_TTL_MS = 14 * 60 * 1000; // bewusst unter dem 3D-Intervall (15 min aktiver Zeit), Ablauf ab Abrufstart: der Refresh trifft nie den alten Wert
 const FAIL_TTL_MS = 5 * 60 * 1000; // 404 = Worker ohne Wetter
 const ERR_TTL_MS = 60 * 1000; // Timeout/Netzfehler/sonstiger Fehler: bald erneut versuchen
 const KINDS = ['clear', 'cloudy', 'fog', 'drizzle', 'rain', 'heavy', 'snow', 'storm'];
@@ -12,11 +12,13 @@ const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 
 function parse(d) {
   if (!d || d.v !== 1 || !KINDS.includes(d.k)) return null;
-  if (![d.i, d.sd, d.fog, d.t, d.day, d.ts].every(fin)) return null;
-  return { k: d.k, i: d.i, sd: d.sd, fog: d.fog, t: d.t, day: d.day ? 1 : 0, ts: d.ts, stale: d.stale ? 1 : 0 };
+  if (![d.i, d.sd, d.fog, d.day, d.ts].every(fin)) return null;
+  if (d.t !== null && d.t !== undefined && !fin(d.t)) return null;
+  // t:null = Temperatur unbekannt (kein Thermometer, kein Atem, keine Winterkleidung)
+  return { k: d.k, i: d.i, sd: d.sd, fog: d.fog, t: fin(d.t) ? d.t : null, day: d.day ? 1 : 0, ts: d.ts, stale: d.stale ? 1 : 0 };
 }
 
-/** Quelle: () => Promise<{k,i,sd,fog,t,day,ts,stale}|null>; Ergebnis 15 min (404 5 min, sonstige Fehler 60 s) gemerkt, an das Token gebunden (Abmeldung/Kontowechsel verwirft), laufende Aufrufe zusammengelegt. */
+/** Quelle: () => Promise<{k,i,sd,fog,t,day,ts,stale}|null>; Ergebnis 14 min ab Abrufstart (404 5 min, sonstige Fehler 60 s) gemerkt, an das Token gebunden (Abmeldung/Kontowechsel verwirft), laufende Aufrufe zusammengelegt. */
 export function createWeatherSource() {
   let pending = null;
   let cached = null; // { v, exp, key }
@@ -26,6 +28,7 @@ export function createWeatherSource() {
     if (!base || !a.token) return null; // nicht merken: Zustand kann sich ändern
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS) : null;
+    const t0 = Date.now();
     let v = null;
     let ttl = ERR_TTL_MS;
     try {
@@ -44,7 +47,7 @@ export function createWeatherSource() {
     } finally {
       if (timer) clearTimeout(timer);
     }
-    cached = { v, exp: Date.now() + ttl, key };
+    cached = { v, exp: t0 + ttl, key };
     return v;
   }
   return () => {

@@ -570,6 +570,38 @@ export default {
       flock = null;
     }
 
+    // ------------------------------------------------------------ Schirme folgen dem Wetter (1.19.0)
+    // Das echte Wetter kommt oft erst nach dem Erzeugen der Passanten (und endet später): bei Nässe-Wechsel bekommen bestehende Passanten
+    // deterministisch je Seed (gleiche 75-%-Quote wie beim Erzeugen) einen Schirm bzw. klappen ihn zu, leicht gestaffelt über wenige Sekunden.
+    const umbQuota = (seed) => frac((seed ^ 0x51ed270b) >>> 0) < 0.75;
+    let wetPrev = raining();
+    let offWx = null;
+    function syncUmbrellas() {
+      for (const e of walkers) {
+        const want = () => raining() && umbQuota(e.seed);
+        if (want() === !!e.look.umbrella) continue;
+        later(0.4 + frac(e.seed) * 5, () => {
+          if (!walkers.includes(e)) return;
+          const v = want();
+          if (v === !!e.look.umbrella) return;
+          e.look.umbrella = v;
+          try { e.handle.setUmbrella(v); } catch { /* egal */ }
+        });
+      }
+    }
+    {
+      const wp = ctx.use('weather');
+      if (wp && typeof wp.onChange === 'function') {
+        offWx = wp.onChange(() => {
+          const rain = raining();
+          if (rain === wetPrev) return;
+          wetPrev = rain;
+          adjustWalkers();
+          syncUmbrellas();
+        });
+      }
+    }
+
     if (enabled && city && city.sidewalkPaths) {
       graph = buildGraph(city.sidewalkPaths);
       adjustWalkers();
@@ -801,6 +833,7 @@ export default {
         if (emo.off) { try { emo.off(); } catch { /* egal */ } emo.off = null; }
         offProvider();
         offAnimals();
+        if (offWx) { try { offWx(); } catch { /* egal */ } offWx = null; }
         if (pool) { pool.dispose(); pool = null; }
         timers.length = 0;
         for (const rec of [...speakerSet]) { try { if (rec.sp && typeof rec.sp.release === 'function') rec.sp.release(); } catch { /* egal */ } }

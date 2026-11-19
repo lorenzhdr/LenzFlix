@@ -85,6 +85,7 @@ describe('normalizeWx', () => {
     const r = normalizeWx(upstreamBody(), 5);
     expect(Object.keys(r).sort()).toEqual(['day', 'fog', 'i', 'k', 'sd', 't', 'ts', 'v']);
     expect(normalizeWx({}, 5)).toBeNull();
+    expect(normalizeWx({ current: {} }, 5)).toBeNull(); // ohne Wettercode kein erfundenes 'klar'
     expect(normalizeWx(null, 5)).toBeNull();
   });
 });
@@ -201,5 +202,79 @@ describe('GET /wx', () => {
     clearWxCache();
     for (let n = 0; n < 3; n++) expect((await worker.fetch(req('/wx', authed()), env2, {})).status).toBe(503);
     expect(upstream).toHaveBeenCalledTimes(2);
+  });
+
+  it('fehlende Temperatur bleibt null, wird nicht 0', async () => {
+    expect(normalizeWx(upstreamBody({ temperature_2m: null }), 5).t).toBeNull();
+    stubFetch(okUp({ temperature_2m: null }));
+    const res = await worker.fetch(req('/wx', authed()), makeEnv(), {});
+    expect(res.status).toBe(200);
+    expect((await res.json()).t).toBeNull();
+  });
+
+  it('Upstream ohne Wettercode zählt als Fehler (503 ohne Altwert, nichts gecacht)', async () => {
+    stubFetch(okUp({ weather_code: undefined }));
+    const env = makeEnv();
+    expect((await worker.fetch(req('/wx', authed()), env, {})).status).toBe(503);
+    expect(env.CHARTS.put).not.toHaveBeenCalled();
+  });
+
+  it('fünf gleichzeitige Anfragen: ein Upstream-Abruf und genau ein KV-Put', async () => {
+    const env = makeEnv();
+    const rs = await Promise.all([1, 2, 3, 4, 5].map(() => worker.fetch(req('/wx', authed()), env, {})));
+    expect(rs.every((r) => r.status === 200)).toBe(true);
+    expect(upstream).toHaveBeenCalledTimes(1);
+    expect(env.CHARTS.put).toHaveBeenCalledTimes(1);
+  });
+
+  it('Ausfall mit altem KV-Wert: KV wird nicht bei jeder Anfrage gelesen', async () => {
+    const data = { v: 1, k: 'snow', i: 0.65, sd: 0.4, fog: 0, t: -3, day: 1, ts: 1 };
+    stubFetch(() => new Response('x', { status: 500 }));
+    const env = makeEnv({ CHARTS: kvFake({ data, at: Date.now() - 60 * 60 * 1000 }) });
+    for (let n = 0; n < 10; n++) expect(await (await worker.fetch(req('/wx', authed()), env, {})).json()).toMatchObject({ k: 'snow', stale: 1 });
+    expect(env.CHARTS.get.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(upstream).toHaveBeenCalledTimes(1);
+  });
+
+  it('Ausfall ganz ohne Daten: KV-Lesen bleibt begrenzt', async () => {
+    stubFetch(() => new Response('x', { status: 500 }));
+    const env = makeEnv();
+    for (let n = 0; n < 10; n++) expect((await worker.fetch(req('/wx', authed()), env, {})).status).toBe(503);
+    expect(env.CHARTS.get.mock.calls.length).toBeLessThanOrEqual(3);
+  });
+
+  it('läuft den geteilten Abruf über ctx.waitUntil weiter', async () => {
+    const waits = [];
+    const ctx = { waitUntil: (p) => waits.push(p) };
+    const env = makeEnv();
+    await worker.fetch(req('/wx', authed()), env, ctx);
+    const before = waits.length; // Anmeldeprüfung darf selbst waitUntil nutzen
+    await Promise.all(waits);
+    clearWxCache(); // Anmelde-Cache bleibt, nur das Wetter wird neu geholt
+    await worker.fetch(req('/wx', authed()), env, ctx);
+    expect(waits.length - before).toBe(1);
+    await Promise.all(waits);
+  });
+
+  it('hängender Upstream: Wartende hängen nicht unbegrenzt (Alters-Timeout), danach 503/stale', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      stubFetch(() => new Promise(() => {})); // antwortet nie, ignoriert Abbruch
+      const env = makeEnv();
+      const a = worker.fetch(req('/wx', authed()), env, {});
+      const b = worker.fetch(req('/wx', authed()), env, {});
+      let done = 0;
+      const mark = (p) => p.then((r) => { done++; return r; });
+      const ra = mark(a);
+      const rb = mark(b);
+      for (let n = 0; n < 100 && done < 2; n++) {
+        await vi.advanceTimersByTimeAsync(100);
+        await new Promise((r) => { globalThis.setImmediate(r); }); // echte Mikrotask-/Krypto-Schritte abwarten
+      }
+      expect((await ra).status).toBe(503);
+      expect((await rb).status).toBe(503);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

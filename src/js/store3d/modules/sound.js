@@ -81,6 +81,18 @@ export default {
     const onGesture = () => { if (ctx.soundOn()) unlock(); };
     for (const ev of gestureEvents) document.addEventListener(ev, onGesture, { capture: true, passive: true });
 
+    // Versteckter Tab: die 3D-Schleife steht, Brummen und Regenton liefen sonst weiter → AudioContext anhalten, beim Sichtbarwerden fortsetzen (nur bei Ton an).
+    let hiddenPaused = false;
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (ac && !hiddenPaused && !suspended) { hiddenPaused = true; try { ac.suspend(); } catch { /* egal */ } }
+      } else if (hiddenPaused) {
+        hiddenPaused = false;
+        if (ac && !suspended && ctx.soundOn()) { try { ac.resume().then(onRunning, () => {}); } catch { /* egal */ } }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     const live = () => ac && ac.state === 'running' && ctx.soundOn() && !suspended;
 
     // --- Bausteine ---
@@ -434,10 +446,14 @@ export default {
       },
       onResume() {
         suspended = false;
-        if (ac && ctx.soundOn()) { try { ac.resume().then(onRunning, () => {}); } catch { /* egal */ } }
+        if (ac && ctx.soundOn()) {
+          if (document.hidden) hiddenPaused = true; // Tab noch verborgen: erst beim Sichtbarwerden fortsetzen
+          else { try { ac.resume().then(onRunning, () => {}); } catch { /* egal */ } }
+        }
       },
       dispose() {
         for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
+        document.removeEventListener('visibilitychange', onVisibility);
         offs.forEach((o) => o());
         ambientRunning = false;
         if (offWeather) { offWeather(); offWeather = null; }

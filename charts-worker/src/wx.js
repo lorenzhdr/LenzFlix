@@ -20,10 +20,16 @@ const RATE_CAP = 500;
 
 const rate = new Map(); // ip -> Zeitstempel[]
 let mem = null; // { data, at }
-let inflight = null;
+let inflight = null; // geteilter Abruf (Upstream + mem + ein KV-Put)
+let inflightAt = 0;
 let failAt = 0; // Zeitpunkt des letzten Upstream-Fehlers
+let kvMissAt = 0; // Isolate-Negativ-Cache: letzter KV-Lesezugriff ohne frischen Wert (nur während eines Ausfalls)
+const KV_MISS_MS = 15 * 1000;
+const SHARE_MAX_MS = TIMEOUT_MS + 1000; // so lange wartet niemand auf einen geteilten Abruf
 export function clearWxCache() {
   failAt = 0;
+  kvMissAt = 0;
+  inflightAt = 0;
   rate.clear();
   mem = null;
   inflight = null;
@@ -63,6 +69,7 @@ export function normalizeWx(json, nowMs) {
   const c = json && typeof json === 'object' ? json.current : null;
   if (!c || typeof c !== 'object') return null;
   const code = num(c.weather_code);
+  if (code === null) return null; // ohne Wettercode keine gültige Antwort (kein erfundenes 'klar')
   const [k, i] = WMO[code] ?? ['clear', 0];
   const vis = num(c.visibility);
   let fog = vis === null ? 0 : vis < 1000 ? 1 : vis < 4000 ? (4000 - vis) / 3000 : 0;
@@ -76,7 +83,7 @@ export function normalizeWx(json, nowMs) {
     i,
     sd: sd === null ? 0 : Math.round(Math.max(0, sd) * 100) / 100,
     fog: Math.round(Math.min(1, Math.max(0, fog)) * 100) / 100,
-    t: t === null ? 0 : Math.round(t),
+    t: t === null ? null : Math.round(t), // fehlende Temperatur bleibt fehlend (Client: unbekannt)
     day: c.is_day === 0 ? 0 : 1,
     ts: Number.isFinite(parsed) ? parsed : nowMs,
   };
@@ -117,29 +124,59 @@ async function kvGet(env) {
   }
 }
 
+/** Ein Abruf für alle Wartenden: Upstream, mem und genau ein KV-Put; Daten oder null. */
+async function refresh(env, co) {
+  const data = await fetchUpstream(co);
+  if (!data) {
+    failAt = Date.now();
+    return null;
+  }
+  failAt = 0;
+  mem = { data, at: Date.now() };
+  try {
+    await env.CHARTS.put(KV_KEY, JSON.stringify(mem));
+  } catch {
+    console.error('wx: kv-put');
+  }
+  return data;
+}
+
+function shareRefresh(env, co, ctx) {
+  if (inflight && Date.now() - inflightAt > SHARE_MAX_MS) inflight = null; // hängender Abruf (z. B. nach Client-Abbruch) blockiert nicht dauerhaft
+  if (!inflight) {
+    inflightAt = Date.now();
+    const p = refresh(env, co).finally(() => {
+      if (inflight === p) inflight = null;
+    });
+    inflight = p;
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p.catch(() => {})); // läuft auch nach Client-Abbruch zu Ende
+  }
+  const p = inflight;
+  let timer;
+  const limit = new Promise((res) => {
+    timer = setTimeout(() => res(null), SHARE_MAX_MS);
+  });
+  return Promise.race([p.catch(() => null), limit]).finally(() => clearTimeout(timer));
+}
+
 /** { data, stale } | null */
-async function getWx(env, co, now) {
+async function getWx(env, co, now, ctx) {
   if (mem && now - mem.at < FRESH_MS) return { data: mem.data, stale: false };
   const backoff = failAt > 0 && now - failAt >= 0 && now - failAt < FAIL_BACKOFF_MS;
-  const kv = backoff && mem ? null : await kvGet(env);
+  const skipKv = backoff && (mem || (kvMissAt > 0 && now - kvMissAt >= 0 && now - kvMissAt < KV_MISS_MS));
+  const kv = skipKv ? null : await kvGet(env);
   if (kv && now - kv.at < FRESH_MS) {
     mem = kv;
     return { data: kv.data, stale: false };
   }
-  const data = backoff ? null : await (inflight ||= fetchUpstream(co).finally(() => {
-    inflight = null;
-  }));
-  if (!backoff && !data) failAt = now;
-  if (data) {
-    failAt = 0;
-    mem = { data, at: now };
-    try {
-      await env.CHARTS.put(KV_KEY, JSON.stringify(mem));
-    } catch {
-      console.error('wx: kv-put');
-    }
-    return { data, stale: false };
+  if (!skipKv) kvMissAt = backoff ? now : 0;
+  if (kv && (!mem || kv.at > mem.at)) mem = kv; // veralteten KV-Wert mit seinem echten Alter übernehmen (spart KV-Lesen im Ausfall)
+  let data = null;
+  if (!backoff) {
+    data = await shareRefresh(env, co, ctx);
+    if (!data && !(failAt > 0 && Date.now() - failAt < FAIL_BACKOFF_MS)) failAt = Date.now(); // Wartezeit-Überschreitung zählt als Fehler
   }
+  if (data) return { data, stale: false };
   const old = [mem, kv].filter(Boolean).sort((a, b) => b.at - a.at)[0];
   if (old && now - old.at < STALE_MS) return { data: old.data, stale: true };
   return null;
@@ -157,7 +194,7 @@ export async function handleWx(request, env, ctx) {
   const user = await resolveUser(env, token, ctx);
   if (user.status === 401) return jsonResponse({ error: 'unauthorized' }, 401, request, env);
   if (user.status) return jsonResponse({ error: 'upstream-unreachable' }, 502, request, env);
-  const r = await getWx(env, co, now);
+  const r = await getWx(env, co, now, ctx);
   if (!r) return jsonResponse({ error: 'wx-down' }, 503, request, env);
   const body = r.stale ? { ...r.data, stale: 1 } : r.data;
   return jsonResponse(body, 200, request, env, { 'Cache-Control': 'private, max-age=300' });
