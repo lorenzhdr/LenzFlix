@@ -75,6 +75,20 @@ describe('createStripeUpload', () => {
     expect(r.copyTextureToTexture).toHaveBeenCalledTimes(1);
   });
 
+  it('abandon (Kontextverlust): Canvas frei, Zieltextur NICHT dispose()t, kein weiterer Streifen', () => {
+    const { r } = fakeRenderer();
+    const c = cv();
+    const up = createStripeUpload(r, c);
+    const spy = vi.fn();
+    up.tex.addEventListener('dispose', spy);
+    up.step();
+    up.abandon();
+    expect(spy).not.toHaveBeenCalled();
+    expect(c.width).toBe(1);
+    expect(up.step()).toBe(true);
+    expect(r.copyTextureToTexture).toHaveBeenCalledTimes(1);
+  });
+
   it('Fehler beim Anlegen (initTexture wirft): null', () => {
     const r = { initTexture: () => { throw new Error('x'); }, copyTextureToTexture() {} };
     expect(createStripeUpload(r, cv())).toBe(null);

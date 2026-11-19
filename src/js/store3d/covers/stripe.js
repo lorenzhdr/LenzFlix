@@ -57,5 +57,7 @@ export function createStripeUpload(renderer, canvas, o = {}) {
       return finished;
     },
     dispose() { free(); finished = true; try { dst.dispose(); } catch { /* egal */ } },
+    /** Nach Kontextverlust: nur Leinwand freigeben, die (verlorene) Zieltextur nicht mehr dispose()n (sonst WebGL-Warnungen). */
+    abandon() { free(); finished = true; },
   };
 }

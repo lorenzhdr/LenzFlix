@@ -158,7 +158,8 @@ export function createWarmDraw(ctx) {
   let scanned = false;
   let scanMs = 0;
   let keyBuilds = 0;
-  // Memo je Objekt: Schlüssel nur neu bauen, wenn sich Material-Referenzen, Geometrie oder Flags geändert haben (Rescan ohne Strings)
+  // Memo je Objekt: Schlüssel nur neu bauen, wenn sich Material-Referenzen, Geometrie oder Flags geändert haben (Rescan ohne Strings).
+  // Annahme: der Attributsatz einer Geometrie ändert sich nach dem Bau nicht (wer Attribute nachrüstet, tauscht die Geometrie).
   const memo = new WeakMap();
   const keyOf = (o) => {
     const m = o.material;

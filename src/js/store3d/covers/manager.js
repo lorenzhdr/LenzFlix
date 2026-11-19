@@ -640,6 +640,7 @@ export class CoverManager {
     for (const f of this.faces) {
       if (f.tex) { f.tex.onUpdate = null; f.tex = null; }
       if (f.hiTex) { f.hiTex.onUpdate = null; f.hiTex = null; }
+      if (f.hiLoading && f.hiLoading.stripe) { f.hiLoading.stripe.abandon(); f.hiLoading.stripe = null; } // halber Streifen-Upload: nicht dispose()n
       this.evict(f, true);
       if (this.lowEnabled) f.lowDirty = true; // aus dem Cache neu aufbauen (tick)
     }
