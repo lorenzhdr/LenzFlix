@@ -30386,13 +30386,12 @@ void main() {
   var REACH_H = JUMP_H + MANTLE_H;
   var SIGNAL_CYCLE = 24;
   var OUTDOOR_AREAS = ["street", "crossing", "sideN", "sideS", "yard", "alley", "roof", "escape", "kiosk", "palastEntrance", "outside", "doorway"];
-  var clamp3 = (v, a, b) => Math.min(b, Math.max(a, v));
   var PI = Math.PI;
   function cityFrame(W2, D2) {
     const fz = D2 + 0.21;
     const roadZ0 = D2 + 2.75;
     const roadZ1 = D2 + 8.5;
-    const PW2 = clamp3(Math.round((W2 + 4) * 2) / 2, 20, 28);
+    const PW2 = clamp2(Math.round((W2 + 4) * 2) / 2, 20, 28);
     return {
       W: W2,
       D: D2,
@@ -30469,8 +30468,8 @@ void main() {
     const yaw = Number.isFinite(r.yaw) ? r.yaw : 0;
     const pitch = Number.isFinite(r.pitch) ? r.pitch : 0;
     const b = layout.bounds || { x0: 0, z0: 0, x1: layout.w, z1: layout.d };
-    let x = clamp3(r.x, b.x0, b.x1);
-    let z = clamp3(r.z, b.z0, b.z1);
+    let x = clamp2(r.x, b.x0, b.x1);
+    let z = clamp2(r.z, b.z0, b.z1);
     let y = Number.isFinite(r.y) && r.y > 0.25 ? r.y : 0;
     const src = layout.cidx ? { index: layout.cidx, dyn: layout.dyn } : layout.colliders;
     if (y > 0) {
@@ -30791,7 +30790,7 @@ void main() {
       if (bid === "SE1") cx = (bd.x0 + bd.x1) / 2 + 2.5;
       const wd = Math.min(5, bd.x1 - bd.x0 - 1.5);
       if (wd < 2.4) continue;
-      cx = clamp3(cx, bd.x0 + wd / 2 + 0.2, bd.x1 - wd / 2 - 0.2);
+      cx = clamp2(cx, bd.x0 + wd / 2 + 0.2, bd.x1 - wd / 2 - 0.2);
       shopFronts.push({ id: bid, text, color: color2, awning, x: Math.round(cx * 100) / 100, w: Math.round(wd * 100) / 100, z: bd.front === "S" ? bd.z1 : bd.z0, yaw: bd.front === "S" ? 0 : PI, y: 3.5 });
     }
     const discoverSlots = [
@@ -30854,10 +30853,6 @@ void main() {
   // src/js/store3d/world/layout.js
   var SEG_W = 1.2;
   var COLS = 7;
-  var ROWS_TALL = 5;
-  var ROWS_LOW = 3;
-  var CAP_TALL = COLS * ROWS_TALL;
-  var CAP_LOW = COLS * ROWS_LOW;
   var UNIT_DEPTH = 0.5;
   var WALL_DEPTH = 0.3;
   var H_TALL = 1.95;
@@ -31884,16 +31879,7 @@ void main() {
     const n = typeof c === "string" ? parseInt(c.replace("#", ""), 16) : c;
     return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
   }
-  function rng(seed) {
-    let a = seed >>> 0;
-    return () => {
-      a = a + 1831565813 >>> 0;
-      let t = a;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
+  var rng = seeded;
   function hash(str) {
     let h3 = 2166136261;
     for (let i = 0; i < str.length; i++) {
@@ -42461,7 +42447,7 @@ void main() {
   var TIP_RATE = 5.2;
   var TIP_V = 1.2;
   var STEP2 = 0.2;
-  var clamp4 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var clamp3 = (v, a, b) => v < a ? a : v > b ? b : v;
   function queryColliders(src, x0, z0, x1, z1, cb) {
     if (!src) return;
     if (Array.isArray(src)) {
@@ -42619,8 +42605,8 @@ void main() {
         const q = cand[i];
         const y0 = q.y0 === void 0 ? 0 : q.y0;
         const y1 = q.y1 === void 0 ? Infinity : q.y1;
-        const nx = clamp4(x, q.x0, q.x1);
-        const nz = clamp4(z, q.z0, q.z1);
+        const nx = clamp3(x, q.x0, q.x1);
+        const nz = clamp3(z, q.z0, q.z1);
         const dx = x - nx;
         const dz = z - nz;
         const d2 = dx * dx + dz * dz;
@@ -42663,8 +42649,8 @@ void main() {
           if (!(y0 < top2 - 0.03 && y1 > bot2 + STEP2)) continue;
           const px = b.pos.x;
           const pz = b.pos.z;
-          const cx = clamp4(px, q.x0, q.x1);
-          const cz = clamp4(pz, q.z0, q.z1);
+          const cx = clamp3(px, q.x0, q.x1);
+          const cz = clamp3(pz, q.z0, q.z1);
           const dx = px - cx;
           const dz = pz - cz;
           const d2 = dx * dx + dz * dz;
@@ -42725,7 +42711,7 @@ void main() {
         b.vel.z *= k;
       }
       const minDim = Math.max(0.06, Math.min(b.r, b.hy) * 0.9);
-      const n = clamp4(Math.ceil(Math.min(sp, MAX_SPEED) * h3 / minDim), 1, 4);
+      const n = clamp3(Math.ceil(Math.min(sp, MAX_SPEED) * h3 / minDim), 1, 4);
       const hh = h3 / n;
       for (let s = 0; s < n; s++) {
         b.vel.y = Math.max(VY_MIN, b.vel.y - gravity * hh);
@@ -43074,7 +43060,7 @@ void main() {
       },
       /** Zeit voranschreiten (Akkumulator, Festzeitschritt 1/60). Rückgabe: Zahl der Schritte. */
       step(dt) {
-        acc += clamp4(dt, 0, 0.1);
+        acc += clamp3(dt, 0, 0.1);
         let n = 0;
         while (acc >= DT && n < MAX_STEPS) {
           fixed(DT);
@@ -46548,14 +46534,13 @@ void main() {
       };
       const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
       const inPen = () => R2.pos.x >= counter.x0 - 0.1 && R2.pos.z >= counter.z1 - 0.05 && R2.pos.y < 0.3;
-      const clamp18 = (v, a, b) => Math.min(b, Math.max(a, v));
       const onCounter = (q) => q.x >= counter.x0 - 0.05 && q.x <= counter.x1 + 0.05 && q.z > counter.z0 + 0.02 && q.z < counter.z1 - 0.02;
       function landingPoint(p) {
         const nav = ctx.layout.nav;
-        const bx3 = clamp18(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
+        const bx3 = clamp2(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
         for (const dz of [0.6, 1, 1.4, 1.8]) {
           for (const dx of [0, 0.9, -0.9, 1.8, -1.8, 2.7, -2.7]) {
-            const x = clamp18(bx3 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
+            const x = clamp2(bx3 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
             const z = counter.z0 - dz;
             if (nav && !isFree(nav, x, z)) continue;
             if (p && Math.hypot(p.x - x, p.z - z) < 1.1) continue;
@@ -46569,7 +46554,7 @@ void main() {
         let path = null;
         if (nav) {
           path = findPath(nav, { x: p.x, z: p.z }, goal);
-          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp18(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
+          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp2(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
         }
         let w = null;
         if (path) {
@@ -49976,23 +49961,22 @@ void main() {
   var NET_VERSION = 1;
   var TAU = Math.PI * 2;
   var MAX_RATE = 18;
-  var clamp5 = (v, a, b) => Math.min(b, Math.max(a, v));
   var r23 = (v) => Math.round(v * 100) / 100;
   var r32 = (v) => Math.round(v * 1e3) / 1e3;
-  var easeOut = (t) => 1 - (1 - clamp5(t, 0, 1)) * (1 - clamp5(t, 0, 1));
+  var easeOut = (t) => 1 - (1 - clamp2(t, 0, 1)) * (1 - clamp2(t, 0, 1));
   function zeroPose() {
     const p = {};
     for (const k of POSE_KEYS) p[k] = 0;
     return p;
   }
   function gaitRate(speed) {
-    return Math.min(MAX_RATE, clamp5((Number(speed) || 0) / 1.5, 0, 4) * TAU);
+    return Math.min(MAX_RATE, clamp2((Number(speed) || 0) / 1.5, 0, 4) * TAU);
   }
   function targetPose(anim, phase, age, dur = 1) {
     const p = zeroPose();
     const s = Math.sin(phase);
     const c = Math.cos(phase);
-    const k = clamp5(age / Math.max(0.01, dur), 0, 1);
+    const k = clamp2(age / Math.max(0.01, dur), 0, 1);
     switch (anim) {
       case "walk":
       case "run": {
@@ -50036,7 +50020,7 @@ void main() {
         break;
       }
       case "throw": {
-        const wind = clamp5(k / 0.45, 0, 1);
+        const wind = clamp2(k / 0.45, 0, 1);
         p.armRx = k < 0.45 ? -2.5 * wind : Math.min(1.6, -2.5 + (k - 0.45) / 0.2 * 4.1);
         p.armRz = 0.3;
         p.lean = k < 0.45 ? -0.2 * wind : 0.35 * (1 - k);
@@ -50097,7 +50081,7 @@ void main() {
         break;
       }
       case "thumbs": {
-        const e = clamp5(age / 0.25, 0, 1);
+        const e = clamp2(age / 0.25, 0, 1);
         p.armRx = 1.35 * e + Math.sin(age * 7) * 0.05;
         p.armRz = 0.25 * e;
         p.headX = 0.08 * e + Math.sin(age * 5) * 0.03;
@@ -50106,7 +50090,7 @@ void main() {
         break;
       }
       case "bow": {
-        const e = clamp5(Math.min(k / 0.3, (1 - k) / 0.3), 0, 1);
+        const e = clamp2(Math.min(k / 0.3, (1 - k) / 0.3), 0, 1);
         p.lean = 1 * e;
         p.headX = 0.3 * e;
         p.armLx = -0.35 * e;
@@ -50117,7 +50101,7 @@ void main() {
         break;
       }
       case "threat": {
-        const e = clamp5(age / 0.22, 0, 1);
+        const e = clamp2(age / 0.22, 0, 1);
         const sh = Math.sin(age * 13);
         p.armRx = (1.3 + sh * 0.16) * e;
         p.armRz = (0.14 + Math.sin(age * 13 + 1.2) * 0.06) * e;
@@ -50132,7 +50116,7 @@ void main() {
         break;
       }
       case "sleeves": {
-        const e = clamp5(age / 0.2, 0, 1);
+        const e = clamp2(age / 0.2, 0, 1);
         const wl = Math.max(0, Math.sin(age * 5));
         const wr = Math.max(0, -Math.sin(age * 5));
         p.armLx = (1.15 + wl * 0.22) * e;
@@ -50145,7 +50129,7 @@ void main() {
         break;
       }
       case "shake": {
-        const e = clamp5(Math.min(age / 0.15, (TIMED.shake - age) / 0.25), 0, 1);
+        const e = clamp2(Math.min(age / 0.15, (TIMED.shake - age) / 0.25), 0, 1);
         p.headY = Math.sin(age * 11) * 0.5 * e;
         p.headX = 0.1 * e;
         p.roll = Math.sin(age * 11 + 1.6) * 0.018 * e;
@@ -50157,7 +50141,7 @@ void main() {
         break;
       }
       case "cover": {
-        const e = clamp5(age / 0.15, 0, 1);
+        const e = clamp2(age / 0.15, 0, 1);
         const w = Math.sin(age * 5);
         p.armLx = 2.1 * e;
         p.armRx = 2.1 * e;
@@ -50183,8 +50167,8 @@ void main() {
           lg = -0.3 * w;
         } else {
           const s2 = (k - 0.4) / 0.6;
-          ax = -2.85 + 4.7 * easeOut(Math.min(1, s2 / 0.55)) - 1.1 * clamp5((s2 - 0.55) / 0.45, 0, 1);
-          ln = -0.16 + 0.54 * easeOut(Math.min(1, s2 / 0.5)) - 0.2 * clamp5((s2 - 0.6) / 0.4, 0, 1);
+          ax = -2.85 + 4.7 * easeOut(Math.min(1, s2 / 0.55)) - 1.1 * clamp2((s2 - 0.55) / 0.45, 0, 1);
+          ln = -0.16 + 0.54 * easeOut(Math.min(1, s2 / 0.5)) - 0.2 * clamp2((s2 - 0.6) / 0.4, 0, 1);
           lg = 0.5 * Math.sin(Math.min(1, s2 * 1.4) * Math.PI);
         }
         p.armRx = ax;
@@ -50202,7 +50186,7 @@ void main() {
         if (k < 0.3) ax = -1.3 * easeOut(k / 0.3);
         else {
           const s2 = (k - 0.3) / 0.7;
-          ax = -1.3 + 3 * easeOut(Math.min(1, s2 / 0.5)) - 1.4 * clamp5((s2 - 0.5) / 0.5, 0, 1);
+          ax = -1.3 + 3 * easeOut(Math.min(1, s2 / 0.5)) - 1.4 * clamp2((s2 - 0.5) / 0.5, 0, 1);
         }
         const e = Math.sin(k * Math.PI);
         p.armRx = ax;
@@ -50217,7 +50201,7 @@ void main() {
         break;
       }
       case "aim": {
-        const e = clamp5(age / 0.18, 0, 1);
+        const e = clamp2(age / 0.18, 0, 1);
         p.armRx = 1.55 * e + Math.sin(age * 17) * 8e-3;
         p.armRz = -0.03 * e;
         p.armLx = 0.9 * e;
@@ -50230,7 +50214,7 @@ void main() {
         break;
       }
       case "ko": {
-        const e = clamp5(age / 0.35, 0, 1);
+        const e = clamp2(age / 0.35, 0, 1);
         const br = Math.sin(age * 2) * 4e-3;
         p.roll = 1.52 * e;
         p.hipDrop = -0.24 * e;
@@ -50331,7 +50315,7 @@ void main() {
       const name = ANIMS2[n.a];
       const changed = name !== this.anim;
       if (changed) this.setAnim(name, { restart: true });
-      this.speed = Number.isFinite(n.s) ? clamp5(n.s, 0, 12) : 0;
+      this.speed = Number.isFinite(n.s) ? clamp2(n.s, 0, 12) : 0;
       if (Number.isFinite(n.p)) this.phase = (n.p % 1 + 1) % 1 * TAU;
       if (changed && Number.isFinite(n.t)) this.age = Math.max(0, n.t);
       return true;
@@ -51049,7 +51033,6 @@ void main() {
 
   // src/js/store3d/npc/walker-logic.js
   var SPUR_PATHS = /* @__PURE__ */ new Set(["shopDoor", "palastDoor", "alleyMouth", "kioskFront"]);
-  var clamp6 = (v, a, b) => Math.min(b, Math.max(a, v));
   var yawOf = (dx, dz) => Math.atan2(-dx, -dz);
   function canGo(wait, env2, edge) {
     if (!wait) return true;
@@ -51103,7 +51086,7 @@ void main() {
     const e = g.edges[w.edge];
     const p = pointOn(e, w.dir, w.s);
     const d = edgeDir(e, w.dir);
-    const fade = clamp6(Math.min(w.s, e.len - w.s) / 0.8, 0, 1);
+    const fade = clamp2(Math.min(w.s, e.len - w.s) / 0.8, 0, 1);
     const lat = w.lateral * fade;
     w.x = p.x - d.z * lat;
     w.z = p.z + d.x * lat;
@@ -51254,7 +51237,7 @@ void main() {
       }
     }
     const lim = e.wait ? 0.95 : 1.15;
-    const wantLat = clamp6((e.wait ? clamp6(w.laneOff, -0.3, 0.3) : w.laneOff) + dodge, -lim, lim);
+    const wantLat = clamp2((e.wait ? clamp2(w.laneOff, -0.3, 0.3) : w.laneOff) + dodge, -lim, lim);
     w.lateral += (wantLat - w.lateral) * Math.min(1, dt * 3);
     if (!e.wait && w.state === "walk" && e.len > 4 && w.s > 1 && w.s < e.len - 1.2 && env2.rand() < dt * 0.045 && !env2.raining) {
       w.state = "browse";
@@ -51515,7 +51498,6 @@ void main() {
 
   // src/js/store3d/npc/animals-logic.js
   var TAU2 = Math.PI * 2;
-  var clamp7 = (v, a, b) => Math.min(b, Math.max(a, v));
   var yawTo = (dx, dz) => Math.atan2(-dx, -dz);
   var CAT = { sitMin: 4, sitMax: 11, groomT: 2.8, walkSpeed: 0.8, fleeSpeed: 5.2, purrT: 3.6, startleDist: 3.2, closeDist: 1.1, petDist: 2.4, petSpeed: 1.3, laserRange: 8, laserSpeed: 4.2, laserFound: 3, pounceT: 0.5, pounceMin: 1 };
   function lineFree(colliders, a, b, pad = 0.15) {
@@ -51628,7 +51610,7 @@ void main() {
       cat.x = cat.from.x + (cat.to.x - cat.from.x) * p;
       cat.z = cat.from.z + (cat.to.z - cat.from.z) * p;
       const dy = cat.to.y - cat.from.y;
-      const k = dy >= 0 ? clamp7((p - 0.75) / 0.25, 0, 1) : clamp7(p / 0.25, 0, 1);
+      const k = dy >= 0 ? clamp2((p - 0.75) / 0.25, 0, 1) : clamp2(p / 0.25, 0, 1);
       cat.y = cat.from.y + dy * k + (Math.abs(dy) > 0.2 ? Math.sin(k * Math.PI) * 0.35 : 0);
       cat.moveSpeed = speed;
       if (p >= 1) {
@@ -52706,7 +52688,6 @@ void main() {
   var THROW_DMG = { candy: 4, popcorn: 4 };
   var THROW_SOUND = { candy: "candy", popcorn: "pop" };
   var THROW_COLORS = { candy: [[1, 0.2, 0.55], [0.25, 0.8, 1], [1, 0.85, 0.2]], popcorn: [[1, 0.95, 0.75], [1, 0.9, 0.55]] };
-  var clamp8 = (v, a, b) => Math.min(b, Math.max(a, v));
   function createThrow(kind, from, to) {
     const d = Math.hypot(to.x - from.x, to.z - from.z);
     return {
@@ -52714,7 +52695,7 @@ void main() {
       from: { x: from.x, y: from.y, z: from.z },
       to: { x: to.x, y: to.y, z: to.z },
       t: 0,
-      dur: clamp8(d / THROW.speed, THROW.minDur, THROW.maxDur),
+      dur: clamp2(d / THROW.speed, THROW.minDur, THROW.maxDur),
       arc: 0.15 + 0.35 * Math.min(1, d / 6),
       x: from.x,
       y: from.y,
@@ -52728,7 +52709,7 @@ void main() {
     if (p.done) return { arrived: true, hit: false };
     p.t += dt;
     p.spin += dt * 14;
-    const s = clamp8(p.t / p.dur, 0, 1);
+    const s = clamp2(p.t / p.dur, 0, 1);
     p.x = p.from.x + (p.to.x - p.from.x) * s;
     p.z = p.from.z + (p.to.z - p.from.z) * s;
     p.y = p.from.y + (p.to.y - p.from.y) * s + 4 * p.arc * s * (1 - s);
@@ -52997,17 +52978,17 @@ void main() {
   };
   var OUTFIT_FIELDS = [5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25];
   var DEFAULT = [2, 3, 10, 10, 0, 0, 1, 0, 1, 0, 0, 1, 0, 6, 0, 13, 0, 11, 0, 1, 1, 0, 0, 0, 0, 0];
-  var clamp9 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var clamp4 = (v, a, b) => v < a ? a : v > b ? b : v;
   var isInt = (v) => typeof v === "number" && Number.isInteger(v);
   function defaultCode() {
     return DEFAULT.slice();
   }
   function encodeColor(c) {
     if (Array.isArray(c)) {
-      const b = (v) => Math.round(clamp9(Number(v) || 0, 0, 1) * 255);
+      const b = (v) => Math.round(clamp4(Number(v) || 0, 0, 1) * 255);
       return CUSTOM_COLOR | b(c[0]) << 16 | b(c[1]) << 8 | b(c[2]);
     }
-    return isInt(c) ? clamp9(c, 0, 63) : 0;
+    return isInt(c) ? clamp4(c, 0, 63) : 0;
   }
   function decodeColor(code, palette) {
     if (isInt(code) && code >= CUSTOM_COLOR && code <= MAX_CODE) {
@@ -54374,7 +54355,6 @@ void main() {
   var BLIND_STAND = 2.5;
   var BLIND_HONK_EVERY = 0.8;
   var UPSTREAM_WINDOW = 6;
-  var clamp10 = (v, a, b) => Math.min(b, Math.max(a, v));
   function laneSign(lane) {
     return (lane.dir.x || lane.dir.z) > 0 ? 1 : -1;
   }
@@ -54554,7 +54534,7 @@ void main() {
       vMax = Math.min(lane.speed, 1);
     }
     const dv = vMax - car.v;
-    car.v = clamp10(car.v + clamp10(dv, -DEC * dt * 1.4, ACC * dt), 0, lane.speed * 1.2);
+    car.v = clamp2(car.v + clamp2(dv, -DEC * dt * 1.4, ACC * dt), 0, lane.speed * 1.2);
     car.p += s * car.v * dt;
     if ((car.p - lane.to) * s >= 0) {
       car.state = "away";
@@ -55180,16 +55160,7 @@ void main() {
     }
     return h3 >>> 0;
   }
-  function rng2(seed) {
-    let a = seed >>> 0;
-    return () => {
-      a = a + 1831565813 >>> 0;
-      let t = a;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
+  var rng2 = seeded;
   var p2 = (n) => String(n).padStart(2, "0");
   function dayKeyOf(date) {
     const d = date instanceof Date ? date : new Date(date);
@@ -57384,33 +57355,6 @@ void main() {
     bag: ["Keine", "Umh\xE4ngetasche", "Rucksack", "Einkaufstasche"],
     bagU: ["Chipst\xFCte am Gurt", "Kassettenrucksack", "Katzenkopf-Rucksack"]
   };
-  var FIELD_NAMES = {
-    skin: F.skin,
-    height: F.height,
-    build: F.build,
-    shape: F.shape,
-    hairStyle: F.hairStyle,
-    hairColor: F.hairColor,
-    eyes: F.eyes,
-    brows: F.brows,
-    beard: F.beard,
-    topCut: F.topCut,
-    topColor: F.topColor,
-    topPattern: F.topPattern,
-    topColor2: F.topColor2,
-    botCut: F.botCut,
-    botColor: F.botColor,
-    botPattern: F.botPattern,
-    botColor2: F.botColor2,
-    shoeModel: F.shoeModel,
-    shoeColor: F.shoeColor,
-    sole: F.sole,
-    glasses: F.glasses,
-    hat: F.hat,
-    hatColor: F.hatColor,
-    bag: F.bag,
-    bagColor: F.bagColor
-  };
   var COLOR_PART_FIELD = {
     hair: F.hairColor,
     top: F.topColor,
@@ -59324,21 +59268,11 @@ void main() {
   function emoteEndsOn(a) {
     return EMOTE_END_A.includes(a);
   }
-  function mulberry32(seed) {
-    let a = seed >>> 0;
-    return () => {
-      a = a + 1831565813 >>> 0;
-      let t = a;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
   var WX_SLOT_MS = 18e5;
   var WX_RAIN_BELOW = 0.35;
   function wxRoll(sd, serverMs) {
     const slot = Math.floor(serverMs / WX_SLOT_MS);
-    return mulberry32((sd ^ Math.imul(slot, 2654435761)) >>> 0)();
+    return seeded((sd ^ Math.imul(slot, 2654435761)) >>> 0)();
   }
   var wxRain = (sd, serverMs) => wxRoll(sd, serverMs) < WX_RAIN_BELOW;
   var posQ = (q, o) => {
@@ -59643,7 +59577,6 @@ void main() {
   }
   var lookSeed = (k) => fnv1a32("lfx-mp-look|" + String(k));
   var num3 = (v, d = 0) => Number.isFinite(v) ? v : d;
-  var clamp11 = (v, a, b) => Math.min(b, Math.max(a, v));
   function decodePose(frame, e) {
     if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) return null;
     const y = num3(e.y);
@@ -59667,9 +59600,9 @@ void main() {
     let vz = 0;
     if (prev && t > prev.t) {
       const dt = (t - prev.t) / 1e3;
-      vx = clamp11((cur.x - prev.s.x) / dt, -V_MAX, V_MAX);
-      vy = clamp11((cur.y - prev.s.y) / dt, -V_MAX, V_MAX);
-      vz = clamp11((cur.z - prev.s.z) / dt, -V_MAX, V_MAX);
+      vx = clamp2((cur.x - prev.s.x) / dt, -V_MAX, V_MAX);
+      vy = clamp2((cur.y - prev.s.y) / dt, -V_MAX, V_MAX);
+      vz = clamp2((cur.z - prev.s.z) / dt, -V_MAX, V_MAX);
     }
     return { x: cur.x, y: cur.y, z: cur.z, yaw: cur.yaw, pitch: cur.pitch, vx, vy, vz, a: cur.a <= 6 ? cur.a : 0, h: null };
   }
@@ -63401,20 +63334,8 @@ void main() {
   var REACH_Y = 0.6;
   var REACH_LOST_S = 0.8;
   var ST = ["idle", "approach", "taunt", "threaten", "attack", "flee", "beaten"];
-  function fnv2(s) {
-    let h3 = 2166136261;
-    s = String(s);
-    for (let i = 0; i < s.length; i++) {
-      h3 ^= s.charCodeAt(i);
-      h3 = Math.imul(h3, 16777619);
-    }
-    h3 ^= h3 >>> 15;
-    h3 = Math.imul(h3, 2246822507);
-    h3 ^= h3 >>> 13;
-    return (h3 >>> 0) / 4294967296;
-  }
   function spawnCount(tod, seed) {
-    const u = fnv2(`gang:${tod}:${seed}`);
+    const u = fnv(`gang:${tod}:${seed}`);
     if (tod === "night") return u < 0.5 ? 2 : 3;
     if (tod === "dusk") return u < 0.5 ? 1 : 0;
     return u < 0.2 ? 1 : 0;
@@ -63430,13 +63351,13 @@ void main() {
     const pool = spots.slice();
     const out = [];
     for (let k = 0; k < n && pool.length; k++) {
-      const i = Math.floor(fnv2(`spot:${seed}:${k}`) * pool.length);
+      const i = Math.floor(fnv(`spot:${seed}:${k}`) * pool.length);
       out.push(pool.splice(i, 1)[0]);
     }
     return out;
   }
   function createRowdy(i, p, seed = 0) {
-    return { i, st: "idle", x: p.x, z: p.z, hx: p.x, hz: p.z, yaw: 0, hp: ROWDY_HP, t: 0, cool: 0, stuck: 0, speed: 1.1 + fnv2(`spd:${seed}:${i}`) * 0.5, struck: false };
+    return { i, st: "idle", x: p.x, z: p.z, hx: p.x, hz: p.z, yaw: 0, hp: ROWDY_HP, t: 0, cool: 0, stuck: 0, speed: 1.1 + fnv(`spd:${seed}:${i}`) * 0.5, struck: false };
   }
   function createGang(seed, n, spots) {
     return { seed, phase: 0, members: spawnPlan(seed, Math.min(GANG_MAX, n), spots).map((p, i) => createRowdy(i, p, seed)) };
@@ -63631,7 +63552,7 @@ void main() {
   // src/js/store3d/net/gang.js
   var TODS = ["day", "dusk", "night"];
   var GS_R = 2;
-  var clamp12 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var clamp5 = (v, a, b) => v < a ? a : v > b ? b : v;
   var fin3 = (v, d = 0) => Number.isFinite(v) ? v : d;
   var phaseOf = (tod) => Math.max(0, TODS.indexOf(tod));
   function netAnim(st, speed = 0, striking = false) {
@@ -63645,18 +63566,18 @@ void main() {
   function encodeGs(frame, { phase = 0, seed = 0, members = [] } = {}) {
     if (!frame) return null;
     const list = members.slice(0, 3);
-    const q = [clamp12(Math.round(fin3(phase)), 0, 255), clamp12(Math.round(fin3(seed)), 0, 16777215), list.length];
+    const q = [clamp5(Math.round(fin3(phase)), 0, 255), clamp5(Math.round(fin3(seed)), 0, 16777215), list.length];
     for (const m of list) {
       const [cx, cy, cz] = frame.enc(fin3(m.x), fin3(m.y), fin3(m.z), GS_R);
       q.push(
-        clamp12(Math.max(0, ST.indexOf(m.st)), 0, 9),
+        clamp5(Math.max(0, ST.indexOf(m.st)), 0, 9),
         cx,
         cy,
         cz,
         frame.encYaw(fin3(m.yaw)),
-        clamp12(Math.round(fin3(m.a)), 0, 15),
-        clamp12(Math.round(fin3(m.tgt)), 0, 65535),
-        clamp12(Math.round(fin3(m.hp)), 0, 100)
+        clamp5(Math.round(fin3(m.a)), 0, 15),
+        clamp5(Math.round(fin3(m.tgt)), 0, 65535),
+        clamp5(Math.round(fin3(m.hp)), 0, 100)
       );
     }
     return q;
@@ -63696,7 +63617,7 @@ void main() {
   var LEATHER3 = [[0.09, 0.08, 0.08], [0.16, 0.1, 0.07], [0.1, 0.1, 0.13]];
   var HATS3 = ["beanie", "cap", "beanie"];
   var HAIRS = ["tuft", "bald", "short"];
-  var clamp13 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var clamp6 = (v, a, b) => v < a ? a : v > b ? b : v;
   var wrapPi = (a) => {
     while (a > Math.PI) a -= Math.PI * 2;
     while (a < -Math.PI) a += Math.PI * 2;
@@ -63880,7 +63801,7 @@ void main() {
         let seed = Math.floor(seedBase / SLOT_MS) & 16777215;
         let n = spawnCount(tod, seed);
         if (opts.debug && Number.isFinite(opts.gang)) {
-          n = clamp13(Math.round(opts.gang), 0, GANG_MAX);
+          n = clamp6(Math.round(opts.gang), 0, GANG_MAX);
           tod = "night";
           seed = 1;
         }
@@ -70073,7 +69994,7 @@ void main() {
   var ITEM_ID = /^[0-9a-f]{32}$/;
   var isTapeId = (id) => typeof id === "string" && id.includes(".");
   var r25 = (v) => Math.round(v * 100) / 100;
-  var clamp14 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var clamp7 = (v, a, b) => v < a ? a : v > b ? b : v;
   var fin4 = (v) => Number.isFinite(v) ? v : 0;
   function createLimiter3(perS, burst) {
     let tokens = burst;
@@ -70162,7 +70083,7 @@ void main() {
     const p = frame.enc(st.x, st.y, st.z, r);
     const sl = st.s === 1;
     const v = sl ? [0, 0] : frame.encVec(st.x, st.z, st.vx, st.vz, r);
-    const tip = clamp14(Math.round(st.tip * 100), 0, 157);
+    const tip = clamp7(Math.round(st.tip * 100), 0, 157);
     return [
       id,
       g,
@@ -70174,8 +70095,8 @@ void main() {
       v[1],
       frame.encYaw(st.yaw),
       tip,
-      tip > 0 ? clamp14(Math.round(st.ax * 100), -100, 100) : 0,
-      tip > 0 ? clamp14(Math.round(st.az * 100), -100, 100) : 0,
+      tip > 0 ? clamp7(Math.round(st.ax * 100), -100, 100) : 0,
+      tip > 0 ? clamp7(Math.round(st.az * 100), -100, 100) : 0,
       sl ? 1 : 0
     ];
   }
@@ -70769,7 +70690,7 @@ void main() {
   var SEND_DIST = 3.4;
   var RECV_DIST = 4.5;
   var PUSH_S = 100;
-  var clamp15 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var clamp8 = (v, a, b) => v < a ? a : v > b ? b : v;
   var warn14 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp push", what, err && err.message ? err.message : "");
@@ -70860,7 +70781,7 @@ void main() {
       if (!dir[0] && !dir[1]) return;
       lastRecv = t;
       try {
-        ctx.player.knock({ x: dir[0], z: dir[1], up: 0 }, clamp15(s, 1, 100) / 100 * PUSH_KNOCK);
+        ctx.player.knock({ x: dir[0], z: dir[1], up: 0 }, clamp8(s, 1, 100) / 100 * PUSH_KNOCK);
       } catch (err) {
         warn14("knock", err);
         return;
@@ -73577,7 +73498,7 @@ void main() {
   var AUTO_DEVICE = "Automatisch (Ger\xE4testimme)";
   var AUTO_ONLINE = "Automatisch (Online bevorzugt)";
   var NOTE_ONLINE = "Online: S\xE4tze, Name und Filmtitel gehen an den Stimmendienst des Browsers.";
-  var NOTE_TIP = "Tipp: M\xE4nnliche Online-Stimmen (z. B. \u201ENatural\u201C) gibt es in manchen Browsern (z. B. dem Windows-Standardbrowser); am iPhone unter Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch weitere laden.";
+  var NOTE_TIP = "Tipp: M\xE4nnliche Online-Stimmen (z. B. \u201ENatural\u201C) gibt es in manchen Browsern; am Handy unter Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch weitere laden.";
   function shortVoiceName(name) {
     const n = String(name || "").replace(/\s+-\s+.*$/, "").replace(/\s*\([^)]*\)/g, "").replace(/^(Microsoft|Google|Apple)\s+/i, "").replace(/\s+Online\s*$/i, "").trim();
     return n || String(name || "");
@@ -75484,12 +75405,12 @@ void main() {
       const root = el3("div", "lfx-store-fs-guide");
       const panel = el3("div", "lfx-store-fs-panel");
       panel.setAttribute("role", "dialog");
-      panel.setAttribute("aria-label", "Vollbild am iPhone");
+      panel.setAttribute("aria-label", "Vollbild am Handy");
       panel.append(
-        el3("div", "lfx-store-fs-title", "Vollbild am iPhone"),
-        el3("p", "lfx-store-fs-text", "Teilen \u2192 \u201EZum Home-Bildschirm\u201C \u2192 \u201EAls Web-App \xF6ffnen\u201C: Dann startet Jellyfin ohne Safari-Leisten."),
+        el3("div", "lfx-store-fs-title", "Vollbild am Handy"),
+        el3("p", "lfx-store-fs-text", "Teilen \u2192 \u201EZum Home-Bildschirm\u201C \u2192 \u201EAls Web-App \xF6ffnen\u201C: Dann startet Jellyfin ohne Browser-Leisten."),
         el3("p", "lfx-store-fs-text", "Alternativ: im Querformat einmal nach oben wischen."),
-        el3("p", "lfx-store-fs-text lfx-store-fs-text--muted", "Kein Ton? Stummschalter am iPhone pr\xFCfen.")
+        el3("p", "lfx-store-fs-text lfx-store-fs-text--muted", "Kein Ton? Stummschalter am Handy pr\xFCfen.")
       );
       const ok = el3("button", "lfx-store-act lfx-store-act--primary", "Verstanden");
       ok.type = "button";
@@ -78976,13 +78897,6 @@ void main() {
 
   // src/js/store3d/cinema/failcodes.js
   var FAIL = Object.freeze({ P: "P", T1: "T1", T2: "T2", D: "D", B: "B" });
-  var FAIL_TEXT = Object.freeze({
-    P: "Der Film konnte nicht gestartet werden",
-    T1: "Kein Player gefunden",
-    T2: "Der Film startet nicht (Stillstand)",
-    D: "Der Player meldet einen Fehler",
-    B: "Die Leinwand konnte nicht aufgebaut werden"
-  });
   var failToast = (code) => code ? `Kino konnte nicht starten (${code})` : "Kino konnte nicht starten";
 
   // src/js/store3d/cinema/cinema.js
@@ -78993,7 +78907,7 @@ void main() {
     } catch {
     }
   };
-  var clamp16 = (v, a, b) => Math.max(a, Math.min(b, v));
+  var clamp9 = (v, a, b) => Math.max(a, Math.min(b, v));
   var Cinema = class {
     constructor(app) {
       this.app = app;
@@ -79216,7 +79130,7 @@ void main() {
       } catch {
       }
       const floor = !this._xr || this._xr.floor !== false;
-      let off = floor ? clamp16(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
+      let off = floor ? clamp9(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
       if (!Number.isFinite(off)) off = 0;
       placeRig(eng.rig, { x: s.x, z: s.z, yaw: s.yaw }, head, { y: s.y + off });
       eng.rig.updateMatrixWorld(true);
@@ -80800,7 +80714,6 @@ void main() {
     STUCK_MS: 3e3
     // lokale Pausenposition weicht so weit ab: Gruppenposition nehmen
   });
-  var clamp17 = (x, a, b) => Math.min(b, Math.max(a, x));
   var num5 = (x, d = 0) => Number.isFinite(Number(x)) ? Number(x) : d;
   function expectedPos(s, now2) {
     if (!s) return 0;
@@ -81191,8 +81104,8 @@ void main() {
           }
         }
         if (S2.leadAt && now2 - S2.leadAt >= cfg.TICK_MS && ready >= 3 && !obs.seeking && S2.sess.st === 1 && !obs.paused) {
-          const dur = clamp17(now2 - S2.leadAt, 0, cfg.LEAD_MAX_MS);
-          S2.lead = clamp17(S2.lead == null ? dur : 0.7 * S2.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
+          const dur = clamp2(now2 - S2.leadAt, 0, cfg.LEAD_MAX_MS);
+          S2.lead = clamp2(S2.lead == null ? dur : 0.7 * S2.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
           S2.leadAt = 0;
         }
         if (held) return;
@@ -81287,7 +81200,7 @@ void main() {
           }
         }
         if (st === 1 && S2.rateOk !== false && A.setRate && ad > Dr && ad <= Math.max(D2, cfg.RATE_MAX_MS)) {
-          const r = 1 - clamp17(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
+          const r = 1 - clamp2(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
           if (S2.rateSet !== r) {
             try {
               A.setRate(r);
