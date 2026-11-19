@@ -76,6 +76,11 @@ export class AutoQuality {
     this.settleLeft = 1.5; // Einschwingen: die nächsten 1,5 s Echtzeit (Shader-Kompilierung, Textur-Neuladen, Ultra-Nachbau) nicht werten
   }
 
+  /** Verlängert das Einschwingen auf mindestens `sec` Sekunden (nie verkürzen). Wer im Spiel noch Übergangsarbeit leistet (Programm-Vorwärmen), hält so das Fenster zu. */
+  extendSettle(sec) {
+    if (sec > this.settleLeft) this.settleLeft = sec;
+  }
+
   sample(dt, now) {
     // Hänger (> 0,25 s) zählen als sehr langsamer Frame, damit Dauerruckeln die Stufe senkt; Hintergrund-Tabs
     // erreichen sample() nicht (Schleife hält an, `last` wird beim Fortsetzen neu gesetzt).

@@ -4,8 +4,8 @@ import { presetFor, AutoQuality, rank } from './quality.js';
 
 const DEG = Math.PI / 180;
 
-/** maxLevel: höchste erlaubte Stufe ('ultra' nur, wenn die Hülle das Gerät freigibt; sonst 'high'); setLevel und die Automatik klemmen darauf. */
-export function createEngine({ host, level, auto, phone, maxLevel = 'high', onContextLost, onContextRestored, onAutoLevel }) {
+/** holdAuto: optionaler Haken, liefert true, solange die Automatik nicht werten soll (verlängert das Einschwingen um 0,5 s je Bild). maxLevel: höchste erlaubte Stufe ('ultra' nur, wenn die Hülle das Gerät freigibt; sonst 'high'); setLevel und die Automatik klemmen darauf. */
+export function createEngine({ host, level, auto, phone, maxLevel = 'high', onContextLost, onContextRestored, onAutoLevel, holdAuto }) {
   const clampLv = (l) => (rank(l) > rank(maxLevel) ? maxLevel : l);
   level = clampLv(level);
   let preset = presetFor(level, phone);
@@ -104,6 +104,8 @@ export function createEngine({ host, level, auto, phone, maxLevel = 'high', onCo
     accN++;
     if (acc >= 0.5) { fps = accN / acc; frameMs = (acc / accN) * 1000; acc = 0; accN = 0; }
     if (autoOn && !inXr() && renderOn) {
+      // holdAuto() (Hülle): Übergangsarbeit läuft noch (Programm-Vorwärmen nach Stufenwechsel) → Fenster nicht werten
+      if (holdAuto && holdAuto()) aq.extendSettle(0.5);
       const l = aq.sample(rawDt, now);
       if (l) { setLevel(l); if (onAutoLevel) onAutoLevel(l); }
     }

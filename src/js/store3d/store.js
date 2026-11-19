@@ -34,6 +34,7 @@ import { palastTest } from './cinema/saal-stub.js';
 const yieldFrame = () => new Promise((r) => setTimeout(r, 0));
 
 const QUALITY_SETTINGS = ['auto', 'low', 'mid', 'high', 'ultra'];
+const HOLD_AUTO_MAX_MS = 8000; // Obergrenze: Automatik-Fenster bleibt höchstens so lange nach einem Stufenwechsel zu, solange warmDraw arbeitet
 
 export function resolveLevel(setting, ultraOk) {
   if (setting === 'ultra') return ultraOk ? 'ultra' : 'high'; // Ultra nur auf freigegebenen Geräten (opts.ultraOk, nie Handy)
@@ -114,6 +115,7 @@ export class StoreApp {
         onContextLost: () => this.onContextLost(),
         onContextRestored: () => this.onContextRestored(),
         onAutoLevel: () => this.applyPreset(this.engine.preset),
+        holdAuto: () => this.holdAuto(),
       });
     } catch (err) {
       this.fail(err);
@@ -938,7 +940,15 @@ export class StoreApp {
   }
 
   // --- Qualität ---
+  /** Automatik-Fenster zuhalten: nur solange das Vorab-Zeichnen noch arbeitet UND der letzte Stufenwechsel höchstens 8 s her ist (Obergrenze: ein ständig nachscannendes warmDraw macht die Automatik nie dauerhaft blind). */
+  holdAuto() {
+    const wd = this.warmDraw;
+    if (!this.ultraOk || !wd || this.lastLevelAt == null || !wd.busy()) return false;
+    return performance.now() - this.lastLevelAt <= HOLD_AUTO_MAX_MS;
+  }
+
   applyPreset(preset) {
+    if (preset.level !== this.appliedLevel) { this.appliedLevel = preset.level; this.lastLevelAt = performance.now(); }
     if (this.covers) this.covers.setPreset(preset);
     if (this.tex) this.tex.setAnisotropy(preset.anisotropy);
     if (this.lights) this.lights.setShadows(preset.shadows);
