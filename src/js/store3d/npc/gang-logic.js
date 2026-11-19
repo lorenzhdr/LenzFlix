@@ -8,6 +8,8 @@ export const FLEE_HP = 0.25; // Anteil
 /** Körperradius (m) gegen feste Hindernisse (1.19.0, Kreisprüfung statt Mittelpunkt); Spielerhöhe (m), ab der er für Bodenfiguren unerreichbar ist (Feuertreppe). */
 export const BODY_R = 0.3;
 export const REACH_Y = 0.6;
+/** Hysterese (1.19.0): erst nach so vielen Sekunden dauerhaft über REACH_Y bricht der Rowdy den Angriff ab (kurzer Sprung im Nahkampf reicht nicht). */
+export const REACH_LOST_S = 0.8;
 export const ST = ['idle', 'approach', 'taunt', 'threaten', 'attack', 'flee', 'beaten'];
 
 function fnv(s) {
@@ -132,7 +134,7 @@ export function stepRowdy(m, dt, env) {
   }
   // Ziel-Bereich getrennt (1.19.0): auf Hindernissen (Feuertreppe) darf der Spieler stehen, ist dann aber nur über seine Höhe unerreichbar
   const usable = p && !p.safe && gangAreaOk(p.x, p.z, env.playerAllowed || env.allowed, env.playerForbidden || env.forbidden);
-  const reach = !p || !(p.y > REACH_Y);
+  const high = !!p && (Number(p.y) || 0) - (Number(m.y) || 0) > REACH_Y; // relativ zur Höhe des Rowdys (Boden = 0)
   const dist = p ? Math.hypot(p.x - m.x, p.z - m.z) : Infinity;
   if (!usable) { // Ziel weg oder geschützt: zurück an den Platz
     if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; }
@@ -158,7 +160,12 @@ export function stepRowdy(m, dt, env) {
   }
   if (m.st === 'threaten') { if (m.t <= 0) m.st = 'attack'; return ev; }
   if (m.st === 'attack') {
-    if (!reach) { m.st = 'taunt'; m.t = 2.5; m.stuck = 0; ev.push({ type: 'say', i: m.i, cat: 'taunt' }); return ev; } // oben auf der Treppe: kein Schlag, nur pöbeln
+    if (high) { // oben auf der Treppe: kein Schlag, nach REACH_LOST_S dauerhaft nur noch pöbeln (kurze Sprünge ignorieren)
+      m.over = (m.over || 0) + dt;
+      if (m.over >= REACH_LOST_S) { m.over = 0; m.st = 'taunt'; m.t = 2.5; m.stuck = 0; ev.push({ type: 'say', i: m.i, cat: 'taunt' }); }
+      return ev;
+    }
+    m.over = 0;
     if (dist > 1.2) {
       stuckStep(m, moveTo(m, p.x, p.z, dt, env, 1.5), dt);
       if (m.stuck >= STUCK_GIVE_UP_S) { m.st = 'idle'; m.t = 0; m.stuck = 0; m.cool = GIVE_UP_COOL; } // 1.18.1: Weg versperrt → aufgeben

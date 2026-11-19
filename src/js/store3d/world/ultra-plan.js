@@ -90,6 +90,11 @@ export function signBoards(city) {
     const h = s.w / 4 + 0.16;
     list.push({ axis: 'z', c: s.z, a0: s.x - s.w / 2 - 0.1, a1: s.x + s.w / 2 + 0.1, y0: s.y - h / 2, y1: s.y + h / 2 });
   }
+  const ps = city.palast && city.palast.sign;
+  if (ps && city.frame && Number.isFinite(city.frame.sz)) { // Palast-Leuchtschild samt Glühlampen-Rahmen (build-city-decor: ±0,25 seitlich, ±0,2 + 0,15 oben/unten)
+    const h = ps.w / 4 + 0.8;
+    list.push({ axis: 'z', c: city.frame.sz, a0: ps.x - ps.w / 2 - 0.3, a1: ps.x + ps.w / 2 + 0.3, y0: ps.y - h / 2, y1: ps.y + h / 2 });
+  }
   return list;
 }
 /** Überdeckt ein Fenster (Rahmen inklusive, `margin` m Rand) ein Schild derselben Wand? */

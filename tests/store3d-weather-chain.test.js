@@ -197,4 +197,25 @@ describe('daytime: Abruf-Takt des echten Wetters', () => {
     await flush();
     expect(w).toMatchObject({ real: true, temp: null });
   });
+
+  it('N1: hängender Abruf: pending endet nach 8 s, nach 15 s ist ein neuer Abruf möglich, späte Antwort wird verworfen', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const resolvers = [];
+    const f = vi.fn(() => new Promise((r) => { resolvers.push(r); }));
+    const { w } = await build(f);
+    w.setRaining(true);
+    await vi.advanceTimersByTimeAsync(8500);
+    expect(w.raining).toBe(true); // pending vorbei, obwohl fetching noch hängt
+    tick(70);
+    expect(f).toHaveBeenCalledTimes(1); // fetching noch gesperrt
+    await vi.advanceTimersByTimeAsync(7000); // Sicherung (15 s) gegriffen
+    tick(70, 100);
+    expect(f).toHaveBeenCalledTimes(2);
+    resolvers[0](real({ k: 'snow', sd: 0.1, t: -3 })); // späte Antwort des ersten Abrufs
+    await vi.advanceTimersByTimeAsync(0);
+    expect(w.real).toBe(false);
+    resolvers[1](real({ k: 'fog', fog: 0.7 }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(w).toMatchObject({ kind: 'fog', real: true });
+  });
 });

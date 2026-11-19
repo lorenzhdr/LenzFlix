@@ -362,7 +362,7 @@ export default {
       swing(m);
       if (target.self) {
         const fp = fightProv();
-        if (fp && typeof fp.hitPlayer === 'function') { try { fp.hitPlayer({ dmg: e.dmg, knock: dir, src: 'gang', from: { x: m.x, z: m.z } }); } catch (err) { warn('hitPlayer', err); } }
+        if (fp && typeof fp.hitPlayer === 'function') { try { fp.hitPlayer({ dmg: e.dmg, knock: dir, src: 'gang', from: { x: m.x, z: m.z }, fromY: Number(m.y) || 0 }); } catch (err) { warn('hitPlayer', err); } }
       } else if (fn) fn.send('fh', { c: target.c, w: 0, dir, src: 1, from: { x: m.x, z: m.z } });
     }
     function stepLogic(dt, fn) {

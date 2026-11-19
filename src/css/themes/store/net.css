@@ -22,15 +22,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social[hidden],
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social > .lfx-mp-count[hidden] {
   display: none;
 }
-/* Desktop: oben links (Touch: oben rechts, W0-Platz) */
+/* Desktop: oben links (Touch: oben rechts, W0-Platz). Der Ansicht-Knopf (44 px + 10 px Abstand, scene.css) sitzt am Rechner ganz links und liegt in einem
+   Geschwisterbaum (.lfx-store-ov), nicht neben der Pille: die Pille rückt deshalb immer um seine Breite nach rechts (auch ohne :has, überlappungsfrei);
+   ist der Knopf ausgeblendet (hidden) oder fehlt, rückt sie per :has wieder an den Rand. Menü-Knopf (nur Touch) und Desktop-Pille treten nie zusammen auf. */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social.is-desk {
   right: auto;
-  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  left: calc(max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px)) + 54px);
   flex-direction: row;
 }
-/* Ist der Ansicht-Knopf (44 px + 10 px Abstand) sichtbar, rückt die Pille rechts daneben, statt darüber zu liegen */
-html.lfx-js.lfx-theme-store:not(.layout-tv) :has(.lfx-store-viewbtn:not([hidden])) > .lfx-mp-social.is-desk {
-  left: calc(max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px)) + 54px);
+html.lfx-js.lfx-theme-store:not(.layout-tv) :has(.lfx-store-viewbtn[hidden]) > .lfx-mp-social.is-desk,
+html.lfx-js.lfx-theme-store:not(.layout-tv) :not(:has(.lfx-store-viewbtn)) > .lfx-mp-social.is-desk {
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
 }
 
 /* Namensschild über der Figur (Lage setzt net/tags.js inline) */

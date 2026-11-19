@@ -245,7 +245,7 @@ export default {
       w.temper = temper;
       // Wurftreffer (throw.js ruft nur handle.hitReact) sollen wie der Schlag wirken: Walker-Automat auf stagger setzen, sonst überschreibt er die Animation jeden Frame.
       const rawReact = handle.hitReact.bind(handle);
-      const entry = { w, handle, acc: 0, rawReact, col: null, look, seed, temper, tst: { temper }, act: null, pend: null, pose: null, known: rand() < 0.25, waved: false, danceCool: 0 };
+      const entry = { w, handle, acc: 0, rawReact, col: null, look, seed, temper, umb: rain ? !!look.umbrella : umbQuota(seed), tst: { temper }, act: null, pend: null, pose: null, known: rand() < 0.25, waved: false, danceCool: 0 };
       voiceIds.set(handle, { id: `w${seed}`, voiceSeed: seed });
       handle.hitReact = (dir) => walkerProvoked(entry, 'hit', dir);
       entry.col = ctx.addCollider({ x0: PARK, z0: PARK, x1: PARK + 0.5, z1: PARK + 0.5, y1: 1.8, top: false, kind: 'walker' }, { dynamic: true });
@@ -270,7 +270,7 @@ export default {
     const canAttack = () => !xrOn() && countAttackers() < MAX_ATTACKERS && !protectedNow();
     function restoreItem(e) {
       const h = e.handle;
-      try { if (h.getHandItem && h.getHandItem()) h.setHandItem(null); if (e.look && e.look.umbrella && raining()) h.setUmbrella(true); } catch { /* egal */ }
+      try { if (h.getHandItem && h.getHandItem()) h.setHandItem(null); if (e.look) { e.look.umbrella = raining() && !!e.umb; h.setUmbrella(e.look.umbrella); } } catch { /* egal */ }
     }
     function provokeCat(e, kind, action, ev) {
       if (e.temper === 'hot') return action === 'attack' ? 'attackHot' : 'provokeHot';
@@ -344,7 +344,7 @@ export default {
       const f = fightP();
       if (!f || typeof f.hitPlayer !== 'function' || xrOn()) return;
       let ok;
-      try { ok = f.hitPlayer({ dmg: ev.dmg, knock: { x: ev.dir.x, z: ev.dir.z }, src: 'npc', from: { x: ev.from.x, z: ev.from.z } }); } catch { ok = false; }
+      try { ok = f.hitPlayer({ dmg: ev.dmg, knock: { x: ev.dir.x, z: ev.dir.z }, src: 'npc', from: { x: ev.from.x, z: ev.from.z }, fromY: Number(e && e.handle && e.handle.root && e.handle.root.position.y) || 0 }); } catch { ok = false; }
       if (ok) sound('slap');
     }
     function stepAct(e, step) {
@@ -573,18 +573,21 @@ export default {
     // ------------------------------------------------------------ Schirme folgen dem Wetter (1.19.0)
     // Das echte Wetter kommt oft erst nach dem Erzeugen der Passanten (und endet später): bei Nässe-Wechsel bekommen bestehende Passanten
     // deterministisch je Seed (gleiche 75-%-Quote wie beim Erzeugen) einen Schirm bzw. klappen ihn zu, leicht gestaffelt über wenige Sekunden.
-    const umbQuota = (seed) => frac((seed ^ 0x51ed270b) >>> 0) < 0.75;
+    // Eine Entscheidung je Passant (e.umb): bei Regen im Erzeugen die makeLook-Quote (look.umbrella), sonst seed-abgeleitet (75 %), danach fest.
+    function umbQuota(seed) { return frac((seed ^ 0x51ed270b) >>> 0) < 0.75; }
     let wetPrev = raining();
     let offWx = null;
     function syncUmbrellas() {
       for (const e of walkers) {
-        const want = () => raining() && umbQuota(e.seed);
+        const want = () => raining() && !!e.umb;
         if (want() === !!e.look.umbrella) continue;
         later(0.4 + frac(e.seed) * 5, () => {
           if (!walkers.includes(e)) return;
           const v = want();
           if (v === !!e.look.umbrella) return;
           e.look.umbrella = v;
+          // Hält der Passant gerade ein Hand-Item (Angriff/Blendung), nichts anfassen: restoreItem stellt den Schirm danach her.
+          if (e.act || (e.handle.getHandItem && e.handle.getHandItem())) return;
           try { e.handle.setUmbrella(v); } catch { /* egal */ }
         });
       }

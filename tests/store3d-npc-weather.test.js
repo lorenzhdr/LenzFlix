@@ -105,6 +105,49 @@ describe('npc: Schirme folgen dem Wetter', () => {
     expect(listeners.size).toBe(0);
     host = null;
   });
+  it('N2a: je Passant eine feste Schirm-Entscheidung (gleiche Menge bei jedem Regen)', async () => {
+    await build();
+    tick(2);
+    setWet(true); tick(8);
+    const first = new Set(walkers().filter((p) => { let n = 0; p.handle.root.traverse((o) => { if (o instanceof Mesh) n++; }); return n >= 2; }).map((p) => p.handle));
+    expect(first.size).toBeGreaterThan(0);
+    setWet(false); tick(8);
+    expect(umbrellas()).toBe(0);
+    setWet(true); tick(8);
+    const second = new Set(walkers().filter((p) => { let n = 0; p.handle.root.traverse((o) => { if (o instanceof Mesh) n++; }); return n >= 2; }).map((p) => p.handle));
+    for (const h of second) if (walkers().some((p) => p.handle === h) && first.has(h)) expect(first.has(h)).toBe(true);
+    // Passanten, die in beiden Phasen existierten: identische Entscheidung
+    const alive = walkers().map((p) => p.handle).filter((h) => first.has(h) || second.has(h));
+    for (const h of alive) expect(first.has(h)).toBe(second.has(h));
+  });
+
+  it('N2b: zeitversetztes Schirm-Setzen greift nicht, solange ein Hand-Item gehalten wird', async () => {
+    await build();
+    tick(2);
+    const ws = walkers();
+    const calls = [];
+    for (const p of ws) {
+      p.handle.setHandItem('belt');
+      const raw = p.handle.setUmbrella.bind(p.handle);
+      p.handle.setUmbrella = (v) => { calls.push(v); raw(v); };
+    }
+    setWet(true);
+    tick(8);
+    expect(calls.filter((v) => v === true).length).toBe(0);
+  });
+
+  it('N2c: Regenende waehrend der Blendung (Schirm bleibt am Handle): nach der Wiederherstellung kein Schirm mehr', async () => {
+    await build();
+    tick(2);
+    setWet(true); tick(8);
+    const api = host.ctx.use('npc');
+    const q = walkers().find((w) => api.temperOf(w.handle) !== 'hot' && w.handle.hasUmbrella && w.handle.hasUmbrella());
+    expect(q).toBeTruthy();
+    expect(api.laserHit(q.handle)).toBe(true);
+    setWet(false);
+    tick(40);
+    expect(q.handle.hasUmbrella()).toBe(false);
+  });
 });
 
 describe('createPigeons: dispose entsorgt die Geometrien', () => {

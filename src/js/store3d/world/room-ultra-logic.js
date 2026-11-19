@@ -63,6 +63,23 @@ export function fitTitle(title, maxW, measure, max = 30, min = 17) {
   return { px, words: out };
 }
 
+/**
+ * Wörter zu Zeilen umbrechen (reine Funktion, `measure(text)` → Breite). Ein Wort, das auf '-' endet, ist ein Trennstück aus fitTitle:
+ * das nächste Stück folgt dann ohne Leerzeichen (sonst würde „ONDFLÜ-STERE“ zu „ONDFLÜ- STERE“).
+ */
+export function wrapWords(words, measure, maxW) {
+  const lines = [];
+  let cur = '';
+  let prev = '';
+  for (const w of words) {
+    const t = cur ? (prev.endsWith('-') ? cur + w : `${cur} ${w}`) : w;
+    if (cur && measure(t) > maxW) { lines.push(cur); cur = w; } else cur = t;
+    prev = w;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 const C = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
 
 /**

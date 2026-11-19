@@ -232,9 +232,20 @@ export function createMirror(ctx, o) {
     return true;
   }
 
+  // Schatten-Bereitschaft: einmal bereit, nicht mehr bei jedem Bild die ganze Szene durchlaufen; Schalter (Stufenwechsel) oder Größenwechsel setzen zurück.
+  let shadowOk = false;
+  let shadowOn = null;
+  function shadowsOk() {
+    const on = !!(ctx.renderer.shadowMap && ctx.renderer.shadowMap.enabled);
+    if (on !== shadowOn) { shadowOn = on; shadowOk = false; }
+    if (shadowOk) return true;
+    shadowOk = shadowsReady(ctx.renderer, ctx.scene);
+    return shadowOk;
+  }
+
   function renderNow() {
     const cam = ctx.camera;
-    if (!shadowsReady(ctx.renderer, ctx.scene)) return false; // erstes Hauptbild legt die Schattenkarten an
+    if (!shadowsOk()) return false; // erstes Hauptbild legt die Schattenkarten an
     if (!setup(cam)) return false;
     if (rt && rt.width !== rtSize) { rt.dispose(); rt = null; }
     if (!rt) { rt = makeTarget(rtSize); mat.uniforms.tDiffuse.value = rt.texture; }
@@ -249,6 +260,7 @@ export function createMirror(ctx, o) {
     setSize(n) {
       const v = Math.max(64, Math.min(2048, Math.round(Number(n)) || MIRROR_RT));
       if (v === rtSize) return;
+      shadowOk = false;
       rtSize = v; // das alte Ziel bleibt bis zum nächsten Spiegelbild stehen (kein Schwarzbild), renderNow tauscht es
     },
     getSize: () => rtSize,
