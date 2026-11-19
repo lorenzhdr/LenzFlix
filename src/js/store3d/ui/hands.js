@@ -126,7 +126,15 @@ export function createHands(camera, opts = {}) {
   const weaponGroup = new Group();
   let wpos = WEAPON_POS;
   const coarse = () => typeof matchMedia === 'function' && !!matchMedia('(pointer: coarse)').matches;
-  const placeWeapon = () => { wpos = weaponPos(camera.fov, camera.aspect, coarse()); };
+  // Lage nur neu berechnen, wenn sich fov/Seitenverhältnis ändern (resize/Drehen); matchMedia nicht pro Bild.
+  let placedFov = NaN;
+  let placedAspect = NaN;
+  const placeWeapon = () => {
+    if (camera.fov === placedFov && camera.aspect === placedAspect) return;
+    placedFov = camera.fov;
+    placedAspect = camera.aspect;
+    wpos = weaponPos(camera.fov, camera.aspect, coarse());
+  };
   weaponGroup.position.set(...wpos);
   weaponGroup.visible = false;
   group.add(weaponGroup);
