@@ -722,6 +722,13 @@ html.lfx-js .lfx-tp__card--store .lfx-tp__state {
   top: auto;
   bottom: 14px;
 }
+/* Sheet: Platz unter dem Text reservieren, damit „Aktiv“ keine Tagline überdeckt */
+html.lfx-js .lfx-tp--sheet .lfx-tp__card--store.is-active .lfx-tp__info {
+  padding-bottom: 30px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__card--store .lfx-tp__state {
+  bottom: 10px;
+}
 /* Wortmarke darf bei schmaler Textspalte (320 px) umbrechen statt rechts abgeschnitten zu werden */
 html.lfx-js .lfx-tp--sheet .lfx-tp__mark--store {
   flex-wrap: wrap;
