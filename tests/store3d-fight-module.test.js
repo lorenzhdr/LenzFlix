@@ -147,6 +147,15 @@ describe('fight: Angriff', () => {
 });
 
 describe('fight: Treffer am Spieler und Schutz', () => {
+  it('1.19.0: Bodenfiguren (npc/gang) treffen niemanden > 1,2 m höher (Feuertreppe), Mitspieler (pvp) schon', () => {
+    const s = setup();
+    s.pose.y = 1.65;
+    expect(s.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'gang' })).toBe(false);
+    expect(s.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'npc' })).toBe(false);
+    expect(s.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'pvp' })).toBe(true);
+    s.pose.y = 0.5;
+    expect(s.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'gang' })).toBe(true);
+  });
   it('Treffer senkt die Energie, stößt zurück, Ton ouch; Anzeige erscheint', () => {
     const s = setup();
     expect(s.f.hitPlayer({ dmg: 20, knock: { x: 1, z: 0 }, src: 'npc' })).toBe(true);

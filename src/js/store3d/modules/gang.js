@@ -9,7 +9,7 @@
 // läuft alles lokal ('local', wie 1.17 ohne Mehrspieler); wer sich in der Nähe befindet und keinen Führer sieht, fordert die Führung an (`gc`).
 // Die Uhr des Führers gilt: Tageszeit-Phase und Seed stehen im `gs`. Der Empfang von `fh` src 1 (Schaden an mir) gehört dem Modul fight, nicht hier.
 // Draw-Calls: je sichtbarer Rowdy eine Figur (1 Draw-Call), npc.reserve(n, 'gang') gleicht aus, bei `low` höchstens 2 Figuren; in VR keine Bande.
-import { createGang, createRowdy, hitRowdy, stepRowdy, gangAreaOk, spawnCount, GANG_MAX } from '../npc/gang-logic.js';
+import { createGang, createRowdy, hitRowdy, stepRowdy, gangAreaOk, spawnCount, GANG_MAX, BODY_R } from '../npc/gang-logic.js';
 import { weaponInfo, selectTargets } from '../fight/weapons.js';
 import { pickLine } from '../npc/lines.js';
 import { makeLook } from '../npc/looks.js';
@@ -65,9 +65,11 @@ const grow = (r, g) => ({ x0: r.x0 - g, z0: r.z0 - g, x1: r.x1 + g, z1: r.z1 + g
 export function gangEnv(city) {
   const zn = city && city.zones;
   if (!zn || !zn.alley || !zn.yard || !zn.store) return null;
-  const allowed = rects(zn, ['alley', 'yard', 'escape']);
-  const solid = (city.colliders || []).filter((c) => c && c.kind !== 'escape' && !c.dynamic && (c.y1 === undefined || c.y1 > 0.4) && Number.isFinite(c.x0)).map((c) => ({ x0: c.x0, z0: c.z0, x1: c.x1, z1: c.z1 }));
-  const shut = [...rects(zn, ['store', 'doorway']).map((r) => grow(r, WALL_GROW)), ...solid];
+  const allowed = rects(zn, ['alley', 'yard']);
+  // 1.19.0: Feuertreppen-Blöcke sind massiv ab Boden (jede Höhe sperrt); alle festen Hindernisse mit Körperradius (r) als Kreisprüfung
+  const solid = (city.colliders || []).filter((c) => c && !c.dynamic && (c.kind === 'escape' || c.y1 === undefined || c.y1 > 0.4) && Number.isFinite(c.x0)).map((c) => ({ x0: c.x0, z0: c.z0, x1: c.x1, z1: c.z1, r: BODY_R }));
+  const doors = rects(zn, ['store', 'doorway']).map((r) => grow(r, WALL_GROW));
+  const shut = [...doors, ...solid];
   const clear = (x, z) => !shut.some((r) => x > r.x0 - 0.7 && x < r.x1 + 0.7 && z > r.z0 - 0.7 && z < r.z1 + 0.7);
   const spots = [];
   const grid = (r, step) => {
@@ -75,7 +77,8 @@ export function gangEnv(city) {
   };
   grid(zn.alley.rect, 1.6); // Gassenmund bevorzugt (dichteres Raster)
   grid(zn.yard.rect, 3.2);
-  return { allowed, forbidden: shut, spots };
+  // Ziele (Spieler/Mitspieler) dürfen auch auf Hindernissen stehen (Feuertreppe); nur Laden/Tür sind für sie tabu, die Höhe regelt stepRowdy
+  return { allowed, forbidden: shut, playerAllowed: [...allowed, ...rects(zn, ['escape'])], playerForbidden: doors, spots };
 }
 
 export default {
@@ -338,7 +341,7 @@ export default {
       const pose = poseOf();
       if (pose) {
         const fp = fightProv();
-        out.push({ c: myC(), self: true, x: pose.x, z: pose.z, safe: !entered || !!(fp && typeof fp.protected === 'function' && fp.protected()) });
+        out.push({ c: myC(), self: true, x: pose.x, y: pose.y || 0, z: pose.z, safe: !entered || !!(fp && typeof fp.protected === 'function' && fp.protected()) });
       }
       if (role === 'leader' && fn && fn.has()) {
         const n = ctx.use('net');
@@ -346,7 +349,7 @@ export default {
         for (const p of list) {
           if (p.f & 8) continue; // VR: kein Ziel
           const pp = fn.peerPos(p.c);
-          if (pp) out.push({ c: p.c, self: false, x: pp.x, z: pp.z, safe: false });
+          if (pp) out.push({ c: p.c, self: false, x: pp.x, y: pp.y || 0, z: pp.z, safe: false });
         }
       }
       return out;
@@ -377,12 +380,12 @@ export default {
         let best = null;
         let bd = Infinity;
         for (const t of targets) {
-          if (t.safe || !gangAreaOk(t.x, t.z, env.allowed, env.forbidden)) continue;
+          if (t.safe || !gangAreaOk(t.x, t.z, env.playerAllowed, env.playerForbidden)) continue;
           const d = Math.hypot(t.x - m.x, t.z - m.z);
           if (d < bd) { bd = d; best = t; }
         }
         m.tgt = best ? best.c : 0;
-        const evs = stepRowdy(m, dt, { allowed: env.allowed, forbidden: env.forbidden, player: best ? { x: best.x, z: best.z, safe: false } : null });
+        const evs = stepRowdy(m, dt, { allowed: env.allowed, forbidden: env.forbidden, playerAllowed: env.playerAllowed, playerForbidden: env.playerForbidden, player: best ? { x: best.x, y: best.y || 0, z: best.z, safe: false } : null });
         for (const e of evs) if (e.type === 'strike') strike(m, e, best, fn);
       }
     }

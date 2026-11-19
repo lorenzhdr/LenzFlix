@@ -140,12 +140,15 @@ export default {
     function strengthOf(dmg) { return Math.max(0.3, Math.min(1, dmg / 26)); }
     /** Energie-Faktor für Treffer von NPCs (src 'npc'/'gang', auch Bandenhiebe übers Netz); 1.18.0 war 1 (zwei Passanten: ~76 Energie in 6 s). */
     const NPC_DMG_SCALE = 0.5;
+    const NPC_REACH_Y = 1.2;
 
     function hitPlayer(o) {
       if (disposed || !o || xrOn() || flags.fight === false) return false;
       if (protReason()) return false;
       const dmg = Number(o.dmg);
       if (!(dmg > 0)) return false;
+      // 1.19.0: Bodenfiguren (Passanten, Bande) erreichen niemanden auf der Feuertreppe/dem Dach (Höhenunterschied > NPC_REACH_Y); Mitspieler (pvp) unverändert
+      if (o.src === 'npc' || o.src === 'gang') { let py = 0; try { py = Number(ctx.player.getPose().y) || 0; } catch { /* egal */ } if (py - (Number(o.fromY) || 0) > NPC_REACH_Y) return false; }
       // 1.18.1: Passanten, Personal und Bande ziehen nur die Hälfte an Energie ab (Rückstoß bleibt); Mitspieler (pvp) unverändert
       const r = energy.hit(dmg * (o.src === 'npc' || o.src === 'gang' ? NPC_DMG_SCALE : 1), T);
       if (r.ignored) return false;
