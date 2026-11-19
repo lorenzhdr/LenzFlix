@@ -13,7 +13,7 @@ import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { createBrawlFsm, STATES, BRAWL } from './brawl-fsm.js';
 import { inCone, stepAlong, hopPoint, aimVelocity, ballisticStep } from './brawl-logic.js';
 import { poseFor, NEUTRAL, ANIMS, REDNESS } from './brawl-pose.js';
-import { prefersReducedMotion, angDiff } from './m4-util.js';
+import { prefersReducedMotion, angDiff, clamp } from './m4-util.js';
 
 const GRUDGE_KEY = 'lfx.store.richardGrudge';
 const RUN_SPEED = 4.0;
@@ -157,7 +157,6 @@ export default {
     const away = (p) => { const dx = p.x - R.pos.x; const dz = p.z - R.pos.z; const l = Math.hypot(dx, dz) || 1; return { x: dx / l, z: dz / l }; };
     const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
     const inPen = () => R.pos.x >= counter.x0 - 0.1 && R.pos.z >= counter.z1 - 0.05 && R.pos.y < 0.3;
-    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
     const onCounter = (q) => q.x >= counter.x0 - 0.05 && q.x <= counter.x1 + 0.05 && q.z > counter.z0 + 0.02 && q.z < counter.z1 - 0.02;
     /** Freier Landepunkt auf der Kundenseite vor dem Tresen: nie auf dem Tresen, nie im Spieler (seitlich/nach hinten versetzt). */
     function landingPoint(p) {

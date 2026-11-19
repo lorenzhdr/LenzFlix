@@ -338,7 +338,7 @@ function shadowCanvas() {
 
 export const SHADOW_DYN_MAX = 56;
 export const SHADOW_PARKED_MAX = 4; // geparkte Autos (traffic: höchstens 3 Stellplätze)
-export const SHADOW_FAR = 30;
+const SHADOW_FAR = 30;
 const FLOOR_Y = 0.03;
 const ALL_VISIBLE = { street: true, shopShell: true };
 

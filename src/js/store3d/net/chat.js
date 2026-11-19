@@ -10,10 +10,10 @@ import { sanitize, LIM } from './proto.js';
 
 export const RING_MAX = 50;
 export const HEAR_M = 16;
-export const SEND_MAX = 5;
-export const SEND_WIN_MS = 10000;
+const SEND_MAX = 5;
+const SEND_WIN_MS = 10000;
 export const MUTE_MAX = 50;
-export const K_RE = /^[0-9a-f]{12}$/;
+const K_RE = /^[0-9a-f]{12}$/;
 
 /** NFC, Steuer-/Bidi-Zeichen raus, ≤ 200 Zeichen (gleiche Regel wie der Server). */
 export const clean = (text) => sanitize(text, LIM.textMax);

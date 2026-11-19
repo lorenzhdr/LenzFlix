@@ -145,7 +145,7 @@ describe('Wisch-Trick', () => {
   it('„Dauerhaft ohne Leiste“ öffnet die Anleitung, Esc schließt', () => {
     fs = mk(); fs.update();
     [...document.querySelectorAll('.lfx-store-swipe-hint button')].find((b) => b.textContent.startsWith('Dauerhaft')).click();
-    expect(document.querySelector('.lfx-store-fs-guide').textContent).toContain('Vollbild am iPhone');
+    expect(document.querySelector('.lfx-store-fs-guide').textContent).toContain('Vollbild am Handy');
     expect(document.querySelector('.lfx-store-swipe-hint')).toBeNull();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(document.querySelector('.lfx-store-fs-guide')).toBeNull();
@@ -210,7 +210,7 @@ describe('Vollbild-Knopf', () => {
     expect(c3.kind).toBe('guide');
     c3.toggle();
     const g = document.querySelector('.lfx-store-fs-guide');
-    expect(g.textContent).toContain('Kein Ton? Stummschalter am iPhone prüfen.');
+    expect(g.textContent).toContain('Kein Ton? Stummschalter am Handy prüfen.');
     g.querySelector('.lfx-store-act').click();
     expect(document.querySelector('.lfx-store-fs-guide')).toBeNull();
     c3.destroy();

@@ -89,7 +89,7 @@ void main() {
 }`;
 
 /** Material des Planspiegels: live = Textur der Spiegelkamera, sonst matter Verlauf (Farben linear). */
-export function mirrorMaterial(rt) {
+function mirrorMaterial(rt) {
   return new ShaderMaterial({
     uniforms: {
       tDiffuse: { value: rt ? rt.texture : null },

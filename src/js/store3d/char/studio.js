@@ -37,7 +37,7 @@ const RULER_X = -1.75; // Maßstab weit seitlich: nur im Ganzkörperbild (Querfo
  * bei −z, also von vorn); die Figur wird per Schwenk (Blickpunkt seitlich/höher bzw. tiefer) in die freie Fläche gelegt, nicht durch Verschieben
  * der Kamera – so bleibt die Ansicht frontal und die Kamera nie unter dem Boden.
  */
-export function framePose(y0, y1, w, { aspect = 1, fov = 30, free = null, margin = 0.1, minDist = 0.3 } = {}) {
+function framePose(y0, y1, w, { aspect = 1, fov = 30, free = null, margin = 0.1, minDist = 0.3 } = {}) {
   const fr = { x0: 0, x1: 1, y0: 0, y1: 1, ...(free || {}) };
   const fw = Math.max(0.05, fr.x1 - fr.x0);
   const fh = Math.max(0.05, fr.y1 - fr.y0);

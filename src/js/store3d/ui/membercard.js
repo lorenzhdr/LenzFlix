@@ -5,7 +5,7 @@
 import { CATALOG } from '../discover/catalog.js';
 import { formatDay, foundFromMask } from '../char/card.js';
 
-export const TIER_LABEL = { bronze: 'Bronze', silver: 'Silber', gold: 'Gold' };
+const TIER_LABEL = { bronze: 'Bronze', silver: 'Silber', gold: 'Gold' };
 
 function h(tag, cls, text) {
   const e = document.createElement(tag);

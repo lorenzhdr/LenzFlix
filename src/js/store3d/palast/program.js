@@ -1,6 +1,7 @@
 // VIDEOTHEK LENZ · LENZ PALAST: Tagesprogramm (rein: kein three, kein DOM, kein Math.random, keine Systemuhr).
 // Gleicher Katalog + gleicher Kalendertag = gleiches Programm (auch auf allen Clients). Uhrzeiten sind Stimmung: ein Film
 // startet immer von vorn bzw. ab der Weiterschauen-Position. Eingabe: Katalog { items: Map|Objekt, resume: Item[], departments }.
+import { seeded } from '../modules/m4-util.js';
 
 /** Vorstellungsplätze. Bei weniger Filmen werden die späteren Zeiten bevorzugt (Abendkino). */
 export const SLOTS = Object.freeze([
@@ -37,17 +38,8 @@ export function hashStr(s) {
   return h >>> 0;
 }
 
-/** mulberry32 */
-export function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+/** mulberry32 (= `seeded` aus modules/m4-util.js). */
+export const rng = seeded;
 
 const p2 = (n) => String(n).padStart(2, '0');
 

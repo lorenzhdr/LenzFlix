@@ -64,7 +64,7 @@ export function detailHead(hd, d, fb) {
 }
 
 /** Winterfarben aus dem Look (deterministisch). */
-export function winterColors(d) {
+function winterColors(d) {
   const hat = sc(mix(d.top, d.bottom, 0.35), 1.1);
   return { hat, cuff: sc(hat, 0.72), pom: mix(hat, WHITE, 0.55), scarf: sc(mix(d.top, WHITE, 0.25), 0.95), scarf2: sc(mix(d.bottom, d.top, 0.5), 1.15) };
 }

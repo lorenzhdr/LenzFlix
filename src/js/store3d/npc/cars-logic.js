@@ -4,6 +4,7 @@
 // Hinweis: In city.js liegt `stop.at` HINTER dem ersten Zebrastreifen der Fahrtrichtung (Bsp. mainW: Linie xc1+1.4, Zebra xc1+2.2…4.4).
 // Ein bei Rot haltendes Auto stünde auf dem Streifen, auf dem in dieser Phase die Fußgänger gehen. effectiveStop() hält deshalb
 // vor dem Zebra (Stoßstange 0,6 m davor).
+import { clamp } from '../modules/m4-util.js';
 
 export const CAR_LEN = 4.2;
 export const CAR_W = 1.8;
@@ -18,7 +19,6 @@ export const BLIND_STAND = 2.5; // s stehen (und hupen), danach fährt das Auto 
 const BLIND_HONK_EVERY = 0.8; // s zwischen den Hupsignalen während der Blendung
 const UPSTREAM_WINDOW = 6; // Zebra gilt als „vor der Haltelinie“, wenn sie höchstens so weit davor beginnt
 
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 export function laneSign(lane) { return (lane.dir.x || lane.dir.z) > 0 ? 1 : -1; }
 export function laneAxis(lane) { return lane.dir.x ? 'x' : 'z'; }

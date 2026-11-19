@@ -4,6 +4,7 @@
 // Die Code-Tabellen (Pose-a → ANIMS-Name NET_A_ANIM, Flag-Bits F, ITEM_RE) stehen ausschließlich in net/proto.js.
 import { presetFor } from '../engine/quality.js';
 import { NET_A_ANIM, F, ITEM_RE } from './proto.js';
+import { clamp } from '../modules/m4-util.js';
 
 /** Abtast-Verzögerung der Anzeige für Fremde (ms), Vertrag §7.2. */
 export const PEER_DELAY_MS = 250;
@@ -35,7 +36,6 @@ export function fnv1a32(str) {
 export const lookSeed = (k) => fnv1a32('lfx-mp-look|' + String(k));
 
 const num = (v, d = 0) => (Number.isFinite(v) ? v : d);
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 // ---------------------------------------------------------------- Pose
 /**
@@ -120,9 +120,6 @@ export function regionVisible(area, vis) {
   if (area === 'salon') return !!v.salonInterior;
   return v.street !== false;
 }
-
-/** Bereichsnamen, in denen eine Figur auf der Straßenseite (Passanten-Ausgleich) steht. */
-export const OUTDOOR = new Set(['street', 'crossing', 'sideN', 'sideS', 'yard', 'alley', 'roof', 'escape', 'kiosk', 'palastEntrance', 'outside', 'doorway']);
 
 /**
  * LOD-Grenzen (Entwurf net3d §6). max = Figuren, tagDist = DOM-Schild (m), tag3d = Anzahl 3D-Schilder (VR), tag3dDist (m),

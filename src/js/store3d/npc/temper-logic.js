@@ -3,7 +3,7 @@ export const TEMPERS = ['shy', 'normal', 'hot'];
 export const CHASE_MAX = 8;
 export const MAX_ATTACKERS = 3;
 
-function fnv(s) {
+export function fnv(s) {
   let h = 2166136261;
   s = String(s);
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }

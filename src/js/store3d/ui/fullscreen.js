@@ -96,12 +96,12 @@ export function createFullscreen({ host, isTouch, getMode, userId, hud, onChange
     const root = el('div', 'lfx-store-fs-guide');
     const panel = el('div', 'lfx-store-fs-panel');
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'Vollbild am iPhone');
+    panel.setAttribute('aria-label', 'Vollbild am Handy');
     panel.append(
-      el('div', 'lfx-store-fs-title', 'Vollbild am iPhone'),
-      el('p', 'lfx-store-fs-text', 'Teilen → „Zum Home-Bildschirm“ → „Als Web-App öffnen“: Dann startet Jellyfin ohne Safari-Leisten.'),
+      el('div', 'lfx-store-fs-title', 'Vollbild am Handy'),
+      el('p', 'lfx-store-fs-text', 'Teilen → „Zum Home-Bildschirm“ → „Als Web-App öffnen“: Dann startet Jellyfin ohne Browser-Leisten.'),
       el('p', 'lfx-store-fs-text', 'Alternativ: im Querformat einmal nach oben wischen.'),
-      el('p', 'lfx-store-fs-text lfx-store-fs-text--muted', 'Kein Ton? Stummschalter am iPhone prüfen.'),
+      el('p', 'lfx-store-fs-text lfx-store-fs-text--muted', 'Kein Ton? Stummschalter am Handy prüfen.'),
     );
     const ok = el('button', 'lfx-store-act lfx-store-act--primary', 'Verstanden');
     ok.type = 'button';

@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Energie-Logik (1.18.0; rein, Zeit injiziert in Sekunden): 0..100, nach 6 s ohne Treffer +3,3/s, K.O. bei 0.
 // Schutz: 10 s nach dem Aufwachen; „Menü schützt“: ein offenes Menü schützt erst 3 s nach dem Öffnen (Missbrauchssperre),
 // danach bis 2 s nach dem Schließen; im Nachlauf wieder geöffnet gilt der Schutz sofort weiter.
-export const ENERGY_MAX = 100;
+const ENERGY_MAX = 100;
 export const REGEN_DELAY = 6;
 export const REGEN_RATE = 3.3;
 export const KO_PROTECT = 10;

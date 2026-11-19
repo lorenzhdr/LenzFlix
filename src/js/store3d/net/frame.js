@@ -7,10 +7,9 @@ import { areaAt } from '../world/city.js';
 export const W0 = 12.5;
 export const D0 = 18;
 export const PW0 = 20;
-export const SZ0 = 28.7;
 /** Knoten im Netzrahmen: allgemein (x) und Palast (x). */
-export const NET_KX = [0, 1.75, 10.75, 12.5];
-export const NET_KP = [-3.75, 0.75, 11.75, 16.25];
+const NET_KX = [0, 1.75, 10.75, 12.5];
+const NET_KP = [-3.75, 0.75, 11.75, 16.25];
 
 const TAU = Math.PI * 2;
 const r0 = (v) => Math.round(v) + 0; // kein -0
@@ -27,7 +26,7 @@ export const encYaw = (yaw) => r0(wrapYaw(yaw) * 100);
 export const decYaw = (c) => c / 100;
 /** Pitch (rad) -> cRad, geklemmt auf ±157. */
 export const encPitch = (p) => Math.max(-157, Math.min(157, r0((Number.isFinite(p) ? p : 0) * 100)));
-export const decPitch = (c) => c / 100;
+const decPitch = (c) => c / 100;
 
 /** Stückweise linear von `from` nach `to` (gleich lange, aufsteigende Knoten); außerhalb Steigung 1. */
 function pw(v, from, to) {

@@ -10,8 +10,8 @@ import { build, F } from './proto.js';
 export const SEND_GAP_MS = 500;
 export const RECV_GAP_MS = 350;
 export const SEND_DIST = 3.4;
-export const RECV_DIST = 4.5; // Toleranz: die Fremdfigur läuft 250 ms hinterher
-export const PUSH_S = 100;
+const RECV_DIST = 4.5; // Toleranz: die Fremdfigur läuft 250 ms hinterher
+const PUSH_S = 100;
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const warn = (what, err) => { try { console.warn('[LenzFlix Store3D] mp push', what, err && err.message ? err.message : ''); } catch { /* egal */ } };

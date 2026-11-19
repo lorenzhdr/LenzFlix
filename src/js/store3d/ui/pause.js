@@ -16,7 +16,7 @@ const PITCH_NEXT = { normal: 'tief', tief: 'sehrtief', sehrtief: 'normal' };
 const AUTO_DEVICE = 'Automatisch (Gerätestimme)';
 const AUTO_ONLINE = 'Automatisch (Online bevorzugt)';
 const NOTE_ONLINE = 'Online: Sätze, Name und Filmtitel gehen an den Stimmendienst des Browsers.';
-const NOTE_TIP = 'Tipp: Männliche Online-Stimmen (z. B. „Natural“) gibt es in manchen Browsern (z. B. dem Windows-Standardbrowser); am iPhone unter Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch weitere laden.';
+const NOTE_TIP = 'Tipp: Männliche Online-Stimmen (z. B. „Natural“) gibt es in manchen Browsern; am Handy unter Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch weitere laden.';
 
 /** Kurzname einer Browser-Stimme („Microsoft Conrad Online (Natural) - German (Germany)“ → „Conrad“). */
 export function shortVoiceName(name) {

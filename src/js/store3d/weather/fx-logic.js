@@ -49,7 +49,6 @@ export function breathOn(temp, level) {
   return fin(temp) && temp <= 0 && atLeast(level, 'high');
 }
 export const BREATH_MAX = 8;
-export const BREATH_PERIOD = 3.5;
 
 /** Phase 0..1 des Atemzugs einer Figur i zur Zeit t (Rhythmus 3 … 4 s je Figur); Puff sichtbar im ersten Drittel. */
 export function breathPhase(t, i) {

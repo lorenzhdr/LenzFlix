@@ -2,6 +2,7 @@
 // damit mergeGeometries sie zu wenigen Draw-Calls zusammenfassen kann.
 import { BoxGeometry, PlaneGeometry, BufferGeometry, Float32BufferAttribute, Matrix4, Euler, Vector3, Quaternion } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { seeded } from '../modules/m4-util.js';
 
 const _m = new Matrix4();
 const _q = new Quaternion();
@@ -100,17 +101,8 @@ export function hex(c) {
 
 
 
-/** Deterministischer Zufall (mulberry32). */
-export function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+/** Deterministischer Zufall (mulberry32), gleiche Funktion wie `seeded` in modules/m4-util.js. */
+export const rng = seeded;
 
 export function hash(str) {
   let h = 2166136261;

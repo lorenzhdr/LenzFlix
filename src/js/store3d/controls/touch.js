@@ -41,7 +41,7 @@ export function normTune(t) {
   };
 }
 /** Blick-Delta (rad) aus einem Pixel-Delta des Fingers: Normal = Finger rechts → Blick rechts; Flip = „Szene greifen“; bei Zoom schwächer. Geteilt von Canvas-Wischen und Schema 'game'. */
-export function lookDelta(dx, dy, tune, zoom) {
+function lookDelta(dx, dy, tune, zoom) {
   const k = TOUCH_LOOK * SENS_FACTOR[tune.touchSens] / Math.max(1, zoom);
   return [dx * k * (tune.lookFlipX ? 1 : -1), dy * k * (tune.lookFlipY ? 1 : -1)];
 }

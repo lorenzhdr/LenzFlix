@@ -110,7 +110,7 @@ void main() {
 `;
 
 /** Wachsende Partikel-Geometrie: n Quads (4 Ecken, 6 Indizes), aSeed = Zufall (x,y,z,w), aCorner = Ecke (-1/1). */
-export function buildPrecipGeometry(n, seed = 77) {
+function buildPrecipGeometry(n, seed = 77) {
   const r = rng(seed);
   const seeds = new Float32Array(n * 16);
   const corners = new Float32Array(n * 8);

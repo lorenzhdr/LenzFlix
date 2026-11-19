@@ -5,6 +5,7 @@
 //   armLx/armRx  >0 = Arm schwingt nach vorn (−z der Figur) · armLz/armRz >0 = Arm hebt sich seitlich nach außen
 //   legLx/legRx  >0 = Bein nach vorn · lean >0 = Oberkörper nach vorn · roll = Neigung zur Seite · hipDrop = Hüfte tiefer (m)
 //   bob = Hüfte hoch/runter (m) · headX >0 = Kopf nickt nach unten · headY = Kopf dreht nach links (+)
+import { clamp } from '../modules/m4-util.js';
 
 export const ANIMS = ['idle', 'walk', 'run', 'sit', 'wave', 'hit', 'throw', 'stagger', 'point', 'cheer',
   // Welle b (Mehrspieler-Emotes): nur am Ende anhängen, Indizes 0..9 bleiben stabil
@@ -24,7 +25,6 @@ const NET_VERSION = 1;
 const TAU = Math.PI * 2;
 const MAX_RATE = 18;
 
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const r2 = (v) => Math.round(v * 100) / 100;
 const r3 = (v) => Math.round(v * 1000) / 1000;
 const easeOut = (t) => 1 - (1 - clamp(t, 0, 1)) * (1 - clamp(t, 0, 1));

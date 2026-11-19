@@ -3,13 +3,5 @@
 // T2 Stillstand oder Zeitlimit            D  Fehlerdialog des Jellyfin-Players        B  Bau-Fehler (Szene/Leinwand)
 export const FAIL = Object.freeze({ P: 'P', T1: 'T1', T2: 'T2', D: 'D', B: 'B' });
 
-export const FAIL_TEXT = Object.freeze({
-  P: 'Der Film konnte nicht gestartet werden',
-  T1: 'Kein Player gefunden',
-  T2: 'Der Film startet nicht (Stillstand)',
-  D: 'Der Player meldet einen Fehler',
-  B: 'Die Leinwand konnte nicht aufgebaut werden',
-});
-
 /** Kurztext für Toast und Statusbild: „Kino konnte nicht starten (T2)“. */
 export const failToast = (code) => (code ? `Kino konnte nicht starten (${code})` : 'Kino konnte nicht starten');

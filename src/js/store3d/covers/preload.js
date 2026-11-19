@@ -2,8 +2,8 @@
 // Rein logisch (Ladefunktion/Skalierung injizierbar): Fehler/404/kein Bild zählen als erledigt (null), nahe Seiten zuerst.
 import { loadBitmap as defaultLoad, closeBitmap as defaultClose } from './loader.js';
 
-export const PRE_WIDTH = 64;
-export const PRE_QUALITY = 60;
+const PRE_WIDTH = 64;
+const PRE_QUALITY = 60;
 
 /** Cover-URL wie in der full-Stufe (gleiche Parameter inkl. tag), nur Breite/Qualität variabel. null = kein Bild. */
 export function coverUrl(deps, id, item, maxWidth, quality) {
