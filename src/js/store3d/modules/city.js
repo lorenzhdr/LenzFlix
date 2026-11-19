@@ -155,6 +155,8 @@ export default {
       visibleRef: () => vis,
       /** Wird die Ladenhülle (Innenraum samt Ultra-Innenraum) gerade gezeichnet? Allokationsfrei, pro Frame lesbar. */
       shellVisible: () => !shopShell || shopShell.visible !== false,
+      /** Nach Bereich ein-/ausgeblendete Gruppen (Laden, Regale, Hof, Palast-/Salon-Innenraum): engine/warm.js zeichnet sie einmal auch im Ausgeblendeten vor. */
+      warmRoots: () => [shopShell, shelves, ...(cm ? [cm.groups.yard, cm.groups.palastInterior, cm.groups.salonInterior] : [])].filter(Boolean),
       /** Szene aufteilen (store.js ruft das nach mods.init): Laden-Hülle und Regale werden je Bereich ein-/ausgeblendet. */
       partition() {
         if (shopShell || !cm) { refresh(); return; }
