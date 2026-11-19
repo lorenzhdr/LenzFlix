@@ -214,6 +214,7 @@ export default {
       return true;
     }
     let bubbleSticky = false; // Blase bleibt trotz offenem Overlay (Couch-Sprüche)
+    let bubbleX = null; let bubbleY = 0; // zuletzt geschriebene Bildschirmposition
     function placeBubble() {
       if (bubble.hidden || !host || xrOn()) return;
       v.set(pos.x, pos.y + 1.95, pos.z).project(ctx.camera);
@@ -222,8 +223,14 @@ export default {
       if (on) {
         const w = host.clientWidth || window.innerWidth;
         const h = host.clientHeight || window.innerHeight;
-        bubble.style.transform = `translate(${((v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-v.y * 0.5 + 0.5) * h).toFixed(1)}px) translate(-50%, -100%)`;
-      } else {
+        const bx = (v.x * 0.5 + 0.5) * w;
+        const by = (-v.y * 0.5 + 0.5) * h;
+        if (bubbleX === null || Math.abs(bx - bubbleX) > 0.5 || Math.abs(by - bubbleY) > 0.5) { // nur bei merklicher Bewegung schreiben (kein Style-Recalc je Frame)
+          bubbleX = bx; bubbleY = by;
+          bubble.style.transform = `translate(${bx.toFixed(1)}px, ${by.toFixed(1)}px) translate(-50%, -100%)`;
+        }
+      } else if (bubbleX !== null) {
+        bubbleX = null; bubbleY = 0;
         bubble.style.transform = '';
       }
     }
