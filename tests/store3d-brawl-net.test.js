@@ -107,6 +107,25 @@ describe('brawl: Mehrspieler-Rollen', () => {
     expect(sessionStorage.length).toBe(0);
   });
 
+  it('Spiegel: k = 1 zeigt Augen zuhalten (cover) mit Laser-Satz, ohne k Taumeln mit Schlag-Satz', async () => {
+    const { LINES } = await import('../src/js/store3d/modules/cashier-lines.js');
+    const a = await build();
+    a.bw.setNetRole('mirror', { self: false });
+    host.hook('update', 0.016, 1);
+    a.bw.applyRemote({ ...net('annoyed', { a: 1 }), k: 1 }, { self: false });
+    const txt = dom.querySelector('.lfx-store-bubble').textContent;
+    expect(LINES.laserHit.some((l) => txt.includes(l.replace('{name}', 'Max')))).toBe(true);
+    host.hook('dispose'); dom.remove();
+
+    const b = await build();
+    b.bw.setNetRole('mirror', { self: false });
+    host.hook('update', 0.016, 1);
+    b.bw.applyRemote(net('annoyed', { a: 1 }), { self: false });
+    const txt2 = dom.querySelector('.lfx-store-bubble').textContent;
+    expect(LINES.laserHit.some((l) => txt2.includes(l.replace('{name}', 'Max')))).toBe(false);
+    expect(LINES.hit1.some((l) => txt2.includes(l.replace('{name}', 'Max')))).toBe(true);
+  });
+
   it('Spiegel: Hausverbot, Tür und HUD nur beim Täter (self)', async () => {
     const a = await build();
     a.bw.setNetRole('mirror', { self: false });

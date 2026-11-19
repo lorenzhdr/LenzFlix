@@ -92,7 +92,7 @@ describe('Modul net: Verbindung', () => {
     expect(sockets[0].protocols).toEqual(['lfx-mp.1', 't.a.b']);
     sockets[0].open();
     const hi = sockets[0].frames()[0];
-    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
+    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight', 'rich2'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
     h.dispose();
   });
 
@@ -536,6 +536,14 @@ describe('Modul net: 1.18.0 (fight, Posen-Code, Emote-Hook)', () => {
     h.update(0.016, 2);
     await vi.advanceTimersByTimeAsync(300);
     expect(ws.frames().filter((m) => m.t === 'p').some((m) => m.q[5] === 15)).toBe(true);
+    code = 7; // K.O.-Sitzen auf der Bank (1.19.0): a = 7 ohne se
+    h.update(0.016, 3);
+    await vi.advanceTimersByTimeAsync(300);
+    h.update(0.016, 4);
+    await vi.advanceTimersByTimeAsync(300);
+    const sent = ws.frames().filter((m) => m.t === 'p');
+    expect(sent[sent.length - 1].q[5]).toBe(7);
+    expect(sent[sent.length - 1].se).toBeUndefined();
     code = 3; // ungültiger Code wird ignoriert
     h.dispose();
   });

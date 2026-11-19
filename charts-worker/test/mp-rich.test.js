@@ -51,6 +51,24 @@ describe('mp-rich: Vertrag', () => {
     expect(V.rs({ g: 1, q: [1, 999, 99999, 9e9, -9e9, 0, 1e6, 99] }).q).toEqual([1, 255, 36000, 5000, -200, 0, 315, 9]);
     expect(V.rr({ g: -1 })).toBeNull();
   });
+  it('rich2 (1.19.0): Server kündigt an, rs nimmt 8 oder 9 Elemente, q[8] klemmt auf 0..1', () => {
+    expect(SERVER_CAPS).toContain('rich2');
+    expect(V.rs({ g: 1, q: [1, 0, 0, 0, 0, 0, 0, 1, 1] }).q).toEqual([1, 0, 0, 0, 0, 0, 0, 1, 1]);
+    expect(V.rs({ g: 1, q: [1, 0, 0, 0, 0, 0, 0, 1, 9] }).q[8]).toBe(1);
+    expect(V.rs({ g: 1, q: [1, 0, 0, 0, 0, 0, 0, 1, -3] }).q[8]).toBe(0);
+    expect(V.rs({ g: 1, q: Q(1) }).q).toHaveLength(8);
+    expect(V.rs({ g: 1, q: [...Q(1), 0, 0] })).toBeNull();
+    expect(V.rs({ g: 1, q: [...Q(1), NaN] })).toBeNull();
+  });
+  it('rich2: neunter Eintrag wird an die Mitspieler weitergereicht', () => {
+    const w = world();
+    const a = w.join('a', 'Anna', { cap: ['pres', 'rich', 'rich2'] });
+    const b = w.join('b', 'Ben', { cap: ['pres', 'rich', 'rich2'] });
+    w.msg(b, [{ t: 'rc' }], 100);
+    w.take(a);
+    w.msg(b, [{ t: 'rs', g: 1, q: [...Q(1), 1] }], 200);
+    expect(w.bevs(a, 'rs')[0].q).toHaveLength(9);
+  });
 });
 
 describe('mp-rich: Autoritaet', () => {

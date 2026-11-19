@@ -7,7 +7,7 @@ let now;
 function setup(o = {}) {
   const bus = new Map();
   const sent = [];
-  const st = { live: true, cap: o.cap !== false, vr: false, sendOk: true, me: { c: 7, k: 'aaaaaaaaaaaa', admin: false } };
+  const st = { live: true, cap: o.cap !== false, rich2: !!o.rich2, vr: false, sendOk: true, me: { c: 7, k: 'aaaaaaaaaaaa', admin: false } };
   const net = { f: { v: 1, s: 0, h: 0, r: 0 }, x: 4.2, z: 16, y: 0, yaw: 0, a: 0 };
   const calls = [];
   let hook = null;
@@ -24,7 +24,7 @@ function setup(o = {}) {
     frame: createFrame({ w: 12.5, d: 18 }),
     send: vi.fn((m) => { if (!st.sendOk) return false; sent.push(m); return true; }),
     me: () => st.me,
-    cap: (n) => st.cap && n === 'rich',
+    cap: (n) => st.cap && (n === 'rich' || (n === 'rich2' && st.rich2)),
     active: () => st.live,
     peers: { get: (c) => (figs.has(c) ? { figure: figs.get(c) } : null) },
     on: (t, fn) => { const l = bus.get(t) || new Set(); l.add(fn); bus.set(t, l); return () => l.delete(fn); },
@@ -282,5 +282,40 @@ describe('net/richard: Spiegel', () => {
     s.part.dispose();
     expect(s.hook()).toBeNull();
     expect(s.part.role()).toBe('local');
+  });
+});
+
+describe('net/richard: Fähigkeit rich2 (Laser-Treffer, 1.19.0)', () => {
+  function owner(o) {
+    const s = setup(o);
+    s.part.tick(0.016);
+    s.emit('ra', { c: 7, g: 1, tg: 3 });
+    s.net.f = { v: 1, s: 1, h: 1, r: 4 };
+    s.net.a = 1;
+    s.net.k = 1;
+    return s;
+  }
+  it('mit rich2: rs trägt das 9. Element (Trefferart 1)', () => {
+    const s = owner({ rich2: true });
+    s.tickTo(300);
+    const m = s.sent.find((x) => x.t === 'rs');
+    expect(m.q).toHaveLength(9);
+    expect(m.q[7]).toBe(1);
+    expect(m.q[8]).toBe(1);
+  });
+  it('ohne rich2 (alter Worker): immer genau 8 Elemente', () => {
+    const s = owner({ rich2: false });
+    s.tickTo(300);
+    const m = s.sent.find((x) => x.t === 'rs');
+    expect(m.q).toHaveLength(8);
+  });
+  it('Spiegel: q[8] = 1 geht als k an applyRemote, ohne q[8] fehlt k', () => {
+    const s = setup({ rich2: true });
+    s.part.tick(0.016);
+    s.emit('ra', { c: 3, g: 2, tg: 3 });
+    s.emit('rs', { t: 'rs', c: 3, g: 2, tg: 3, q: [1, 1, 40, 600, 0, 900, 0, 1, 1] });
+    expect(s.calls.filter((c) => c[0] === 'apply').pop()[1]).toMatchObject({ a: 1, k: 1 });
+    s.emit('rs', { t: 'rs', c: 3, g: 2, tg: 3, q: [1, 1, 40, 600, 0, 900, 0, 1] });
+    expect(s.calls.filter((c) => c[0] === 'apply').pop()[1].k).toBeUndefined();
   });
 });

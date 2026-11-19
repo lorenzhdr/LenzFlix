@@ -7,7 +7,8 @@
 // Die Validatoren stehen hier (nicht in protocol.js), damit W-C und W-C2 keine Datei teilen.
 import { FLAG, RANGE, isNum, clampInt } from './protocol.js';
 
-export const cap = 'rich';
+// 1.19.0: `rich2` = rs.q darf ein 9. Element tragen (Trefferart, 0 keine, 1 Laser); rein additiv, ohne eigene Nachricht.
+export const cap = ['rich', 'rich2'];
 export const RS_TIMEOUT_MS = 60000;
 const HOSTILE = [2, 3, 4, 5]; // shove, throw, chase, banned (Indizes in STATES, modules/brawl-fsm.js)
 const S_CALM = 0;
@@ -19,7 +20,7 @@ export const V = {
   rc() { return { t: 'rc' }; },
   rs(m) {
     const q = m.q;
-    if (!isInt(m.g) || m.g < 0 || !Array.isArray(q) || q.length !== 8 || !q.every(isNum)) return null;
+    if (!isInt(m.g) || m.g < 0 || !Array.isArray(q) || (q.length !== 8 && q.length !== 9) || !q.every(isNum)) return null;
     if (m.tg !== undefined && !(isInt(m.tg) && m.tg >= 0 && m.tg <= 65535)) return null;
     const s = Math.round(q[0]);
     if (s < 0 || s > 6) return null;
@@ -29,6 +30,7 @@ export const V = {
         s, clampInt(q[1], 0, 255), clampInt(q[2], 0, 36000),
         clampInt(q[3], ...RANGE.x), clampInt(q[4], ...RANGE.y), clampInt(q[5], ...RANGE.z),
         clampInt(q[6], ...RANGE.yaw), clampInt(q[7], 0, 9),
+        ...(q.length === 9 ? [clampInt(q[8], 0, 1)] : []),
       ],
     };
   },
