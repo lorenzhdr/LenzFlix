@@ -29,7 +29,7 @@ const warn = (what, err) => { try { console.warn('[LenzFlix Store3D] fight', wha
 
 export const LASER_TICK = 0.1; // s: Strahl-Takt
 export const AUX_TAP = 0.22; // s: Waffenknopf (Touch) kürzer gehalten = Waffenrad, länger mit Laser = leuchten
-export const LZ_GAP = 0.25; // s: Laserpunkt an Mitspieler höchstens 4/s
+const LZ_GAP = 0.25; // s: Laserpunkt an Mitspieler höchstens 4/s
 export const PEER_HIT_DIST = 4.5; // m: Toleranz für eingehende Treffer (Server 3,6 m, Figuren laufen 250 ms hinterher)
 export const WP_DEBOUNCE = 0.3;
 const SIT_Y = 0.48; // Bankhöhe (benchN, y1)

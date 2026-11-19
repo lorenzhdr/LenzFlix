@@ -49,7 +49,7 @@ export function windowGrid(out, x0, x1, y0, floors, z, facing, rand, { w = 0.9, 
   }
 }
 
-export function buildWindowSet(specs) {
+function buildWindowSet(specs) {
   if (!specs.length) return null;
   const geo = merge(specs.map((s) => quad({ w: s.w, h: s.h, x: s.x, y: s.y, z: s.z, ry: s.ry })));
   const mat = new MeshBasicMaterial({ vertexColors: true, side: DoubleSide });

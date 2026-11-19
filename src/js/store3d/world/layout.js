@@ -7,21 +7,17 @@ import { makeNavGrid } from '../nav/path.js';
 import { createColliderIndex } from '../nav/collide.js';
 import { buildCity, navCellFor } from './city.js';
 
-export const SEG_W = 1.2;
+const SEG_W = 1.2;
 // Normal-Werte (kleine Hüllen); für die Platzierung gilt immer die Spezifikation `layout.spec` (siehe shelfSpec).
 export const COLS = 7;
-export const ROWS_TALL = 5;
-export const ROWS_LOW = 3;
-export const CAP_TALL = COLS * ROWS_TALL;
-export const CAP_LOW = COLS * ROWS_LOW;
-export const UNIT_DEPTH = 0.5;
-export const WALL_DEPTH = 0.3;
+const UNIT_DEPTH = 0.5;
+const WALL_DEPTH = 0.3;
 export const H_TALL = 1.95;
 export const H_LOW = 1.25;
 export const CEIL_H = 3.0;
 export const WALL_T = 0.12;
-export const AISLE = 1.6;
-export const NAV_CELL = 0.25;
+const AISLE = 1.6;
+const NAV_CELL = 0.25;
 export const NAV_RADIUS = 0.32;
 
 const AISLE_BACK = 1.5;
@@ -101,11 +97,6 @@ export function slotLocal(idx, rows, spec = SPECS.normal, low = false) {
   const col = idx % spec.cols;
   const level = rows - 1 - row; // 0 = unterstes Fach
   return { x: (col - (spec.cols - 1) / 2) * spec.cover.pitch, y: levelY(spec, level, low) + spec.cover.h / 2, z: -0.05 };
-}
-
-/** Normal-Fachhöhe (Abstand 0,33 m); für andere Spezifikationen `levelY`. */
-export function levelBase(level) {
-  return 0.26 + 0.33 * level;
 }
 
 function runSegCount(dept, double, spec) {

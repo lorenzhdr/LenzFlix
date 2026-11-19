@@ -8,7 +8,7 @@ import {
 import { box, merge } from '../util/geo.js';
 import { makeTarget, renderToTarget, mirrorHz, mirrorGate, liveHub, LAYER_MIRROR, MIRROR_FAR } from '../world/mirror.js';
 
-export const DOME_R = 0.17;
+const DOME_R = 0.17;
 /** Der Überwachungsspiegel sieht man auch aus dem Laden weiter weg als Planspiegel. */
 export const DOME_MAX_DIST = 10;
 export const DOME_FOV = 110;

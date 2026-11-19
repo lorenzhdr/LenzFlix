@@ -7,7 +7,7 @@
 // Orte: Statik rechnet mit r = frame.area (Palast-Abbildung), Würfe/Hüllen ("c.n") immer mit r = 2 (kein r auf der Leitung, beide Seiten gleich).
 
 export const PH_DELAY_MS = 250; // Anzeigeverzögerung fremder Körper (8 Hz + 100 ms Bündelung des DO)
-export const EXTRAP_MS = 150; // höchstens so lange mit der letzten Geschwindigkeit weiterlaufen
+const EXTRAP_MS = 150; // höchstens so lange mit der letzten Geschwindigkeit weiterlaufen
 export const STALE_MS = 3000; // ohne neuen Stand (wach): Besitzer gilt als weg, lokal weiter simulieren
 export const HELD_RESEND_MS = 800; // gehaltenes Ding: Hand-Stand mindestens so oft erneuern (Empfänger geben nach STALE_MS frei, das DO nach 30 s)
 export const FINAL_MS = 1500; // nach dem Schlaf-Stand ohne `po` o=0: lokal freigeben
@@ -20,7 +20,7 @@ export const CHAIN_MAX = 3; // höchstens so viele je Durchlauf
 export const MAX_ENTRIES = 8; // ps-Einträge je Nachricht
 export const MAX_REMOTE_TAPES = 6;
 export const VISIBLE_TAPES = { low: 2, other: 4 };
-export const REST_MOVE = 0.02; // m: ab hier gilt ein Körper als bewegt
+const REST_MOVE = 0.02; // m: ab hier gilt ein Körper als bewegt
 export const OBJ_ID = /^[A-Za-z0-9._-]{1,24}$/;
 export const ITEM_ID = /^[0-9a-f]{32}$/;
 export const isTapeId = (id) => typeof id === 'string' && id.includes('.');

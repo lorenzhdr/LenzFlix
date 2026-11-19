@@ -12,7 +12,7 @@
 //   createRichard(core) → { welcome(wl), tick(dt), stop(), dispose(), role() }
 import { build } from './proto.js';
 
-export const RS_MIN_MS = 200; // ≤ 5 Hz bei Änderung
+const RS_MIN_MS = 200; // ≤ 5 Hz bei Änderung
 export const RS_KEEP_MS = 1000; // 1 Hz solange nicht calm
 export const MIRROR_TIMEOUT_MS = 60000;
 export const CLAIM_TIMEOUT_MS = 4000;

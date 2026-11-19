@@ -228,10 +228,3 @@ export const ULTRA_TEX = {
 export function makeUltraTexture(key, aniso = 4) {
   return toTexture(ULTRA_TEX[key](), { repeat: true, aniso });
 }
-
-/** Erzeugt alle Ultra-Texturen: { key: CanvasTexture }. aniso = Anisotropie. */
-export function makeUltraTextures(aniso = 4) {
-  const out = {};
-  for (const [k, fn] of Object.entries(ULTRA_TEX)) out[k] = toTexture(fn(), { repeat: true, aniso });
-  return out;
-}

@@ -7,8 +7,7 @@
 import { ST } from '../npc/gang-logic.js';
 
 export const TODS = ['day', 'dusk', 'night'];
-export const GS_R = 2; // Bereich „draußen“ (Gasse, Hof, Straße)
-export const GS_GAP_MS = 170; // Server: höchstens 6/s
+const GS_R = 2; // Bereich „draußen“ (Gasse, Hof, Straße)
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const fin = (v, d = 0) => (Number.isFinite(v) ? v : d);
@@ -59,6 +58,6 @@ export function decodeGs(frame, q) {
 }
 
 /** Waffen-Index (0 hand, 1 belt, 2 whip, 3 laser) für `gh`/`fh` aus der Waffen-Id. */
-export const WEAPON_INDEX = { hand: 0, belt: 1, whip: 2, laser: 3 };
+const WEAPON_INDEX = { hand: 0, belt: 1, whip: 2, laser: 3 };
 export const weaponIndex = (id) => (Object.prototype.hasOwnProperty.call(WEAPON_INDEX, id) ? WEAPON_INDEX[id] : 0);
 export const WEAPON_BY_INDEX = ['hand', 'belt', 'whip', 'laser'];

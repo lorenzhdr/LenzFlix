@@ -3,9 +3,9 @@
 // kein Heartbeat. Der Transport bündelt zusätzlich im 125-ms-Takt. Vertrag: docs/mp-api.md §6.3.
 import { build } from './proto.js';
 
-export const POS_EPS = 2; // cm (euklidisch, Netzrahmen)
-export const YAW_EPS = 2; // cRad
-export const PITCH_EPS = 4; // cRad
+const POS_EPS = 2; // cm (euklidisch, Netzrahmen)
+const YAW_EPS = 2; // cRad
+const PITCH_EPS = 4; // cRad
 const YAW_PERIOD = 628; // 2π in cRad
 
 const yawDiff = (a, b) => { const d = Math.abs(a - b) % YAW_PERIOD; return Math.min(d, YAW_PERIOD - d); };

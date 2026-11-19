@@ -311,7 +311,7 @@ export function swayTime(t, t0 = 0) {
   return d < 0 ? d + SWAY_PERIOD : d;
 }
 /** onBeforeCompile-Hook fürs Wiegen der Kronen (Instanzen). */
-export function swayHook(uSway) {
+function swayHook(uSway) {
   return (sh) => {
     sh.uniforms.uSway = uSway;
     sh.vertexShader = `uniform float uSway;\n${sh.vertexShader}`.replace('#include <begin_vertex>', `#include <begin_vertex>

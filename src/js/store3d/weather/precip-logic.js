@@ -7,7 +7,7 @@ export const HALF = 12;
 export const Y_BELOW = 6;
 export const Y_ABOVE = 10;
 /** Dauer des weichen Wechsels in Sekunden. */
-export const FADE_S = 15;
+const FADE_S = 15;
 /** Höchstzahl der Schutzboxen (Uniform-Array). */
 export const MAX_BOXES = 6;
 /** Kennzahlen je Art. fall = Fallgeschwindigkeit (m/s, min..max). */

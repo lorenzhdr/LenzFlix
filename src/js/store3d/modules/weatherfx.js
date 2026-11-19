@@ -22,7 +22,7 @@ const BOLT_SEG = 14;
 const BOLT_R = 46;
 
 /** Thermometer-Anzeige (Canvas 128x64): dunkle Tafel, Leuchtziffern im Videotheken-Look. */
-export function thermoCanvas(text) {
+function thermoCanvas(text) {
   const c = makeCanvas(128, 64);
   const x = c.getContext('2d');
   x.fillStyle = '#080b12';

@@ -20,10 +20,10 @@ import { seeded } from './m4-util.js';
 
 const warn = (what, err) => { try { console.warn('[LenzFlix Store3D] gang', what, err && err.message ? err.message : ''); } catch { /* egal */ } };
 export const SLOT_MS = 20 * 60 * 1000; // Zeitfenster des Spawn-Seeds
-export const NEAR_M = 44; // Figuren ab hier bauen, ab FAR_M wieder abbauen
-export const FAR_M = 52;
+const NEAR_M = 44; // Figuren ab hier bauen, ab FAR_M wieder abbauen
+const FAR_M = 52;
 export const LEAD_NEAR_M = 35; // so nah muss man der Bande sein, um die Führung anzufordern
-export const GS_EVERY_S = 0.17;
+const GS_EVERY_S = 0.17;
 export const GS_BEAT_S = 4; // Herzschlag des Führers bei unverändertem Zustand oder ohne Mitspieler (Server: 60 s Frist, Mitläufer: STALE_S)
 export const STALE_S = 6; // Mitläufer: so lange ohne gs, dann Bande weg
 export const HIT_PRIO = 25; // zwischen Richard (30) und Personen (20)

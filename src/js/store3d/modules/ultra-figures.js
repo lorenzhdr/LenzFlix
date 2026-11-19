@@ -9,7 +9,7 @@ import { liveFigures } from '../npc/figure.js';
 export const DETAIL_ON = 14;
 export const DETAIL_OFF = 16;
 export const MAX_SWAPS = 4;
-export const CHECK_S = 0.5;
+const CHECK_S = 0.5;
 const tmp = new Vector3();
 
 /**

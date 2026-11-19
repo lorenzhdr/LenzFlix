@@ -1,24 +1,17 @@
 // VIDEOTHEK LENZ · Rowdy-Bande, reine Logik (1.18.0; ohne three/DOM, Zeit/Zufall injiziert): Spawn-Regel, Zustände, Aufenthaltsgrenzen.
 // Zustände: idle → approach → taunt → threaten → attack → flee | beaten. Bereiche kommen als Rechtecke {x0,z0,x1,z1} aus layout.city
 // (allowed = Zonen alley/yard/escape, forbidden = shop/doorway); in die Straße höchstens STREET_MARGIN m über den Rand.
+import { fnv } from './temper-logic.js';
 export const GANG_MAX = 3;
 export const STREET_MARGIN = 6;
 export const ROWDY_HP = 60;
-export const FLEE_HP = 0.25; // Anteil
+const FLEE_HP = 0.25; // Anteil
 /** Körperradius (m) gegen feste Hindernisse (1.19.0, Kreisprüfung statt Mittelpunkt); Spielerhöhe (m), ab der er für Bodenfiguren unerreichbar ist (Feuertreppe). */
 export const BODY_R = 0.3;
 export const REACH_Y = 0.6;
 /** Hysterese (1.19.0): erst nach so vielen Sekunden dauerhaft über REACH_Y bricht der Rowdy den Angriff ab (kurzer Sprung im Nahkampf reicht nicht). */
 export const REACH_LOST_S = 0.8;
 export const ST = ['idle', 'approach', 'taunt', 'threaten', 'attack', 'flee', 'beaten'];
-
-function fnv(s) {
-  let h = 2166136261;
-  s = String(s);
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  h ^= h >>> 15; h = Math.imul(h, 2246822507); h ^= h >>> 13;
-  return (h >>> 0) / 4294967296;
-}
 
 /** Anzahl Rowdys: nachts 2–3, abends 0–1, tags selten 0–1 (je Zeit-Seed, deterministisch). */
 export function spawnCount(tod, seed) {
@@ -111,7 +104,7 @@ function moveTo(m, tx, tz, dt, env, mul = 1) {
 
 /** Ab so viel Stillstand (s) pöbelt ein Rowdy am Rand, statt im Anlauf festzuhängen; bis zu diesem Abstand (m). */
 export const STUCK_TAUNT_S = 1.2;
-export const STUCK_TAUNT_DIST = 9;
+const STUCK_TAUNT_DIST = 9;
 /** Kommt ein angreifender Rowdy so lange (s) nicht weiter, gibt er auf (zurück an den Platz, Pause GIVE_UP_COOL s). */
 export const STUCK_GIVE_UP_S = 4;
 export const GIVE_UP_COOL = 6;

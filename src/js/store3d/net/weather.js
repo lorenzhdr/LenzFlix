@@ -7,7 +7,7 @@
 import { wxRain } from './proto.js';
 
 export const WX_EVAL_S = 15; // Auswertung alle 15 s
-export const WX_RETRY_S = 0.5; // solange noch keine Server-Zeit da ist
+const WX_RETRY_S = 0.5; // solange noch keine Server-Zeit da ist
 
 export function createWeather(core) {
   const ctx = core.ctx;

@@ -13,7 +13,7 @@ import { build } from './proto.js';
 
 export const LK_GAP_S = 2;
 export const MC_GAP_S = 5;
-export const MC_POLL_S = 5;
+const MC_POLL_S = 5;
 
 export function createLook(core) {
   const ctx = core.ctx;

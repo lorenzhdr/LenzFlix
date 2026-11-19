@@ -1,10 +1,10 @@
 // VIDEOTHEK LENZ · Wurfgeschosse der NPC (1.18.0; rein): Bonbon (Kioskfrau) und Popcorn (Kino-Personal). Flugbahn ohne Physik (Parabel),
 // Treffer wird bei der Ankunft gegen die Spielerposition geprüft (Ausweichen möglich).
+import { clamp } from '../modules/m4-util.js';
 export const THROW = { speed: 8, minDur: 0.25, maxDur: 1.4, hitR: 0.9, hitDy: 1.3, max: 6 };
 export const THROW_DMG = { candy: 4, popcorn: 4 };
 export const THROW_SOUND = { candy: 'candy', popcorn: 'pop' };
 export const THROW_COLORS = { candy: [[1, 0.2, 0.55], [0.25, 0.8, 1], [1, 0.85, 0.2]], popcorn: [[1, 0.95, 0.75], [1, 0.9, 0.55]] };
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /** from/to = {x,y,z} (to = Zielpunkt in Brusthöhe). */
 export function createThrow(kind, from, to) {

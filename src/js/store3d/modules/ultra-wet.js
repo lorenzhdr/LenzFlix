@@ -1,5 +1,5 @@
 // VIDEOTHEK LENZ · Nasse Straße (Ultra, 1.19.0): Registrierung 'wet' beim Provider 'ultra' (engine/ultra.js), nur neue Datei.
-// Bei Regen (und 10 min danach, bei Schnee nie) erscheinen (1) gestreckte additive Spiegelstreifen unter Laternen, Schaufenstern, Tür, Palast und
+// Bei Regen (und 10 min danach, linear abklingend; bei Schneefall nie, liegender Schnee schmälert die Nässe) erscheinen (1) gestreckte additive Spiegelstreifen unter Laternen, Schaufenstern, Tür, Palast und
 // Kiosk, die per Vertex-Shader zur Kamera zeigen, und (2) dunkle Pfützen-Decals auf Straße und Gehweg. Höchstens 2 Draw-Calls, nur wenn nass.
 // Stärke aus weather.i (wetLevel), nachts deutlich, tagsüber dezent (wetGlow). Quelle: Provider 'weather' (modules/daytime.js).
 import {
@@ -85,7 +85,7 @@ export function wetSources(layout) {
   return out;
 }
 
-export function buildWet(ctx) {
+function buildWet(ctx) {
   const L = ctx.layout;
   const group = new Group();
   group.name = 'ultra-wet';

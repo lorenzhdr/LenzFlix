@@ -50,12 +50,6 @@ const L = {
   bagU: ['Chipstüte am Gurt', 'Kassettenrucksack', 'Katzenkopf-Rucksack'],
 };
 
-export const FIELD_NAMES = {
-  skin: F.skin, height: F.height, build: F.build, shape: F.shape, hairStyle: F.hairStyle, hairColor: F.hairColor, eyes: F.eyes, brows: F.brows, beard: F.beard,
-  topCut: F.topCut, topColor: F.topColor, topPattern: F.topPattern, topColor2: F.topColor2, botCut: F.botCut, botColor: F.botColor, botPattern: F.botPattern, botColor2: F.botColor2,
-  shoeModel: F.shoeModel, shoeColor: F.shoeColor, sole: F.sole, glasses: F.glasses, hat: F.hat, hatColor: F.hatColor, bag: F.bag, bagColor: F.bagColor,
-};
-
 /** Provider-`setColor(part, idx)` → Feld. */
 export const COLOR_PART_FIELD = {
   hair: F.hairColor, top: F.topColor, top2: F.topColor2, bottom: F.botColor, bottom2: F.botColor2, shoes: F.shoeColor, sole: F.sole, hat: F.hatColor, bag: F.bagColor,

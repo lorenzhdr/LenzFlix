@@ -2,6 +2,7 @@
 // Klemmen, Bereinigung und der Regen-Würfel. Vertrag: docs/mp-api.md (§5 Klemmen, §6.2 Codes, §7 Nachrichten).
 // Alle Builder liefern ein normalisiertes Objekt oder null (ungültig, wird nie gesendet). `normalizeOut(msg)` ist dieselbe
 // Prüfung für fertige Nachrichten (Gegenstück zum Server-Validator; die Golden-Dateien des Workers prüfen beides).
+import { seeded } from '../modules/m4-util.js';
 
 export const SUB = 'lfx-mp.1';
 export const PV = 1;
@@ -44,7 +45,7 @@ export const LIM = {
 };
 
 export const ITEM_RE = /^[0-9a-f]{32}$/;
-export const OBJ_RE = /^[A-Za-z0-9._-]{1,24}$/;
+const OBJ_RE = /^[A-Za-z0-9._-]{1,24}$/;
 const TK_RE = /^[A-Za-z0-9_-]{1,1200}\.[A-Za-z0-9_-]{1,400}$/; // b64url(Nutzlast).b64url(HMAC)
 
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -74,22 +75,12 @@ export function emoteName(e) { return EMOTE_ANIM[e] || null; }
 export function emoteEndsOn(a) { return EMOTE_END_A.includes(a); }
 
 // --- Wetter ------------------------------------------------------------------------------------------------------
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 export const WX_SLOT_MS = 1800000;
-export const WX_RAIN_BELOW = 0.35;
+const WX_RAIN_BELOW = 0.35;
 /** Regen-Würfel [0,1) für Server-ms und Seed `sd` (alle Clients gleich). */
 export function wxRoll(sd, serverMs) {
   const slot = Math.floor(serverMs / WX_SLOT_MS);
-  return mulberry32((sd ^ Math.imul(slot, 0x9e3779b1)) >>> 0)();
+  return seeded((sd ^ Math.imul(slot, 0x9e3779b1)) >>> 0)();
 }
 export const wxRain = (sd, serverMs) => wxRoll(sd, serverMs) < WX_RAIN_BELOW;
 

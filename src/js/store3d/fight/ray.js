@@ -2,7 +2,7 @@
 // Kollider { x0, z0, x1, z1, y0?, y1? } (nav/collide.js; y0 Standard 0, y1 Standard 2,6). Dazu der Boden (y = 0).
 
 /** Eintrittsabstand t (≥ 0) des Strahls o + t·d in die Box, sonst Infinity. */
-export function rayBoxT(o, d, b) {
+function rayBoxT(o, d, b) {
   let t0 = 0;
   let t1 = Infinity;
   const y0 = b.y0 === undefined ? 0 : b.y0;

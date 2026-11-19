@@ -1,10 +1,10 @@
 // VIDEOTHEK LENZ · Stadt (rein, ohne three und DOM, deterministisch, JSON-sicher): Block mit Kreuzung, Palast-Hülle, Hof, Gasse,
 // Feuertreppe, Dach, Kollider, Zonen, Spawns, Fußwege, Fahrspuren, Ampel, Laternen, Entdeckungs- und Requisiten-Plätze.
 // Koordinaten wie world/layout.js: x Osten, z Süden, y oben, Yaw: Vorwärts (-sin, -cos), Flächennormale (sin yaw, cos yaw).
-// Physik-Konstanten kommen aus nav/collide.js (STEP_H, BODY_H, MANTLE_H, JUMP_V, GRAV); hier gibt es keine eigenen.
+// Physik-Konstanten kommen aus nav/collide.js (MANTLE_H, JUMP_V, GRAV u. a.); hier gibt es keine eigenen.
 // Kollider-Format: { id?, x0, z0, x1, z1, kind, y0 = 0, y1 = Infinity (fehlt), top? } (siehe nav/collide.js).
-import { seeded } from '../modules/m4-util.js';
-import { STEP_H, BODY_H, MANTLE_H, JUMP_V, GRAV, groundHeight, resolveCircle3, RADIUS } from '../nav/collide.js';
+import { seeded, clamp } from '../modules/m4-util.js';
+import { MANTLE_H, JUMP_V, GRAV, groundHeight, resolveCircle3, RADIUS } from '../nav/collide.js';
 import { isFree, nearestFree } from '../nav/path.js';
 
 export const T = 0.12; // Wandstärke des Ladens (= layout WALL_T)
@@ -19,7 +19,6 @@ export const AREAS = ['roof', 'escape', 'palastHall', 'palastFoyer', 'salon', 's
 /** Bereiche, in denen es regnen darf (nicht Laden, nicht Palast innen). */
 export const OUTDOOR_AREAS = ['street', 'crossing', 'sideN', 'sideS', 'yard', 'alley', 'roof', 'escape', 'kiosk', 'palastEntrance', 'outside', 'doorway'];
 
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const PI = Math.PI;
 
 /** Rahmenmaße der Welt (rein). Alle Werte in Metern. */
@@ -492,5 +491,3 @@ export function buildCity(store) {
   };
 }
 
-// Re-Exporte, damit Tests und Welle 2 aus einer Datei lesen können.
-export { STEP_H, BODY_H, MANTLE_H };

@@ -7,25 +7,25 @@ import { createClock } from './clock.js';
 
 export const TICK_MS = 125;
 export const BUCKET_PER_S = 10;
-export const FRAME_CHARS = 2000; // unter dem Server-Limit von 2048
+const FRAME_CHARS = 2000; // unter dem Server-Limit von 2048
 // 3 s (statt 25 s): Cloudflare kappte live (17.11.2026) Workers-WebSockets nach genau 5 s ohne Nachricht vom Server (1006);
 // der Auto-Response-Pong hält die Leitung offen, ohne das DO zu wecken. Kosten: höchstens ~60 Requests je Spielerstunde (20:1).
-export const PING_MS = 3000;
-export const PONG_DEAD_MS = 20000; // ältester unbeantworteter Ping älter als das: Verbindung tot
-export const HELLO_MS = 12000;
+const PING_MS = 3000;
+const PONG_DEAD_MS = 20000; // ältester unbeantworteter Ping älter als das: Verbindung tot
+const HELLO_MS = 12000;
 export const RENEW_MS = 600000;
-export const STABLE_MS = 60000;
-export const HIDDEN_MS = 60000;
-export const BACKOFF_S = [1, 2, 4, 8, 16, 30, 60];
-export const ATTEMPTS_MAX = 6;
-export const ATTEMPTS_WINDOW_MS = 600000;
-export const LONG_PAUSE_MS = 1800000;
-export const CK_COUNT = 5;
-export const CK_GAP_MS = 1000;
-export const CK_EVERY_MS = 300000;
+const STABLE_MS = 60000;
+const HIDDEN_MS = 60000;
+const BACKOFF_S = [1, 2, 4, 8, 16, 30, 60];
+const ATTEMPTS_MAX = 6;
+const ATTEMPTS_WINDOW_MS = 600000;
+const LONG_PAUSE_MS = 1800000;
+const CK_COUNT = 5;
+const CK_GAP_MS = 1000;
+const CK_EVERY_MS = 300000;
 
 /** why-Codes von ticket(), die für die Seitensitzung ausschalten (Rest: Backoff). */
-export const FATAL_WHY = ['nourl', 'gone', 'off', 'blocked', 'bad', 'auth', 'user'];
+const FATAL_WHY = ['nourl', 'gone', 'off', 'blocked', 'bad', 'auth', 'user'];
 const COALESCE = new Set(['p', 'hd', 'f', 'rs']); // letzte Nachricht gewinnt
 const URGENT = new Set(['m', 'e', 'pu', 'kc']); // lösen höchstens einen vorgezogenen Takt aus
 

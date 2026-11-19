@@ -3,16 +3,16 @@ import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
 const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief', touchControl: 'game' };
-export const TOUCH_CONTROLS = ['game', 'joystick', 'touch'];
-export const TOUCH_SENS = ['low', 'normal', 'high'];
+const TOUCH_CONTROLS = ['game', 'joystick', 'touch'];
+const TOUCH_SENS = ['low', 'normal', 'high'];
 const TUNE_FLAGS = ['holdInvertY', 'holdInvertX', 'lookFlipY', 'lookFlipX'];
-export const TOUCH_REGRIPS = ['off', 'short', 'long'];
-export const VOICE_PITCHES = ['normal', 'tief', 'sehrtief'];
+const TOUCH_REGRIPS = ['off', 'short', 'long'];
+const VOICE_PITCHES = ['normal', 'tief', 'sehrtief'];
 export const QUALITIES = ['auto', 'low', 'mid', 'high', 'ultra'];
-export const VR_TURNS = ['snap', 'smooth'];
-export const VR_HEIGHTS = ['auto', 'seated'];
-export const VR_QUALITIES = ['mid', 'low'];
-export const VR_SEATS = ['front', 'mid', 'back'];
+const VR_TURNS = ['snap', 'smooth'];
+const VR_HEIGHTS = ['auto', 'seated'];
+const VR_QUALITIES = ['mid', 'low'];
+const VR_SEATS = ['front', 'mid', 'back'];
 const SESSION_INTRO = 'lfx.store.introSeen';
 const SESSION_STATE = 'lfx.store.state';
 
@@ -86,12 +86,12 @@ function readEnum(name, list, def) {
   const v = read('localStorage', storageKey(name));
   return list.includes(v) ? v : def;
 }
-export const getVrTurn = () => readEnum('vrTurn', VR_TURNS, 'snap');
+const getVrTurn = () => readEnum('vrTurn', VR_TURNS, 'snap');
 /** Tunnelblick-Vignette beim Gleiten (Standard an): nur ein ausdrückliches „0“ schaltet sie aus. */
-export const getVrVignette = () => read('localStorage', storageKey('vrVignette')) !== '0';
-export const getVrHeight = () => readEnum('vrHeight', VR_HEIGHTS, 'auto');
-export const getVrQuality = () => readEnum('vrQuality', VR_QUALITIES, 'mid');
-export const getVrSeat = () => readEnum('vrSeat', VR_SEATS, 'mid');
+const getVrVignette = () => read('localStorage', storageKey('vrVignette')) !== '0';
+const getVrHeight = () => readEnum('vrHeight', VR_HEIGHTS, 'auto');
+const getVrQuality = () => readEnum('vrQuality', VR_QUALITIES, 'mid');
+const getVrSeat = () => readEnum('vrSeat', VR_SEATS, 'mid');
 
 /** VR-Vorlieben als opts.vr. */
 export function getVr() {
@@ -162,8 +162,4 @@ export function getState() {
 export function saveState(state) {
   if (!state || typeof state !== 'object') return;
   write('sessionStorage', SESSION_STATE, JSON.stringify(state));
-}
-
-export function clearState() {
-  try { window.sessionStorage.removeItem(SESSION_STATE); } catch { /* egal */ }
 }

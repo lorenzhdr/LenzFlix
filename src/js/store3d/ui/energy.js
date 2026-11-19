@@ -7,7 +7,7 @@
 
 export const REGEN_HIDE_MS = 1400; // nach voller Energie noch kurz sichtbar
 export const SHIELD_MS = 10000;
-export const KO_FADE_MS = 700;
+const KO_FADE_MS = 700;
 export const KO_HOLD_MS = 1600;
 
 /** Farbe zu Energie 0..100: grün (120°) → rot (0°). */

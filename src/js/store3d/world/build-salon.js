@@ -17,7 +17,7 @@ const LAMP = [1, 0.95, 0.82];
 /** Namen der erfundenen Frisuren auf den Plakaten (Reihenfolge = Atlas-Zellen 0..3). */
 export const POSTER_NAMES = ['DER SCHWUNG', 'VOLUMEN 88', 'WILDE WELLE', 'DER KURZE'];
 /** Plakatfarben (Hintergrund, Schrift) je Zelle, für den Atlas und den Ersatz ohne Textur. */
-export const POSTER_COLORS = [['#e2547c', '#fff4d6'], ['#2f9ea0', '#fff4d6'], ['#f0a030', '#3a1a2a'], ['#5a4aa8', '#ffe8a0']];
+const POSTER_COLORS = [['#e2547c', '#fff4d6'], ['#2f9ea0', '#fff4d6'], ['#f0a030', '#3a1a2a'], ['#5a4aa8', '#ffe8a0']];
 
 const bx = (x0, y0, z0, x1, y1, z1, color, shade = SH) => box({
   w: x1 - x0, h: y1 - y0, d: z1 - z0, x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: (z0 + z1) / 2, color, shade,

@@ -4,6 +4,7 @@
 //     mode?() -> 'direct'|'hls'|'other', exact?() -> boolean, res?() -> ms (Sliderauflösung ohne exakten Sprung) }
 // Netz-Ausgaben gehen über send({t:'kc'|'kb'|'kl', sid, ...}); Ereignisse für Toast/Leiste über emit({type, ...}).
 // Gesteuert wird nur in absoluten Zielzuständen (kc o=1 weiter, 2 Pause, 3 Sprung; Server st 0 wartet, 1 läuft, 2 Pause).
+import { clamp } from '../modules/m4-util.js';
 
 export const SYNC = Object.freeze({
   TICK_MS: 250, // Takt des Aufrufers
@@ -38,7 +39,6 @@ export const SYNC = Object.freeze({
   STUCK_MS: 3000, // lokale Pausenposition weicht so weit ab: Gruppenposition nehmen
 });
 
-const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const num = (x, d = 0) => (Number.isFinite(Number(x)) ? Number(x) : d);
 
 /** Erwartete Position (ms) einer Sitzung {st, p, at, rate?} zur Serverzeit now. */

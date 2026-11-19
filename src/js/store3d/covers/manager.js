@@ -17,21 +17,21 @@ import { CoverPreloader, coverUrl } from './preload.js';
 export const HI_SIZE = 2048;
 export const HI_WIDTH = 400;
 export const HI_COST = (HI_SIZE / 1024) ** 2; // Budgeteinheiten (1 = Atlas 1024²)
-export const LOW_SIZE = 256;
-export const LOW_SIZE_SMALL = 128;
+const LOW_SIZE = 256;
+const LOW_SIZE_SMALL = 128;
 
 // Stabilität (kein Thrashing, Upload-Pacing)
-export const CALM_SPEED = 0.5; // m/s: darunter darf hochgestuft werden
-export const HI_SELECT_MS = 400; // Seite muss so lange ausgewählt sein
-export const HI_HOLD_MS = 3000; // keine Hoch-/Herabstufung derselben Seite innerhalb
-export const HI_BEHIND_MS = 2000; // hinter dem Spieler so lange, bevor herabgestuft wird
-export const HI_KEEP_D = 9; // weiter weg: Herabstufen
-export const HI_UPLOAD_GAP_MS = 600; // zwischen zwei 2048er-Uploads (jeder kostet die GPU ~1 Frame; live gemessen v1.7.7)
-export const HI_LRU_MS = 3000; // Hi-Platz nur von Seiten, die so lange nicht mehr gewollt waren
-export const SLOW_TURN = 0.8; // rad/s: schneller → keine neuen Hi-Ladevorgänge
-export const FAST_TURN = 1.5; // rad/s: Hi-Uploads zurückgestellt
-export const EVICT_MARGIN = 3; // m: neue Seite muss so viel näher sein als die entfernteste geladene
-export const EVICT_PROTECT_MS = 5000; // frisch geladene Seiten nicht verdrängen
+const CALM_SPEED = 0.5; // m/s: darunter darf hochgestuft werden
+const HI_SELECT_MS = 400; // Seite muss so lange ausgewählt sein
+const HI_HOLD_MS = 3000; // keine Hoch-/Herabstufung derselben Seite innerhalb
+const HI_BEHIND_MS = 2000; // hinter dem Spieler so lange, bevor herabgestuft wird
+const HI_KEEP_D = 9; // weiter weg: Herabstufen
+const HI_UPLOAD_GAP_MS = 600; // zwischen zwei 2048er-Uploads (jeder kostet die GPU ~1 Frame; live gemessen v1.7.7)
+const HI_LRU_MS = 3000; // Hi-Platz nur von Seiten, die so lange nicht mehr gewollt waren
+const SLOW_TURN = 0.8; // rad/s: schneller → keine neuen Hi-Ladevorgänge
+const FAST_TURN = 1.5; // rad/s: Hi-Uploads zurückgestellt
+const EVICT_MARGIN = 3; // m: neue Seite muss so viel näher sein als die entfernteste geladene
+const EVICT_PROTECT_MS = 5000; // frisch geladene Seiten nicht verdrängen
 
 /** Kantenlänge der Low-Atlanten: Handy/Qualität low oder viele Seiten → 128, sonst 256. */
 export function lowSizeFor(faceCount, phone, level) {

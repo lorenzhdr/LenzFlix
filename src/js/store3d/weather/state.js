@@ -6,10 +6,10 @@
 export const KINDS = ['clear', 'cloudy', 'fog', 'drizzle', 'rain', 'heavy', 'snow', 'storm'];
 export const RAINY = ['drizzle', 'rain', 'heavy', 'storm'];
 /** Niederschlagsstärke je Regenart (Niesel/normal/stark/Gewitter). */
-export const RAIN_I = { drizzle: 0.3, rain: 0.6, heavy: 1, storm: 0.9 };
+const RAIN_I = { drizzle: 0.3, rain: 0.6, heavy: 1, storm: 0.9 };
 /** Schneehöhe (m) für dünnen Belag und vollen Belag. */
-export const SNOW_THIN = 0.02;
-export const SNOW_FULL = 0.15;
+const SNOW_THIN = 0.02;
+const SNOW_FULL = 0.15;
 
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const clamp01 = (v) => (v > 1 ? 1 : v > 0 ? v : 0);

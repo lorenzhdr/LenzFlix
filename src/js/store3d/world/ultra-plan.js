@@ -378,7 +378,7 @@ function planStreet(layout, keep, rand, placed) {
 }
 
 /** Skyline: ferne Gebäude auf drei Ringen (Höhenstaffeln). Die Gebäude liegen RELATIV zum Ringmittelpunkt (x/z um den Ursprung); cx/cz = Mitte der Welt (Bereich bounds), der Ring folgt der Kamera über skylineRoot(). */
-export function planSkyline(layout) {
+function planSkyline(layout) {
   const b = layout.city.bounds;
   const cx = (b.x0 + b.x1) / 2;
   const cz = (b.z0 + b.z1) / 2;

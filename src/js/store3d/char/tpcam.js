@@ -11,7 +11,7 @@ export const BACK = 2.4;
 export const UP = 0.3;
 export const HIDE_DIST = 0.45;
 /** Eingezogene Kamera steigt bis zu so viel (m) über die Schulter, damit die Figur im Bild bleibt (Anteil (1 − frac)). */
-export const LIFT = 0.12;
+const LIFT = 0.12;
 export const EXTEND_T = 0.25;
 /** Pufferabstand der Kamera zu Wänden (m). */
 export const MARGIN = 0.14;
