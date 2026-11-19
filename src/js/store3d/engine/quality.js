@@ -17,7 +17,7 @@ const CITY = {
   low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], precip: [260, 180], fogNear: 34, fogFar: 56 },
   mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
   high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
-  // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Handy-Werte = high.
+  // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Tablet (phone=true) nutzt dieselben Werte.
   ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 44, fogFar: 59 },
 };
 function city(lv, phone) {
@@ -29,7 +29,7 @@ function city(lv, phone) {
 /** Einstellungen je Stufe. Atlas-Auflösung = Kantenlänge der Cover-Atlanten; maxAtlases = Texturbudget (LRU). */
 export function presetFor(level, phone = false) {
   let lv = LEVELS.includes(level) ? level : 'mid';
-  if (lv === 'ultra' && phone) lv = 'high'; // Ultra nie am Handy/in VR (Handy-Budget)
+  // Ultra bei phone=true: Desktop-Ultra-Spalte (Tablet); wer Ultra nicht darf, wird über maxLevel/ultraOk geklemmt (Handy/VR nie).
   if (lv === 'low') {
     return { level: lv, pixelRatio: phone ? 1 : 0.9, shadows: false, anisotropy: 1, atlas: 512, maxAtlases: phone ? 24 : 32, loadRadius: phone ? 9 : 11, signMips: false, ...city(lv, phone) };
   }

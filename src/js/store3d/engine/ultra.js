@@ -58,8 +58,8 @@ export function createUltra(ctx, o = {}) {
   const level = () => { try { return ctx.quality(); } catch { return 'mid'; } };
   const isActive = () => level() === 'ultra';
   const allowed = (key) => (flt.only ? key === flt.only : !flt.off.has(key));
-  // Ultra erreichbar? (gleiche Regel wie store.js: opts.ultraOk, nie Handy). Sonst nur bauen, wenn die Stufe wirklich 'ultra' ist.
-  const reachable = () => !!(ctx && ctx.opts && ctx.opts.ultraOk === true && !ctx.isPhone);
+  // Ultra erreichbar? (gleiche Regel wie store.js: nur opts.ultraOk der Hülle). Sonst nur bauen, wenn die Stufe wirklich 'ultra' ist.
+  const reachable = () => !!(ctx && ctx.opts && ctx.opts.ultraOk === true);
   const wantBuild = () => (reachable() ? atLeast(level(), 'high') : level() === 'ultra');
   const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built;
 

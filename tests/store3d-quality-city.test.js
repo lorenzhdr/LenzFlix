@@ -46,6 +46,8 @@ describe('Qualitätsstufen: Dichte der Außenwelt', () => {
     expect(presetFor('mid', true)).toMatchObject({ level: 'mid', pixelRatio: 1.25, atlas: 1024, maxAtlases: 14, loadRadius: 13, signMips: true });
     expect(presetFor('high', false)).toMatchObject({ level: 'high', pixelRatio: 1.75, shadows: true, maxAtlases: 56, loadRadius: 28 });
     expect(presetFor('ultra', false)).toMatchObject({ level: 'ultra', pixelRatio: 2, shadows: true, anisotropy: 16, atlas: 1024, maxAtlases: 80, loadRadius: 34, signMips: true, fogNear: 44, fogFar: 59 });
-    expect(presetFor('ultra', true)).toMatchObject({ level: 'high', pixelRatio: 1.75, shadows: false, maxAtlases: 16, loadRadius: 20 });
+    expect(presetFor('ultra', true)).toEqual(presetFor('ultra', false)); // Tablet: Desktop-Ultra-Spalte
+    expect(presetFor('high', true)).toMatchObject({ level: 'high', pixelRatio: 1.75, shadows: false, maxAtlases: 16, loadRadius: 20 });
+    expect(presetFor('low', true)).toMatchObject({ level: 'low', pixelRatio: 1, maxAtlases: 24, loadRadius: 9 });
   });
 });

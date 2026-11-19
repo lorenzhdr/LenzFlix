@@ -34,8 +34,8 @@ describe('Ultra-Registry', () => {
     expect(e.build).toHaveBeenCalledTimes(1);
     expect(t.u.api.list()[0]).toMatchObject({ key: 'a', built: true, visible: false });
   });
-  it('ohne ultraOk oder auf dem Handy wird auf high nichts vorab gebaut', () => {
-    for (const extra of [{ opts: { ultraOk: false } }, { isPhone: true }]) {
+  it('ohne ultraOk (Handy/TV laut Hülle) wird auf high nichts vorab gebaut', () => {
+    for (const extra of [{ opts: { ultraOk: false } }, { opts: { ultraOk: false }, isPhone: true }]) {
       const t = setup('high', undefined, extra);
       const e = entry();
       t.u.api.register('a', e.build);
@@ -45,6 +45,13 @@ describe('Ultra-Registry', () => {
       expect(e.build).not.toHaveBeenCalled();
       expect(t.jobs.length).toBe(0);
     }
+  });
+  it('Tablet (isPhone, aber ultraOk) baut auf high vorab', () => {
+    const t = setup('high', undefined, { isPhone: true });
+    const e = entry();
+    t.u.api.register('a', e.build);
+    t.flush();
+    expect(e.build).toHaveBeenCalledTimes(1);
   });
   it('Sichtbarkeit nur auf ultra; Umschalten baut nie neu', () => {
     const t = setup('high');

@@ -60,9 +60,11 @@ export class StoreApp {
     this.vr = this.opts.vr;
     this.phone = !!this.opts.phone;
     this.touch = !!this.opts.touch;
-    this.ultraOk = this.opts.ultraOk === true && !this.phone; // Gerätesperre: Handy/TV nie Ultra
+    this.ultraOk = this.opts.ultraOk === true; // Gerätesperre allein über die Hülle (features/store/home.js ultraAllowed): Handy/TV nie, Tablet ja
     this.qualitySetting = QUALITY_SETTINGS.includes(this.opts.quality) ? this.opts.quality : 'auto';
-    if (this.qualitySetting === 'ultra' && !this.ultraOk) this.qualitySetting = 'high'; // gespeichertes Ultra auf dem Handy: klemmen, nicht verwerfen
+    this.savedQuality = this.qualitySetting; // gespeicherte Wahl bleibt erhalten, bis der Nutzer selbst wählt (setQuality aus dem Menü)
+    this.qualityChosen = false;
+    if (this.qualitySetting === 'ultra' && !this.ultraOk) this.qualitySetting = 'high'; // gespeichertes Ultra ohne Freigabe: nur wirksam klemmen, die Wahl nicht verwerfen
     this.sound = !!this.opts.sound;
     this.showFps = this.opts.showFps === true;
     this.voiceOnline = this.opts.voiceOnline === true;
@@ -130,7 +132,7 @@ export class StoreApp {
       getVr: () => this.xr.supported && !this.xr.presenting,
       onSearch: () => { if (this.mode !== 'paused') return; this.pause.hide(); this.setMode('play'); this.openTerminal(''); }, // ohne requestLock: das Terminal ist ein Overlay
       onClassic: () => this.deps.classicView(),
-      onQuality: (q) => { this.setQuality(q); this.savePrefs(); },
+      onQuality: (q) => { this.qualityChosen = true; this.setQuality(q); this.savePrefs(); },
       onSound: (on) => { this.setSound(on); this.savePrefs(); },
       onFps: (on) => { this.setShowFps(on); this.savePrefs(); },
       onVoice: (p) => { this.setVoicePrefs(p); this.savePrefs(); this.previewVoice(); }, // synchron im Klick (iOS-Nutzergeste)
@@ -930,7 +932,7 @@ export class StoreApp {
   }
 
   savePrefs() {
-    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, ...(this.touchChosen ? { touchControl: this.touchScheme, touchControlChosen: true } : {}), ...this.touchTune, vr: { ...this.vr } }); } catch { /* egal */ }
+    try { this.deps.onPrefs({ quality: this.qualityChosen ? this.qualitySetting : this.savedQuality, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, ...(this.touchChosen ? { touchControl: this.touchScheme, touchControlChosen: true } : {}), ...this.touchTune, vr: { ...this.vr } }); } catch { /* egal */ }
   }
 
   /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
