@@ -19,7 +19,7 @@ Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkl
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.1/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.19.0/dist/lenzflix.min.css");
 ```
 
 - Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,7 +29,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.1/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.19.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
@@ -62,6 +62,10 @@ Die Auswahl öffnet sich über **Mehr → Design-Einstellungen** (bei LENZ+/LENZ
 
 Der Browser-Tab passt sich dem Design an: Er trägt dessen Icon und Namen, auf Unterseiten zum Beispiel „Meine Liste · LENZ+“. Auch das Icon beim Hinzufügen zum Home-Bildschirm und die Farbe der Browserleiste am Handy wechseln mit.
 
+**Online-Anzeige im Design-Menü:** Bei der Kachel „VIDEOTHEK LENZ“ zeigt ein grüner Punkt mit „N online“, wie viele Personen gerade in der VIDEOTHEK sind (ab einer Person, für alle sichtbar). Gezählt wird nur, solange das Menü offen ist (Aktualisierung alle 30 Sekunden). Voraussetzung ist der Charts-Worker mit Mehrspieler (`chartsUrl`); ohne ihn oder mit einem älteren Worker erscheint nichts.
+
+**iPhone-Web-App:** In Safari über **Teilen → Zum Home-Bildschirm** hinzufügen. Der Name auf dem Home-Bildschirm ist der des aktiven Designs (der Versuch, Jellyfins Manifest umzuschreiben, kann je nach iOS-Version ignoriert werden; dann bleibt der Name von Jellyfin). Die App läuft ohne Browserleiste; dort gibt es keine Zurück-Taste, deshalb erscheint bei Bedarf ein kleiner **Zurück-Knopf** unten links (nicht auf der Startseite, im Player, in der VIDEOTHEK und dort, wo das Design schon einen Zurück-Weg hat). Die Höhen berücksichtigen die einklappende Leiste und die Sicherheitsränder des Geräts.
+
 Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 
 **Wichtig bei Updates:** CSS-`@import` und JS-URL immer auf **denselben** Release-Tag setzen. Das Design-CSS wird aus dem Pfad des eingebundenen CSS abgeleitet. Steht das CSS noch auf einer älteren Version (ohne `lenzplus`/`lenzprime`/`lenzretro`), schlägt das Nachladen fehl. Dann fällt LenzFlix auf LENZFLIX zurück, und der Design-Dialog ist ungestylt.
@@ -93,7 +97,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.1/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.19.0/dist/lenzflix.min.css");
 :root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -139,6 +143,13 @@ Seit 1.18.0 ist die Stadt lebendiger und rauer.
 - **Energie und K.O.:** Treffer kosten Energie, die sich langsam wieder füllt. Treffer von Passanten, Personal und Rowdys kosten seit 1.18.1 nur noch halb so viel Energie wie vorher. Bei null wacht man auf der Bank vor dem Laden auf, mit 10 Sekunden Schutz. Kinosaal (während des Films), Kinder-Ecke, Couch, Friseurstuhl und offene Menüs schützen.
 - **Mehrspieler:** Waffen wirken auch auf andere Spieler: Rückstoß, Energie, Blenden (kräftiger Schleier ohne Flackern, höchstens alle 4 Sekunden). Die Rowdy-Bande ist für alle dieselbe. In VR gibt es keine Waffen und keine Angriffe. Mit einem älteren Charts-Worker oder einer älteren Version bleibt es beim bisherigen Schubsen.
 - **Entdeckungen:** vier neue (jetzt 19), jede mit eigenem Kleidungsstück für die Figur.
+
+### Ultra-Stufe und echtes Wetter (Beta, VIDEOTHEK LENZ)
+
+- **Ultra:** Im Pause-Menü unter „Qualität“ gibt es neben Niedrig/Mittel/Hoch (und Automatik) die Stufe **Ultra** für Desktop, Laptop und Tablet, nie am Handy oder in VR. Sie zeigt mehr Details: Neon-Schimmer und Lichtpfützen, feinere Fassaden, Straßen und Bäume mit ferner Silhouette, schärfere Texturen und mehr Kleinkram im Laden, Figuren mit Fingern, Gürtel und Brauen aus der Nähe, mehr Leute, Autos und Vögel, nasse Straßen bei Regen. Die Automatik behandelt Ultra wie die anderen Stufen und schaltet bei zu wenig Bildern pro Sekunde zurück. Auf einem Handy bleibt eine gespeicherte Wahl „Ultra“ erhalten und wirkt dort nur als „Hoch“.
+- **Leichter Niederschlag:** Regen und Schnee fallen jetzt auch bei „Niedrig“ und am Handy (mit wenig Aufwand).
+- **Echtes Wetter:** Statt Zufall zeigt die VIDEOTHEK das aktuelle Wetter an einem vom Betreiber festgelegten Ort: fallender und liegender Schnee (nach der gemeldeten Schneehöhe), Regen in Stärken, Nebel, Gewitter mit Blitzen (Donner nur bei eingeschaltetem Ton). Dazu tragen Passanten bei Kälte Mütze und Schal, bei Frost sind Atemwölkchen zu sehen (Hoch/Ultra), und am Laden hängt ein Thermometer. Schirme erscheinen bei Regen und Schnee. Ohne Konfiguration, bei Ausfall oder älteren Daten (über 2 Stunden) bleibt das bisherige Zufallswetter bzw. das gemeinsame Mehrspieler-Wetter.
+- **Einrichtung (Admin):** Im Charts-Worker die Vars `WX_LAT` und `WX_LON` (Breite/Länge als Text, z. B. `"00.0000"` als Platzhalter) nur in der eigenen, nicht eingecheckten `wrangler.local.jsonc` setzen und neu deployen (Details in [`charts-worker/README.md`](charts-worker/README.md)). Ohne diese Werte antwortet der Worker mit 404 und die VIDEOTHEK nutzt das Zufallswetter. Die Antwort des Workers enthält nie Koordinaten oder Ortsnamen.
 
 ### VR-Modus (Beta, VIDEOTHEK LENZ)
 
@@ -209,7 +220,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.1/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.19.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;
@@ -259,6 +270,10 @@ tests/        vitest-Tests (jsdom)
 - **Wiedergabe per Proxy-Klick:** ein verstecktes `.itemAction[data-action=play]` wird in einen vorhandenen `.itemsContainer` gehängt und geklickt (siehe `docs/dom-map.md`).
 - **Scoping:** Modern-Regeln unter `html:not(.layout-tv)`, TV-Regeln unter `html.layout-tv`, JS-UI-Styles nur unter `html.lfx-js`. Details in `CLAUDE.md`.
 - `window.LenzFlix.destroy()` muss alles wieder entfernen (Listener, Timer, Knoten).
+
+## Datenquellen
+
+Wetterdaten: [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0). Die Daten werden nur vom optionalen Charts-Worker abgerufen, nie direkt vom Browser, und nur für den nicht-kommerziellen Betrieb dieses Themes.
 
 ## Lizenz
 

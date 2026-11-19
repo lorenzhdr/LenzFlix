@@ -5,7 +5,7 @@ Cloudflare Worker, der aus dem Jellyfin-Plugin **Playback Reporting** serverweit
 Vertrag: [`../docs/charts-api.md`](../docs/charts-api.md).
 
 - Cron `0 * * * *` (stündlich) berechnet die Charts und schreibt sie in KV (`CHARTS`, Key `charts:v1`).
-- `GET /charts` (Header `X-Emby-Token`), `GET /health`, `POST /refresh` (Header `X-Refresh-Secret`); Mehrspieler: `GET /mp/ticket`, `GET /mp` (siehe unten).
+- `GET /charts` (Header `X-Emby-Token`), `GET /health`, `POST /refresh` (Header `X-Refresh-Secret`); Mehrspieler: `GET /mp/ticket`, `GET /mp`, `GET /mp/online`; Wetter: `GET /wx` (siehe unten).
 
 ## Einrichtung (Schritt für Schritt)
 
@@ -52,6 +52,25 @@ Derselbe Worker trägt die gemeinsame Welt der VIDEOTHEK: ein Durable Object `Mp
 - **Kill-Schalter:** Wird `MP_SECRET` entfernt (`npx wrangler secret delete MP_SECRET`), antwortet `/mp/ticket` mit 503, und das Durable Object schließt beim nächsten Alarm alle Verbindungen still.
 - **Free-Plan:** Ein Sparwächter zählt Requests pro UTC-Tag gegen `MP_DAILY_REQ`. Ab 60 % senkt er die Sende-Raten der Clients, ab 95 % nimmt er keine neuen Verbindungen mehr an (Close-Code 4503), bestehende laufen mit minimaler Rate weiter. Die VIDEOTHEK fällt dann still auf das Verhalten ohne Mehrspieler zurück.
 - Deploy wie oben (`npx wrangler deploy -c wrangler.local.jsonc`); die Migration `mp1` legt das Durable Object beim ersten Deploy an. Im Theme muss `chartsUrl` gesetzt sein; Hinweis zur CSP (`connect-src wss://…`) in der Haupt-README.
+
+## Echtes Wetter für die VIDEOTHEK (`GET /wx`, ab 1.19.0)
+
+Liefert das aktuelle Wetter an einem festen Ort, damit die VIDEOTHEK Regen, Schnee, Nebel und Gewitter passend zeigt. Quelle ist eine öffentliche Wetter-API (Quelle und Lizenz siehe README im Projektstamm). Optional: Ohne Konfiguration bleibt alles wie vorher (zufälliges Wetter im Client).
+
+- **Konfiguration:** die Vars `WX_LAT` und `WX_LON` (Breite und Länge als Zeichenketten, Dezimalpunkt) tragen nur in der **lokalen, gitignorierten** `wrangler.local.jsonc` den Ort ein. Die Vorlage `wrangler.jsonc` enthält leere Platzhalter und bleibt so; echte Werte gehören nie ins Repository. Ungültige oder fehlende Werte zählen als nicht konfiguriert.
+- **Nicht konfiguriert:** `GET /wx` antwortet 404 `wx-off`; der Client fällt still auf das Zufallswetter zurück (und fragt erst nach einigen Minuten wieder).
+- **Aufruf:** Header `X-Emby-Token` wie bei `/charts`. Limit 30 Anfragen/min je IP (vor der Anmeldeprüfung), 401 ohne/mit ungültigem Token, 502 wenn Jellyfin nicht erreichbar ist, 503 `wx-down`, wenn weder frische noch brauchbare ältere Daten vorliegen.
+- **Cache:** Isolate-Speicher, dann KV (`CHARTS`, Key `wx:v1`) mit 15 min Frische, dann die Wetter-API (Timeout 4 s, ein gemeinsamer Abruf für alle Wartenden). Nach einem Fehler der Quelle 60 s kein neuer Abruf. Ältere Daten bis 2 h werden mit `"stale": 1` ausgeliefert, danach 503. Antwort mit `Cache-Control: private, max-age=300`.
+- **Antwort 200:** `{ "v": 1, "k": "clear|cloudy|fog|drizzle|rain|heavy|snow|storm", "i": 0..1, "sd": <Schneehöhe in m>, "fog": 0..1, "t": <ganze °C> | null, "day": 0|1, "ts": <ms>, "stale"?: 1 }`. Fehlende Messwerte bleiben `null` (Temperatur) bzw. 0 (Schneehöhe, Nebel); ein fehlender Wettercode macht die ganze Antwort ungültig (kein erfundenes „klar“). Die Antwort enthält **nie** Koordinaten, Ortsnamen, Höhe oder Zeitzone.
+- Pro Client wird `/wx` höchstens alle 14 Minuten abgefragt; Kosten im Free-Plan: wenige Worker-Requests je Stunde und Spieler, KV: ein Put je Frischwechsel (höchstens 4 je Stunde).
+
+## Online-Anzeige (`GET /mp/online`, ab 1.19.0)
+
+Zahl der gerade in der VIDEOTHEK anwesenden Konten für die Pille „N online“ im Design-Menü. Vertrag: [`../docs/mp-api.md`](../docs/mp-api.md) §17.
+
+- Header `X-Emby-Token`; Antwort `{ "v": 1, "n": <Anzahl> }` mit `Cache-Control: private, max-age=30`. Keine Namen, keine IDs.
+- Limits: 12/min je Token, 60/min je IP (eigener Zähler). Ein Isolate-Cache von 45 s sorgt dafür, dass das Durable Object höchstens alle 45 s geweckt wird.
+- 503 bei ausgeschaltetem Mehrspieler (`MP_SECRET` fehlt) oder Fehler des Durable Objects; ein älterer Worker ohne die Route antwortet 404, der Client zeigt dann nichts an.
 
 ## Entwicklung
 

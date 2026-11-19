@@ -1,4 +1,4 @@
-# LenzFlix Mehrspieler – Vertrag `lfx-mp.1` (Release 1.16.0, Fähigkeit `look` seit 1.17.0, Fähigkeit `fight` seit 1.18.0)
+# LenzFlix Mehrspieler – Vertrag `lfx-mp.1` (Release 1.16.0, Fähigkeit `look` seit 1.17.0, Fähigkeit `fight` seit 1.18.0, `rich2` und `GET /mp/online` seit 1.19.0)
 
 Verbindlicher Vertrag zwischen Worker (Durable Object `MpWorld` im `charts-worker`), Hülle (`features/store/`, Hauptbundle) und 3D-Bundle (`src/js/store3d/net/`, lazy `lenzstore`) für den Mehrspieler der VIDEOTHEK LENZ. Gegenstück zu `docs/charts-api.md`; die Einrichtung des Workers steht in `charts-worker/README.md`, die 3D-Seite in `docs/store3d.md` („Mehrspieler (1.16.0)“, „Figur, Ausweis, Salon (1.17.0)“). Die 1.17.0-Ergänzung (eigene Figur und Ausweis der Mitspieler, Nachrichten `lk`/`mc`) ist rein additiv und steht gesammelt in §15; die betroffenen Tabellen in §§1, 4, 5, 6.2, 7, 9, 10, 12, 13 verweisen dorthin. Die 1.18.0-Ergänzung (Raufen: Waffenwahl, Treffer, Laser, geteilte Rowdy-Bande; Nachrichten `wp fh lz lb gc gs gr gh`, Pose-Codes 9..15) ist ebenfalls rein additiv und steht gesammelt in §16.
 
@@ -22,8 +22,9 @@ Schreibweise: Dezimalpunkt in Tabellen und Formeln (`0.35`); Einheiten cm (int),
 | d | Kino-Sync | `kino` | `ks kj kl kc kb` |
 | e (1.17.0) | Eigene Figur und Ausweis der Mitspieler | `look` | `lk mc` |
 | f (1.18.0) | Raufen: Waffenwahl, Treffer, Laser, geteilte Bande | `fight` | `wp fh lz lb gc gs gr gh` |
+| g (1.19.0) | Richard: Laser-Treffer im Spiegel | `rich2` | kein eigener Typ, 9. Element `k` von `rs.q` (§7.1, §8.2) |
 
-Der Server kündigt `kino` seit 1.16.0 an (`charts-worker/src/mp/kino.js`, `ANNOUNCE = true`) und `look` seit 1.17.0 (immer, `look.js` `cap`) und `fight` seit 1.18.0 (immer, `fight.js` `cap`). `wx` hat keine eigene Client-Nachricht (nur `wl.wx`).
+Der Server kündigt `kino` seit 1.16.0 an (`charts-worker/src/mp/kino.js`, `ANNOUNCE = true`) und `look` seit 1.17.0 (immer, `look.js` `cap`) und `fight` seit 1.18.0 (immer, `fight.js` `cap`) und `rich2` seit 1.19.0 (immer, `rich.js` `cap = ['rich', 'rich2']`). `wx` hat keine eigene Client-Nachricht (nur `wl.wx`).
 
 ## 2. Transport und Auth
 
@@ -343,6 +344,8 @@ DO-Tabelle `i → {o, g, h, t}`, höchstens 64 Einträge.
 Für alle gleich, unabhängig von der Tageszeit (die bleibt lokal):
 `slot = floor(serverMs / 1_800_000)`; `roll = mulberry32((sd ^ Math.imul(slot, 0x9E3779B1)) >>> 0)()`; Regen, wenn `roll < 0.35`. `sd` kommt aus `wl.wx` (Storage `seed`). Der Client wertet beim Willkommen und alle 15 s aus; Debug-Wert `rainForce` hat Vorrang.
 
+**Seit 1.19.0 nur Rückfall:** Hat der Client echtes Wetter (`GET /wx` am Charts-Worker, Vertrag: `charts-worker/README.md`; Darstellung `docs/store3d.md` „Echtes Wetter in 3D“), gilt dieses für die eigene Szene und hat Vorrang vor dem Mehrspieler-Seed. Der Seed (`setRaining`) gilt nur, wenn kein echtes Wetter vorliegt (nicht konfiguriert, Fehler, älter als 2 h) und nicht während der ersten Abfrage (trockener Platzhalter). Das Protokoll ändert sich nicht: `wl.wx` und der Takt bleiben, alte und neue Clients verhalten sich gegenüber dem Worker gleich.
+
 ### 8.4 Kino (`cap kino`, Zustand im DO-Storage `hall`)
 
 - Höchstens 8 Sitzungen parallel im Saal (jeder kann seinen eigenen Film schauen). Sitzung `{sid, host, i, pv, v, st (0 wartet, 1 läuft, 2 pause), p, at, m[], buf[], lg[], w}`; bei `er cap` läuft der Film lokal ohne Sitzung.
@@ -376,7 +379,7 @@ Rechnung:
 - Laufzeit: ein DO mit 128 MB, höchstens 86 400 s x 0.125 GB = 10 800 GB-s/Tag (unter 13 000).
 - Rows written je Stunde: Alarme 60, jti etwa 7 je Spielerstunde, `quota` etwa 1 je 500 Frames (etwa 38/h je Spielerstunde), `hall` je Kino-Änderung, `rest` höchstens 720/h (nur bei Physik), `lk:<c>` (1.17.0) je Beitritt ein bis zwei Puts (`lk` und `mc` schreiben denselben Schlüssel; je Nachrichtenverarbeitung zählt nur der letzte Stand) und je spätere Änderung ein weiterer, dazu ein Delete beim Schließen; Ziel höchstens etwa 1 000/h gegen 100 000/Tag.
 - 1.18.0 (§16): Der Führer der Bande sendet `gs` alle 170 ms, solange eine Bande besteht. Die Frames bleiben bei höchstens 8/s (§6.3), die Obergrenze liegt also bei etwa 1 440 Requests je Stunde und Spieler (statt etwa 940 bei bewegter Figur ohne Bande); `lz` nur bei leuchtendem Laser (Herzschlag 2 s). Schätzung, im Dashboard an Tag 1 und 7 zu prüfen.
-- Worker-Requests (eigenes Kontingent): Ticket, Preflight, Upgrade, `rn` etwa 12 bis 18 je Spielerstunde.
+- Worker-Requests (eigenes Kontingent): Ticket, Preflight, Upgrade, `rn` etwa 12 bis 18 je Spielerstunde. Seit 1.19.0 kommen `GET /mp/online` (Design-Menü, höchstens alle 30 s bei offenem Menü, §17) und `GET /wx` (alle 15 min je Client, Wetter-Cache im Worker) hinzu; `/mp/online` weckt das Durable Object höchstens alle 45 s (Isolate-Cache), also bis etwa 80 DO-Requests/h insgesamt, unabhängig von der Zahl der Nutzer.
 - **Sparwächter** (Tageszähler nach UTC: `Frames/20 + Upgrades + Alarme`):
   - ab 60 % von `MP_DAILY_REQ`: `cf {pr:4, ph:5}`
   - ab 95 %: neue Verbindungen 4503 `quota`, bestehende auf `pr=2`, `ph=2` (Entscheidung: `ph` auf 2, weil die Quelle nur `pr` nennt)
@@ -585,3 +588,14 @@ Mit ausgehandelter `fight` sendet `net/push.js` kein `pu` mehr (sonst bekäme da
 **Golden-Datei:** `charts-worker/test/fixtures/mp-golden/fight.json` (`contract`, `note`, `limits`, `c2s`: rohe Client-Nachricht → normalisiert oder verworfen, Fähigkeit `fight`), gelesen von `charts-worker/test/mp-fight.test.js` und `tests/net-proto.test.js`. `mp-fight` prüft außerdem Weitergabe nur an Peers mit `fight`, `pu`-Rückfall, VR-Sperre, Bandentreffer gegen Mitgliederpositionen, Führungsvergabe, 60-s-Frist, Kaltstart-Übernahme, Zähler-Vergiftung, `welcome`, Storage und Aufräumen.
 
 **Kontingent (§9):** Neu ist vor allem der Führer der Bande mit `gs` bis 6/s, solange eine Bande existiert (`gs` fährt im Sende-Takt §6.3 mit und wird nicht zusammengelegt; es bleibt bei höchstens 8 Frames/s je Verbindung, also bei 20:1 höchstens etwa 1 440 Requests je Stunde und Spieler. Neu ist nur, dass ein stehender Führer nicht mehr schweigt: statt der etwa 940 Requests je Stunde einer bewegten Figur bis zu dieser Obergrenze; ausgehende Nachrichten sind gratis). `lz` höchstens 4/s und nur, solange ein Laser leuchtet (Herzschlag 2 s); `fh`, `lb`, `wp`, `gh` sind selten. Rows written: `fg:<c>` je Waffenwechsel ein Put, ein Delete beim Schließen. Die Schätzung ist im Dashboard an Tag 1 und 7 nach dem Deploy zu prüfen; Stellschraube ist der Client-Takt `GS_GAP` (170 ms).
+
+## 17. `GET /mp/online` (1.19.0): Zahl der Anwesenden
+
+Nur für die Anzeige „N online“ auf der Kachel der VIDEOTHEK im Design-Menü (`core/online.js`, `core/themepicker.js`). Kein WebSocket, keine Fähigkeit, kein neues Protokollelement; `lfx-mp.1` bleibt unverändert. Worker: `charts-worker/src/mp/route.js` `handleOnline`, im DO `world.js` `GET /online` (intern) mit `onlineCount(st)` aus `room.js`.
+
+- **Auth:** Header `X-Emby-Token` (Jellyfin-Token, nie in der URL, nie geloggt), geprüft wie bei `/mp/ticket` über `resolveUser`. Ohne Token 401, ungültiges Token 401, Jellyfin nicht erreichbar 502.
+- **Antwort 200:** `{ "v": 1, "n": <ganze Zahl >= 0> }`, `n` = Anzahl verschiedener Konten (Pseudonyme `k`, nicht Verbindungen) in der Welt. Header `Cache-Control: private, max-age=30`. Keine Namen, IDs oder Listen.
+- **Fehler:** 503 `mp-disabled` bei ausgeschaltetem Mehrspieler (`MP_SECRET` fehlt), 503 `unavailable` bei Fehler oder ungültiger Antwort des DO, 429 `rate`, 401, 502 (siehe oben).
+- **Limits:** 12 Anfragen/min je Token (SHA-256 des Tokens als Schlüssel) und 60/min je IP (`CF-Connecting-IP`, Rückfallschlüssel `noip`); das IP-Limit greift VOR der Anmeldeprüfung. Eigener Zähler, nicht der Ticket-Limiter.
+- **Cache:** ein Isolate-Cache `{ at, n }` für alle Nutzer, 45 s (`ONLINE_TTL_MS`); innerhalb der Frist antwortet der Worker ohne das Durable Object anzufassen. Das DO wird also höchstens alle 45 s je Isolate geweckt.
+- **Client (`core/online.js`):** `fetchOnline(signal) → Promise<number|null>`; 4 s Timeout, `credentials: 'omit'`, `cache: 'no-store'`, Clientcache 20 s. `null` bei jedem Fehler (kein Charts-URL/Token, 404, 429, 503, Netz, Abbruch, ungültige Form `v !== 1` oder `n` keine ganze Zahl >= 0). Alter Worker ohne die Route: 404 → `null`, die Pille bleibt weg.
