@@ -6,11 +6,16 @@
 export const GP_DEAD = 0.12;
 export const GP_RUN_ON = 0.92;
 export const GP_RUN_OFF = 0.8;
-/** Stick-Zone als Anteil der Fensterbreite/-höhe: Finger links von x und unterhalb y legen den Stick an. */
+/**
+ * Stick-Zone als Anteil der Fensterbreite/-höhe: Finger links von x und unterhalb y legen den Stick an.
+ * Hochformat (1.19.2): nur ein Streifen unten (vorher y 0.42 = untere 58 %; der rechte Daumen erwischte beim Wischen den Stick).
+ */
 export const GP_ZONE = {
   landscape: { x: 0.42, y: 0.28 },
-  portrait: { x: 0.48, y: 0.42 },
+  portrait: { x: 0.48, y: 0.78 },
 };
+/** Mindesthöhe des Hochformat-Streifens in px (der Ruhe-Stick reicht ~122 px über den unteren Rand; Safari-Leisten, kleine Handys). */
+export const GP_STRIP_MIN = 140;
 
 /** Stickradius in px: 9 % der kleineren Fensterseite, mindestens 48. */
 export function stickRadius(w, h) {
@@ -135,7 +140,11 @@ export function createGamepad(host) {
     zoneOf(x, y) {
       const w = window.innerWidth || 800;
       const h = window.innerHeight || 600;
-      const z = h > w ? GP_ZONE.portrait : GP_ZONE.landscape;
+      if (h > w) {
+        const z = GP_ZONE.portrait;
+        return x < z.x * w && y > h - Math.max((1 - z.y) * h, GP_STRIP_MIN);
+      }
+      const z = GP_ZONE.landscape;
       return x < z.x * w && y > z.y * h;
     },
     destroy() {

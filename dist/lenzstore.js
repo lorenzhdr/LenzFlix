@@ -36038,8 +36038,9 @@ void main() {
   var GP_RUN_OFF = 0.8;
   var GP_ZONE = {
     landscape: { x: 0.42, y: 0.28 },
-    portrait: { x: 0.48, y: 0.42 }
+    portrait: { x: 0.48, y: 0.78 }
   };
+  var GP_STRIP_MIN = 140;
   function stickRadius(w, h3) {
     return Math.max(48, 0.09 * Math.min(w, h3));
   }
@@ -36163,7 +36164,11 @@ void main() {
       zoneOf(x, y) {
         const w = window.innerWidth || 800;
         const h3 = window.innerHeight || 600;
-        const z = h3 > w ? GP_ZONE.portrait : GP_ZONE.landscape;
+        if (h3 > w) {
+          const z2 = GP_ZONE.portrait;
+          return x < z2.x * w && y > h3 - Math.max((1 - z2.y) * h3, GP_STRIP_MIN);
+        }
+        const z = GP_ZONE.landscape;
         return x < z.x * w && y > z.y * h3;
       },
       destroy() {

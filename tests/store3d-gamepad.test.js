@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // VIDEOTHEK LENZ: Touch-Schema „Spiel“, Ansicht (ui/gamepad.js): reine Stick-Mathematik und DOM/API der Ansicht. Die Eingabe (GameTouch) steht in store3d-gametouch.test.js.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createGamepad, stickVector, stickRadius, GP_DEAD, GP_RUN_ON, GP_RUN_OFF, GP_ZONE } from '../src/js/store3d/ui/gamepad.js';
+import { createGamepad, stickVector, stickRadius, GP_DEAD, GP_RUN_ON, GP_RUN_OFF, GP_ZONE, GP_STRIP_MIN } from '../src/js/store3d/ui/gamepad.js';
 
 describe('stickVector (rein)', () => {
   const R = 100;
@@ -134,17 +134,31 @@ describe('createGamepad (Ansicht)', () => {
     expect(gp.root.classList.contains('is-parked')).toBe(false);
   });
 
-  it('zoneOf: Querformat x < 42 % und y > 28 %, Hochformat x < 48 % und y > 42 %', () => {
-    expect(GP_ZONE).toEqual({ landscape: { x: 0.42, y: 0.28 }, portrait: { x: 0.48, y: 0.42 } });
+  it('zoneOf: Querformat x < 42 % und y > 28 %, Hochformat x < 48 % im unteren Streifen (22 %, mind. 140 px; 1.19.2)', () => {
+    expect(GP_ZONE).toEqual({ landscape: { x: 0.42, y: 0.28 }, portrait: { x: 0.48, y: 0.78 } });
+    expect(GP_STRIP_MIN).toBe(140);
     setSize(844, 390);
     expect(gp.zoneOf(100, 300)).toBe(true);
     expect(gp.zoneOf(0.42 * 844 + 1, 300)).toBe(false);
     expect(gp.zoneOf(100, 0.28 * 390 - 1)).toBe(false);
     expect(gp.zoneOf(100, 0.28 * 390 + 1)).toBe(true);
     setSize(390, 844);
-    expect(gp.zoneOf(0.46 * 390, 0.5 * 844)).toBe(true);
-    expect(gp.zoneOf(0.48 * 390 + 1, 0.5 * 844)).toBe(false);
-    expect(gp.zoneOf(100, 0.42 * 844 - 1)).toBe(false);
+    expect(gp.zoneOf(0.46 * 390, 0.9 * 844)).toBe(true);
+    expect(gp.zoneOf(0.48 * 390 + 1, 0.9 * 844)).toBe(false);
+    expect(gp.zoneOf(100, 0.78 * 844 + 1)).toBe(true);
+    expect(gp.zoneOf(100, 0.78 * 844 - 1)).toBe(false);
+    // vorher Stick-Zone (untere 58 %), jetzt Umsehen: rechter Daumen wischt dort
+    expect(gp.zoneOf(100, 0.5 * 844)).toBe(false);
+    expect(gp.zoneOf(100, 0.7 * 844)).toBe(false);
+  });
+
+  it('zoneOf Hochformat: Mindesthöhe 140 px bei niedrigem Fenster (Safari-Leisten, kleines Handy)', () => {
+    setSize(375, 550); // 22 % wären 121 px < 140
+    expect(gp.zoneOf(100, 550 - 139)).toBe(true);
+    expect(gp.zoneOf(100, 550 - 141)).toBe(false);
+    setSize(402, 750); // 22 % = 165 px > 140
+    expect(gp.zoneOf(100, 750 - 164)).toBe(true);
+    expect(gp.zoneOf(100, 750 - 166)).toBe(false);
   });
 
   it('destroy entfernt das DOM und ist wiederholbar', () => {
