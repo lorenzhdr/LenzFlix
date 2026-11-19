@@ -32,8 +32,8 @@ export const LINES = {
   // Eilig bei Regen
   rain: ['Brr, nass! Wer hat das bestellt?', 'Regen! Mein Schirm ist stolz auf mich.', 'Wenigstens ist die Straße jetzt sauber.', 'Pfützen-Alarm!'],
   // Plaudern im Vorbeigehen (Spieler < 2 m, ruhig)
-  hello: ['Na?', 'Schönen Abend noch!', 'Moin!', 'Tolles Wetter für Kino, oder?', 'Hallo, Fremde!', 'Auch auf dem Weg zum nächsten Film?'],
-  night: ['Ganz schön dunkel hier.', 'Nachts sieht alles aus wie ein Film.', 'Die Laternen leuchten so schön ... filmreif.'],
+  hello: ['Na?', 'Moin!', 'Tolles Wetter für Kino, oder?', 'Hallo, Fremde!', 'Auch auf dem Weg zum nächsten Film?'],
+  night: ['Schönen Abend noch!', 'Ganz schön dunkel hier.', 'Nachts sieht alles aus wie ein Film.', 'Die Laternen leuchten so schön ... filmreif.'],
   // Kartenabreißer
   ticket: [
     'Karte bitte! ... Spaß, ist alles frei, nimm Platz!', 'Der Saal ist rechts. Oder links. Ich zeig es nie.', 'Abreißen ist mein Beruf. Meine Hände sind Profis.',

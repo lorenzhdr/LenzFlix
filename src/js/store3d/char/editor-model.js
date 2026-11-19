@@ -35,7 +35,7 @@ const L = {
   beard: ['Keiner', 'Stoppeln', 'Schnauzer', 'Spitzbart', 'Vollbart', 'Kinnbart'],
   shape: ['Gerade', 'Breite Schultern', 'Breite Hüften'],
   top: ['T-Shirt', 'Langarm', 'Kapuzenpulli', 'Hemd', 'Trägershirt', 'Pullover', 'Jacke', 'Weste', 'Polo', 'Kleid'],
-  topU: ['Regencape', 'Dreier-Trikot', 'Hausverbot-Shirt', 'Warnweste-Shirt'],
+  topU: ['Regencape', 'Dreier-Trikot', 'Hausverbot-Shirt', 'Warnweste-Shirt', 'Nietenjacke'],
   topP: ['Einfarbig', 'Brustband', 'Ringel', 'Längsstreifen', 'Zweifarbig', 'Karo'],
   bottom: ['Jeans', 'Shorts', 'Rock', 'Cargo', 'Trainingshose', 'Weite Hose'],
   bottomU: ['Zebrastreifen-Hose'],
@@ -43,11 +43,11 @@ const L = {
   shoe: ['Turnschuhe', 'Stiefel', 'Sandalen', 'Halbschuhe', 'Hohe Turnschuhe'],
   shoeU: ['Farbklecks-Treter'],
   glasses: ['Keine', 'Rund', 'Eckig', 'Sonnenbrille', 'Streberbrille'],
-  glassesU: ['Fliegerbrille', 'Dreidimensionale Brille'],
+  glassesU: ['Fliegerbrille', 'Dreidimensionale Brille', 'Pflaster-Veilchen'],
   hat: ['Keine', 'Kappe', 'Mütze', 'Hut', 'Anglerhut', 'Stirnband', 'Baskenmütze'],
-  hatU: ['Goldkappe', 'Krone des Fundus', 'Katzenöhrchen', 'Dosenhut', 'Platzanweiser-Mütze'],
+  hatU: ['Goldkappe', 'Krone des Fundus', 'Katzenöhrchen', 'Dosenhut', 'Platzanweiser-Mütze', 'Lockenwickler-Haube'],
   bag: ['Keine', 'Umhängetasche', 'Rucksack', 'Einkaufstasche'],
-  bagU: ['Chipstüte am Gurt', 'Kassettenrucksack'],
+  bagU: ['Chipstüte am Gurt', 'Kassettenrucksack', 'Katzenkopf-Rucksack'],
 };
 
 export const FIELD_NAMES = {

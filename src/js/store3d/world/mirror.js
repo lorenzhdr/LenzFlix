@@ -103,6 +103,18 @@ export function mirrorMaterial(rt) {
   });
 }
 
+/**
+ * Schattenkarten bereit? three legt `light.shadow.map` erst im ersten Hauptbild an. Rendert der Spiegel davor (autoUpdate aus),
+ * bekommt der Shadow-Sampler eine RGBA8-Textur (GL_INVALID_OPERATION). Ohne Schatten (low/mid) oder ohne Schatten-Lampe: sofort bereit.
+ */
+export function shadowsReady(renderer, scene) {
+  const sm = renderer && renderer.shadowMap;
+  if (!sm || !sm.enabled) return true;
+  let ok = true;
+  scene.traverse((o) => { if (o.isLight && o.castShadow && o.shadow && !o.shadow.map) ok = false; });
+  return ok;
+}
+
 // ------------------------------------------------------------------ Render-Gerüst (auch für den Überwachungsspiegel)
 /** Rendert `scene` mit `cam` in ein RenderTarget; stellt Renderer-Zustand sicher wieder her. `hide` = Objekte, die währenddessen unsichtbar sind. */
 export function renderToTarget(renderer, scene, cam, rt, hide = []) {
@@ -222,6 +234,7 @@ export function createMirror(ctx, o) {
 
   function renderNow() {
     const cam = ctx.camera;
+    if (!shadowsReady(ctx.renderer, ctx.scene)) return false; // erstes Hauptbild legt die Schattenkarten an
     if (!setup(cam)) return false;
     if (rt && rt.width !== rtSize) { rt.dispose(); rt = null; }
     if (!rt) { rt = makeTarget(rtSize); mat.uniforms.tDiffuse.value = rt.texture; }
