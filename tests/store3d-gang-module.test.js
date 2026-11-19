@@ -82,7 +82,8 @@ describe('modules/gang: Stub und Bereiche', () => {
 
   it('gangEnv: Gasse/Hof/Feuertreppe erlaubt, Laden und Tür verboten, Startpunkte nie im Laden und immer im erlaubten Bereich', () => {
     const e = gangEnv(city);
-    expect(e.allowed).toHaveLength(3);
+    expect(e.allowed).toHaveLength(2); // Gasse, Hof (Feuertreppe ist Sperrfläche, nur Ziel-Bereich)
+    expect(e.playerAllowed).toHaveLength(3);
     expect(e.spots.length).toBeGreaterThan(10);
     const store = city.zones.store.rect;
     for (const s of e.spots) {
