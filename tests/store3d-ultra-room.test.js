@@ -6,6 +6,7 @@ import { createUltra } from '../src/js/store3d/engine/ultra.js';
 import { buildLayout } from '../src/js/store3d/world/layout.js';
 import { makeTextures } from '../src/js/store3d/world/textures.js';
 import { posterSpots, clutterBoxes, shelfTags, lampSpecs, dustPoints, knownInteractBoxes } from '../src/js/store3d/world/room-ultra-logic.js';
+import { buildPosters } from '../src/js/store3d/world/build-room-ultra.js';
 import ultraRoom from '../src/js/store3d/modules/ultra-room.js';
 
 const ctxStub = new Proxy({}, {
@@ -39,12 +40,60 @@ function setup(level = 'high', dev) {
   };
   const jobs = [];
   const u = createUltra(ctx, { schedule: (fn) => { const j = { fn, cancel() { this.c = true; } }; jobs.push(j); return j; } });
-  ctx.use = (n) => (n === 'ultra' ? u.api : undefined);
+  const shell = { on: true }; // Sichtbarkeit der Ladenhülle (modules/city.js shellVisible)
+  ctx.use = (n) => (n === 'ultra' ? u.api : n === 'city' ? { shellVisible: () => shell.on } : undefined);
   const flush = () => { while (jobs.length) { const j = jobs.shift(); if (!j.c) j.fn(1000); } };
   const handle = ultraRoom.init(ctx);
   const setLevel = (l) => { state.level = l; u.onQuality(l); flush(); };
-  return { layout, scene, tex, mats, ctx, u, flush, setLevel, handle, addCollider };
+  return { layout, scene, tex, mats, ctx, u, flush, setLevel, handle, addCollider, shell };
 }
+
+describe('Ultra-Innenraum folgt dem Bereichs-Culling der Ladenhülle (W7 p2)', () => {
+  const GATED = ['posters', 'clutter', 'lamps', 'dust'];
+  const vis = (t) => Object.fromEntries(t.u.api.list().map((e) => [e.key, e.visible]));
+  it('Plakate: Atlas kommt als eigener Teilschritt; bis dahin bleibt das Mesh unsichtbar (keine weißen Flächen)', () => {
+    const layout = buildLayout(depts, {});
+    const api = buildPosters(layout, { aniso: 4 });
+    const mesh = api.object.children[0];
+    expect(mesh.visible).toBe(false);
+    expect(mesh.material.map).toBeNull();
+    expect(api.textures).toEqual([]);
+    expect(api.more()).toBe(false); // genau ein Schritt
+    expect(mesh.visible).toBe(true);
+    expect(mesh.material.map).toBe(api.textures[0]);
+    expect(api.more()).toBe(false);
+    api.dispose();
+  });
+  it('Hülle ausgeblendet: Plakate, Kleinkram, Lampen, Staub unsichtbar (0 Draw-Calls), Texturen bleiben getauscht', () => {
+    const t = setup('ultra');
+    t.flush();
+    t.u.update(0.016, 1);
+    for (const k of GATED) expect(vis(t)[k], k).toBe(true);
+    const swapped = Object.values(t.mats).map((m) => m.map);
+    t.shell.on = false;
+    t.u.update(0.016, 1.1);
+    for (const k of GATED) expect(vis(t)[k], k).toBe(false);
+    expect(Object.values(t.mats).map((m) => m.map)).toEqual(swapped);
+    t.shell.on = true;
+    t.u.update(0.016, 1.2);
+    for (const k of GATED) expect(vis(t)[k], k).toBe(true);
+  });
+  it('Staub-Update läuft nicht, solange die Hülle weg ist', () => {
+    const t = setup('ultra');
+    t.flush();
+    const dust = t.scene.getObjectByName('ultra-dust') || t.scene.children.find((o) => o.isPoints);
+    expect(dust).toBeTruthy();
+    t.shell.on = false;
+    t.u.update(0.016, 1);
+    expect(dust.visible).toBe(false);
+  });
+  it('Texturen entstehen in Teilschritten (eine je Häppchen) und sind danach vollständig', () => {
+    const layoutT = setup('high');
+    // setup() spült schon alles: alle sechs Schlüssel müssen jetzt getauscht werden können
+    layoutT.setLevel('ultra');
+    for (const m of Object.values(layoutT.mats)) expect(m.map.image.width).toBe(512);
+  });
+});
 
 describe('Ultra-Innenraum', () => {
   it('registriert alle fünf Schlüssel und baut sie erst ab high', () => {

@@ -56,36 +56,53 @@ export function warmObject(renderer, object, camera, scene, opts = {}) {
 
 /**
  * Wärmt einmalige Objekte (Blitz, Atem, Niederschlag …) im Leerlauf NACH dem Start vor: erst nach `delayMs`, dann ein Objekt je
- * Leerlauf-Häppchen. `getList()` wird erst dann gerufen (Objekte dürfen später entstehen) und liefert [{ object, textures? }].
- * Liefert cancel(). Ohne ctx.renderer/ctx.camera passiert nichts.
+ * Leerlauf-Häppchen. `getList()` wird erst dann gerufen (Objekte dürfen später entstehen) und liefert [{ object, textures?, ok? }].
+ * `ok()` (optional) sagt, ob das Objekt auf der AKTUELLEN Stufe überhaupt gezeichnet werden kann (vor dem Wärmen erneut geprüft):
+ * nicht erlaubte Objekte bleiben ungewärmt (kein Programm-Link für nie gezeichnete Programme) und kommen bei `cancel.retry()`
+ * (z. B. nach Stufenwechsel oder gesetzter Textur) erneut an die Reihe. Jedes Objekt wird höchstens einmal gewärmt.
+ * Liefert cancel() mit cancel.retry(). Ohne ctx.renderer/ctx.camera passiert nichts.
  */
 export function scheduleWarm(ctx, getList, { delayMs = 2500, sched } = {}) {
   let cancelled = false;
   let timer = null;
   let idle = null;
+  let started = false;
+  let dirty = false;
+  const done = new Set();
   const later = sched || ((fn) => {
     if (typeof requestIdleCallback === 'function') { const id = requestIdleCallback(() => fn(), { timeout: 2000 }); return () => { if (typeof cancelIdleCallback === 'function') cancelIdleCallback(id); }; }
     const id = setTimeout(fn, 32);
     return () => clearTimeout(id);
   });
+  const allowed = (x) => { try { return !x.ok || !!x.ok(); } catch { return false; } };
   const run = (list) => {
     idle = null;
     if (cancelled) return;
     const it = list.shift();
-    if (it && it.object) warmObject(ctx.renderer, it.object, ctx.camera, ctx.scene, { textures: it.textures, debug: !!(ctx.opts && ctx.opts.debug) });
+    if (it && it.object && !done.has(it.object) && allowed(it)) {
+      done.add(it.object);
+      warmObject(ctx.renderer, it.object, ctx.camera, ctx.scene, { textures: it.textures, debug: !!(ctx.opts && ctx.opts.debug) });
+    }
+    if (list.length) idle = later(() => run(list));
+    else if (dirty) { dirty = false; collect(); }
+  };
+  const collect = () => {
+    let list = [];
+    try { list = (getList() || []).filter((x) => x && x.object && !done.has(x.object) && allowed(x)); } catch { list = []; }
     if (list.length) idle = later(() => run(list));
   };
   timer = setTimeout(() => {
     timer = null;
     if (cancelled || !ctx || !ctx.renderer || !ctx.camera) return;
-    let list = [];
-    try { list = (getList() || []).filter((x) => x && x.object); } catch { list = []; }
-    if (list.length) idle = later(() => run(list));
+    started = true;
+    collect();
   }, delayMs);
-  return () => {
+  const cancel = () => {
     cancelled = true;
     if (timer) { clearTimeout(timer); timer = null; }
     if (typeof idle === 'function') { try { idle(); } catch { /* egal */ } }
     idle = null;
   };
+  cancel.retry = () => { if (cancelled || !started) return; if (idle === null) collect(); else dirty = true; };
+  return cancel;
 }

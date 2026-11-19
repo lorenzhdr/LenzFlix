@@ -12,6 +12,7 @@ import { getOutdoor } from './outdoor.js';
 import { timeOfDay, rainDecision, skyPalette, prefersReducedMotion } from './m4-util.js';
 import { resolveWeather } from '../weather/state.js';
 import { areaAt, OUTDOOR_AREAS } from '../world/city.js';
+import { scheduleWarm } from '../engine/warm.js';
 
 const COOL = new Color(0.72, 0.82, 1.08);
 
@@ -312,6 +313,8 @@ uniform float uTime;`)
     }
     syncVisible();
     ready = true;
+    // Scheibentropfen (Programm 'lfx-drops-trail', auf jeder Stufe gezeichnet) vor dem ersten Regen im Leerlauf kompilieren und beide Texturen hochladen
+    const cancelWarm = drops ? scheduleWarm(ctx, () => [{ object: drops, textures: [dropTex, trailTex] }]) : () => {};
 
     const cam = ctx.camera;
     let checkT = 0;
@@ -341,6 +344,7 @@ uniform float uTime;`)
       },
       dispose() {
         gone = true;
+        cancelWarm();
         if (fetchGuard) { clearTimeout(fetchGuard); fetchGuard = null; }
         if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
         if (onVis && typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);

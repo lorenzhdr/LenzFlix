@@ -178,4 +178,36 @@ describe('Bauer', () => {
     expect(withStreet).toBeGreaterThan(s.mesh.count);
     s.dispose();
   });
+  it('W7 p2: Schatten lesen city.visibleRef (ohne Kopie) und nehmen visible() nur als Rückfall', () => {
+    const t = make('ultra');
+    t.base.city.visible = () => { throw new Error('visible() darf nicht gerufen werden'); };
+    const vis = { street: false, shopShell: true };
+    const ref = vi.fn(() => vis);
+    t.base.city.visibleRef = ref;
+    const s = buildShadows(t.ctx);
+    s.update(0.016); s.update(0.016);
+    expect(ref).toHaveBeenCalled();
+    expect(s.mesh.count).toBe(s.staticCount - staticStreetCount(s, t));
+    vis.street = true; // dieselbe Instanz, im Frame-Pfad gelesen
+    s.update(0.016); s.update(0.016);
+    expect(s.mesh.count).toBe(s.staticCount);
+    s.dispose();
+  });
+
+  it('W7 p2: Neon liest die Ampelphasen höchstens 4x pro Sekunde und setzt sie trotzdem rechtzeitig', () => {
+    const t = make('ultra');
+    let main = 'green';
+    const signals = vi.fn(() => ({ main, side: 'red' }));
+    t.base.city.signals = signals;
+    const n = buildNeon(t.ctx);
+    for (let i = 0; i < 60; i++) n.update(0.016, i * 0.016); // ~1 s
+    expect(signals.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(signals.mock.calls.length).toBeGreaterThanOrEqual(1);
+    const attr = n.mesh.geometry.attributes.aA;
+    const before = Array.from(attr.array);
+    main = 'red';
+    for (let i = 0; i < 20; i++) n.update(0.016, 2 + i * 0.016);
+    expect(Array.from(attr.array)).not.toEqual(before); // Phasenwechsel kam an (max. 0,25 s Verzögerung)
+    n.dispose();
+  });
 });

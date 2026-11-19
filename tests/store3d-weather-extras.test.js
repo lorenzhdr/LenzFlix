@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // VIDEOTHEK LENZ · Wetter-Extras (1.19.0): Thermometer, Atemwölkchen, Blitz/Donner-Planung, nasse Straße (Logik), Winterkleidung. Kein Netzwerk.
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { Scene, PerspectiveCamera, Points } from 'three';
+import { Scene, PerspectiveCamera, Points, AdditiveBlending } from 'three';
 import {
   hash01, lightningGap, flashAt, FLASH_LEN, thunderPlan, lightningOn, lightningVisual, boltVisible, breathOn, breathPhase, BREATH_MAX, thermoText, wetLevel, wetGlow, WET_DRY_S,
 } from '../src/js/store3d/weather/fx-logic.js';
@@ -132,7 +132,7 @@ describe('Modul weatherfx', () => {
   });
   const flush = () => new Promise((r) => setTimeout(r, 0));
 
-  async function build({ weather, opts = {}, level = 'high', reduced = false, sound = false } = {}) {
+  async function build({ weather, opts = {}, level = 'high', reduced = false, sound = false, rend = {}, qs } = {}) {
     window.matchMedia = (q) => ({ matches: reduced && q.includes('reduce'), addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} });
     MODULES.length = 0;
     MODULES.push(precip, daytime, weatherfx);
@@ -147,8 +147,8 @@ describe('Modul weatherfx', () => {
     camera.position.set(layout.w / 2, 1.65, layout.d + 3);
     const state = { x: layout.w / 2, z: layout.d + 3, yaw: 0, pitch: 0 };
     const app = {
-      layout, deps: weather ? { weather } : {}, opts: { debug: true, ...opts }, phone: false, touch: false, sound, mode: 'play',
-      engine: { scene, camera, renderer: { domElement: canvas, toneMappingExposure: 1 }, get preset() { return { level }; } },
+      layout, deps: weather ? { weather } : {}, opts: { debug: true, ...opts }, qualitySetting: qs, phone: false, touch: false, sound, mode: 'play',
+      engine: { scene, camera, renderer: { domElement: canvas, toneMappingExposure: 1, ...rend }, get preset() { return { level }; } },
       player: { x: state.x, z: state.z, y: 0, state, eyeY: () => 1.65 },
       getCarried: () => null, setMode() {}, holdview: { isOpen: false }, findSlot: () => null, take() {}, host: dom,
     };
@@ -216,6 +216,90 @@ describe('Modul weatherfx', () => {
     expect((await run('mid', -2)).vis).toBe(false);
     expect((await run('low', -2)).vis).toBe(false);
     expect((await run('high', 2)).vis).toBe(false);
+  });
+
+  it('Atem nutzt die Weltposition der Figur (P12): lokale Höhe in einer Eltern-Gruppe verschiebt den Bereich nicht', async () => {
+    const mk = (localY, wx, wz) => ({ disposed: false, root: { visible: true, rotation: { y: 0 }, position: { y: localY }, getWorldPosition(o) { return o.set(wx, 0, wz); } }, faceWorld(o) { return o.set(wx, 1.6, wz); } });
+    const { scene, camera, layout } = await build({ weather: () => Promise.resolve(real({ t: -2 })), level: 'high' });
+    const inShop = { kind: 'walker', handle: mk(5, layout.w / 2, layout.d - 2), x: layout.w / 2, z: layout.d - 2 }; // Laden: lokal y=5 (Eltern-Gruppe), Welt y=0
+    const onStreet = { kind: 'walker', handle: mk(0, layout.w / 2, layout.d + 2), x: layout.w / 2, z: layout.d + 2 };
+    host.providers.set('areas', { current: () => 'street' });
+    host.providers.set('npc', { people: () => [inShop, onStreet] });
+    camera.position.set(layout.w / 2, 1.65, layout.d + 3);
+    for (let i = 0; i < 12; i++) host.hook('update', 0.1, i * 0.1);
+    let pts = null;
+    scene.traverse((o) => { if (o instanceof Points && o.geometry.attributes.aPh) pts = o; });
+    const act = Array.from(pts.geometry.attributes.aPh.array).filter((p) => p >= 0).length;
+    expect(act).toBe(1); // nur die Figur auf der Straße; die im Laden bleibt ohne Wölkchen
+  });
+
+  describe('Vorwärmen nur, was die Stufe zeichnet (P5/P6)', () => {
+    afterEach(() => { vi.useRealTimers(); });
+    const kind = (o) => {
+      if (o.isPoints) return 'breath';
+      if (o.name === 'wx-thermo') return 'thermo';
+      const m = o.material;
+      if (m && typeof m.customProgramCacheKey === 'function' && m.customProgramCacheKey() === 'lfx-drops-trail') return 'drops';
+      if (m && m.blending === AdditiveBlending) return 'bolt';
+      return 'precip';
+    };
+    async function warmed(level, { weather, steps = 3 } = {}) {
+      vi.useFakeTimers();
+      const compiled = [];
+      const rend = { compile: (o) => { compiled.push(kind(o)); }, initTexture: vi.fn() };
+      const p = build({ weather, level, rend });
+      await vi.advanceTimersByTimeAsync(50);
+      const r = await p;
+      for (let i = 0; i < steps; i++) await vi.advanceTimersByTimeAsync(3000);
+      return { compiled, r, rend };
+    }
+    it('low: Niederschlag, Scheibentropfen und Thermometer (mit Map); weder Blitz noch Atem', async () => {
+      const { compiled } = await warmed('low', { weather: () => Promise.resolve(real({ t: -3 })) });
+      expect([...compiled].sort()).toEqual(['drops', 'precip', 'thermo']);
+    });
+    it('mid: zusätzlich der Blitz, aber kein Atem', async () => {
+      const { compiled } = await warmed('mid', { weather: () => Promise.resolve(real({ t: -3 })) });
+      expect([...compiled].sort()).toEqual(['bolt', 'drops', 'precip', 'thermo']);
+    });
+    it('high: alles; jedes Objekt genau einmal', async () => {
+      const { compiled } = await warmed('high', { weather: () => Promise.resolve(real({ t: -3 })) });
+      expect([...compiled].sort()).toEqual(['bolt', 'breath', 'drops', 'precip', 'thermo']);
+    });
+    it('Thermometer ohne Map (kein echtes Wetter) wird nicht vorgewärmt', async () => {
+      const { compiled } = await warmed('high', {});
+      expect(compiled).not.toContain('thermo');
+      expect(compiled).toContain('breath');
+    });
+    it('Stufenwechsel low → high wärmt Blitz und Atem nach, ohne etwas doppelt zu kompilieren', async () => {
+      const t = await warmed('low', { weather: () => Promise.resolve(real({ t: -3 })) });
+      expect(t.compiled).not.toContain('breath');
+      host.hook('onQuality', 'high');
+      await vi.advanceTimersByTimeAsync(500);
+      expect([...t.compiled].sort()).toEqual(['bolt', 'breath', 'drops', 'precip', 'thermo']);
+      host.hook('onQuality', 'high');
+      await vi.advanceTimersByTimeAsync(500);
+      expect(t.compiled.length).toBe(5);
+    });
+    it('Hülle meldet die gewählte Einstellung an die Ultra-Registry (P9): fest high baut nicht vor, auto schon', async () => {
+      for (const [qs, expected] of [['high', 0], ['auto', 1]]) {
+        vi.useFakeTimers();
+        const p = build({ level: 'high', qs, opts: { ultraOk: true } });
+        await vi.advanceTimersByTimeAsync(50);
+        await p;
+        expect(host.ctx.qualitySetting()).toBe(qs);
+        const built = vi.fn(() => ({ object: new Points() }));
+        host.providers.get('ultra').register('probe', built);
+        await vi.advanceTimersByTimeAsync(500);
+        expect(built).toHaveBeenCalledTimes(expected);
+        host.hook('dispose'); host = null; dom.remove();
+        vi.useRealTimers();
+      }
+    });
+    it('Scheibentropfen: beide Texturen werden mit hochgeladen (Programm lfx-drops-trail)', async () => {
+      const t = await warmed('mid', {});
+      expect(t.compiled).toContain('drops');
+      expect(t.rend.initTexture).toHaveBeenCalled();
+    });
   });
 
   it('Winterkleidung per npc.setWinterAll mit Hysterese (nur wenn der Provider sie kennt)', async () => {
