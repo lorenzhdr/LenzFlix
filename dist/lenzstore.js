@@ -31308,6 +31308,10 @@ void main() {
       this.stable = 0;
       this.settleLeft = 1.5;
     }
+    /** Verlängert das Einschwingen auf mindestens `sec` Sekunden (nie verkürzen). Wer im Spiel noch Übergangsarbeit leistet (Programm-Vorwärmen), hält so das Fenster zu. */
+    extendSettle(sec) {
+      if (sec > this.settleLeft) this.settleLeft = sec;
+    }
     sample(dt, now2) {
       if (this.settleLeft > 0) {
         this.settleLeft -= dt;
@@ -31356,7 +31360,7 @@ void main() {
 
   // src/js/store3d/engine/renderer.js
   var DEG = Math.PI / 180;
-  function createEngine({ host, level, auto, phone, maxLevel = "high", onContextLost, onContextRestored, onAutoLevel }) {
+  function createEngine({ host, level, auto, phone, maxLevel = "high", onContextLost, onContextRestored, onAutoLevel, holdAuto }) {
     const clampLv = (l) => rank(l) > rank(maxLevel) ? maxLevel : l;
     level = clampLv(level);
     let preset = presetFor(level, phone);
@@ -31449,6 +31453,7 @@ void main() {
         accN = 0;
       }
       if (autoOn && !inXr() && renderOn) {
+        if (holdAuto && holdAuto()) aq.extendSettle(0.5);
         const l = aq.sample(rawDt, now2);
         if (l) {
           setLevel(l);
@@ -82891,6 +82896,7 @@ void main() {
   // src/js/store3d/store.js
   var yieldFrame = () => new Promise((r) => setTimeout(r, 0));
   var QUALITY_SETTINGS = ["auto", "low", "mid", "high", "ultra"];
+  var HOLD_AUTO_MAX_MS = 8e3;
   function resolveLevel(setting, ultraOk) {
     if (setting === "ultra") return ultraOk ? "ultra" : "high";
     if (setting === "low" || setting === "mid" || setting === "high") return setting;
@@ -82964,7 +82970,8 @@ void main() {
           maxLevel: this.ultraOk ? "ultra" : "high",
           onContextLost: () => this.onContextLost(),
           onContextRestored: () => this.onContextRestored(),
-          onAutoLevel: () => this.applyPreset(this.engine.preset)
+          onAutoLevel: () => this.applyPreset(this.engine.preset),
+          holdAuto: () => this.holdAuto()
         });
       } catch (err) {
         this.fail(err);
@@ -83955,7 +83962,17 @@ void main() {
       if (this.hud) this.hud.showLost(false);
     }
     // --- Qualität ---
+    /** Automatik-Fenster zuhalten: nur solange das Vorab-Zeichnen noch arbeitet UND der letzte Stufenwechsel höchstens 8 s her ist (Obergrenze: ein ständig nachscannendes warmDraw macht die Automatik nie dauerhaft blind). */
+    holdAuto() {
+      const wd = this.warmDraw;
+      if (!this.ultraOk || !wd || this.lastLevelAt == null || !wd.busy()) return false;
+      return performance.now() - this.lastLevelAt <= HOLD_AUTO_MAX_MS;
+    }
     applyPreset(preset) {
+      if (preset.level !== this.appliedLevel) {
+        this.appliedLevel = preset.level;
+        this.lastLevelAt = performance.now();
+      }
       if (this.covers) this.covers.setPreset(preset);
       if (this.tex) this.tex.setAnisotropy(preset.anisotropy);
       if (this.lights) this.lights.setShadows(preset.shadows);
