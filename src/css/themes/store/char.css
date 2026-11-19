@@ -9,7 +9,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
   flex-direction: row;
   box-sizing: border-box;
   /* Oberkante unterhalb der Leiste (HUD/Kopfleiste), wie Pause-Menü und Panels (scene.css) – live verdeckte die Leiste sonst den Antragskopf */
-  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) var(--lfx-store-safe-x) 10px;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) max(var(--lfx-store-safe-x), var(--lfx-store-safe-right, 0px)) max(10px, var(--lfx-store-safe-bottom, 0px)) var(--lfx-store-safe-x);
   gap: 12px;
   color: var(--lfx-store-text);
   font-family: var(--lfx-font);
@@ -529,7 +529,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char-flash.is-soft {
 /* ---- Niedriges Querformat (Handy 844x390): schmaler Kopf, Reiter in einer Zeile, breiteres Blatt ---- */
 @media (max-height: 520px) and (min-aspect-ratio: 11/10) {
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
-    padding: max(6px, var(--lfx-store-safe-top)) var(--lfx-store-safe-x) 6px;
+    padding: max(6px, var(--lfx-store-safe-top)) max(var(--lfx-store-safe-x), var(--lfx-store-safe-right, 0px)) max(6px, var(--lfx-store-safe-bottom, 0px)) var(--lfx-store-safe-x);
     gap: 8px;
   }
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__panel {

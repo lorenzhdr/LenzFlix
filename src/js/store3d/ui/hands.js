@@ -10,6 +10,17 @@ export const SWING_DUR = 0.28;
 export const SWING_DURS = { hand: SWING_DUR, belt: 0.36, whip: 0.55 };
 export const HELD_WEAPONS = ['belt', 'whip', 'laser'];
 const WEAPON_POS = [0.27, -0.27, -0.44];
+/**
+ * Ruhelage der Waffe in Kamerakoordinaten je Bildformat (1.19.0): Desktop unverändert (x höchstens knapp die halbe Bildhälfte rechts).
+ * Touch: näher an der Bildmitte, damit die Waffe weder aus dem Bild ragt (hochkant, Sichtfeld breit/Bild schmal) noch unter der Knopfspalte rechts liegt.
+ */
+export function weaponPos(fovDeg, aspect, touch) {
+  const f = Number(fovDeg) > 0 ? Number(fovDeg) : 70;
+  const a = Number(aspect) > 0 ? Number(aspect) : 16 / 9;
+  const halfW = Math.tan((f * Math.PI) / 360) * a * Math.abs(WEAPON_POS[2]);
+  const x = touch ? Math.min(WEAPON_POS[0], 0.15 * halfW) : Math.min(WEAPON_POS[0], 0.5 * halfW);
+  return [x, WEAPON_POS[1], WEAPON_POS[2]];
+}
 const BELT_A = 0x8a5a30; // Leder (abwechselnd zwei Töne, damit die Stücke lesbar bleiben)
 const BELT_B = 0x74482a;
 const STEEL = 0xe3e7ee;
@@ -113,7 +124,18 @@ export function createHands(camera, opts = {}) {
   let laserOn = false;
   let clock = 0;
   const weaponGroup = new Group();
-  weaponGroup.position.set(...WEAPON_POS);
+  let wpos = WEAPON_POS;
+  const coarse = () => typeof matchMedia === 'function' && !!matchMedia('(pointer: coarse)').matches;
+  // Lage nur neu berechnen, wenn sich fov/Seitenverhältnis ändern (resize/Drehen); matchMedia nicht pro Bild.
+  let placedFov = NaN;
+  let placedAspect = NaN;
+  const placeWeapon = () => {
+    if (camera.fov === placedFov && camera.aspect === placedAspect) return;
+    placedFov = camera.fov;
+    placedAspect = camera.aspect;
+    wpos = weaponPos(camera.fov, camera.aspect, coarse());
+  };
+  weaponGroup.position.set(...wpos);
   weaponGroup.visible = false;
   group.add(weaponGroup);
   let throwT = 0;
@@ -138,7 +160,8 @@ export function createHands(camera, opts = {}) {
     weapon = null;
     weaponGroup.visible = false;
     weaponGroup.rotation.set(0, 0, 0);
-    weaponGroup.position.set(...WEAPON_POS);
+    placeWeapon();
+    weaponGroup.position.set(...wpos);
   }
 
   /**
@@ -290,19 +313,20 @@ export function createHands(camera, opts = {}) {
   function updateWeapon() {
     const id = weapon.id;
     const wg = weaponGroup;
+    placeWeapon();
     const breathe = reduced() ? 0 : Math.sin(clock * 1.7) * 0.004;
     if (id === 'belt') {
       const p = swingT > 0 && swingKind === 'belt' ? 1 - swingT / swingDur : 0;
       const e = sin01(p);
       // flacher Hieb von rechts nach links: Gruppe dreht um y, der Riemen schlägt vor
-      wg.position.set(WEAPON_POS[0] - 0.04 * (1 - e) - 0.5 * p + 0.1 * e, WEAPON_POS[1] + 0.1 * (1 - e) + 0.1 * e + breathe, WEAPON_POS[2] - 0.12 * e); // Ruhelage etwas höher: die Schlaufe soll ganz im Bild stehen
+      wg.position.set(wpos[0] - 0.04 * (1 - e) - 0.5 * p + 0.1 * e, wpos[1] + 0.1 * (1 - e) + 0.1 * e + breathe, wpos[2] - 0.12 * e); // Ruhelage etwas höher: die Schlaufe soll ganz im Bild stehen
       wg.rotation.set(0.5 * (1 - e) - 0.2 * e, -0.2 - 1.5 * p + 0.5 * e, 0.4 * (1 - e));
     } else if (id === 'whip') {
       const p = swingT > 0 && swingKind === 'whip' ? 1 - swingT / swingDur : 0;
       // Überkopf: Ausholen (0-35 %) nach oben-hinten, dann in einem Bogen nach vorn-unten durchziehen
       const slash = p < 0.35 ? 0 : (p - 0.35) / 0.65;
       const rx = p === 0 ? 0.2 : p < 0.35 ? 0.2 + 1.1 * (p / 0.35) : 1.3 - 2.0 * Math.sin(Math.min(1, slash * 1.2) * Math.PI * 0.5) + 0.5 * slash;
-      wg.position.set(WEAPON_POS[0] - 0.12 * sin01(p), WEAPON_POS[1] + 0.2 * sin01(p) + breathe, WEAPON_POS[2] - 0.05 * sin01(slash));
+      wg.position.set(wpos[0] - 0.12 * sin01(p), wpos[1] + 0.2 * sin01(p) + breathe, wpos[2] - 0.05 * sin01(slash));
       wg.rotation.set(rx, -0.15, 0.1);
       const crack = p > 0 ? 0.4 : 0.03;
       weapon.segs.forEach((sg, i) => {
@@ -312,7 +336,7 @@ export function createHands(camera, opts = {}) {
       skinWhip(weapon);
     } else if (id === 'laser') {
       // Pointer nach vorn gerichtet, Leuchtpunkt pulsiert, solange er an ist
-      wg.position.set(WEAPON_POS[0] - 0.04, WEAPON_POS[1] + 0.05 + breathe, WEAPON_POS[2] + 0.02);
+      wg.position.set(wpos[0] - 0.04, wpos[1] + 0.05 + breathe, wpos[2] + 0.02);
       wg.rotation.set(0.1, 0.12, 0);
       paintLens(weapon, laserOn && !reduced() ? 1.5 + Math.sin(clock * 14) * 0.3 : laserOn ? 1.5 : 1);
     }

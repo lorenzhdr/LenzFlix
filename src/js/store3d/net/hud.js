@@ -51,6 +51,7 @@ export function createHud(ctx, acts = {}) {
       label = document.createElement('div');
       label.className = 'lfx-mp-count';
       label.setAttribute('role', 'status');
+      label.hidden = true; // leer = keine Pille (Solo zeigt nur Knöpfe)
       root.appendChild(label);
     }
     h.appendChild(root);
@@ -72,6 +73,7 @@ export function createHud(ctx, acts = {}) {
         if (root) root.hidden = true;
         if (host && host.classList) host.classList.remove('lfx-store-has-social');
         shown = '';
+        if (label) { label.textContent = ''; label.hidden = true; } // kein veralteter Text nach „Mehrspieler: Aus“
         return;
       }
       if (!ensure()) return;
@@ -79,7 +81,7 @@ export function createHud(ctx, acts = {}) {
       root.hidden = false;
       if (ctx.isTouch && host.classList) host.classList.add('lfx-store-has-social');
       const want = text || '';
-      if (want !== shown) { label.textContent = want; shown = want; }
+      if (want !== shown) { label.textContent = want; label.hidden = !want; shown = want; }
     },
     dispose() {
       leaveHost();

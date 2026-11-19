@@ -98,6 +98,7 @@ export default {
     };
     const send = (msg, o) => (transport && live && !disposed ? transport.send(msg, o) : false);
     const toast = (text) => { try { ctx.xr.toast(text, HINT_MS); } catch { /* egal */ } };
+    let hintPending = false;
 
     // ---------------------------------------------------------------- Teile (Stubs der Wellen b bis d)
     const core = {
@@ -181,7 +182,7 @@ export default {
         sentFlags = flags(); // das hi trug die Flags schon
         syncHeld();
         const pr = prefs();
-        if (!pr.hint) { toast(HINT); writePrefs({ hint: true }); }
+        if (!pr.hint) hintPending = true; // erst zeigen, wenn gespielt wird (nicht über dem offenen Pause-Menü), siehe update()
       } else if (m.t === 'b' || m.t === 'j' || m.t === 'l' || m.t === 'pf') {
         peers.ev(m);
         if (m.t === 'b') callParts('ev', m);
@@ -439,6 +440,7 @@ export default {
         peers.tick(dt);
         callParts('tick', dt, t);
         if (!live) return;
+        if (hintPending && ctx.playing()) { hintPending = false; toast(HINT); writePrefs({ hint: true }); }
         samplePose(nowMs());
         hudText = ctx.playing() && !(ctx.xr && ctx.xr.presenting()) ? hudLabel() : '';
         hud.set(hudText, { chat: chatOn(), emote: emoteOn() || (hudText !== '' && local.usable()) });

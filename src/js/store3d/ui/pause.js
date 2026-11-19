@@ -356,8 +356,7 @@ export function createPause(host, a) {
     vo.textContent = `Stimme: ${chosen ? shortVoiceName(chosen.name) : 'Automatisch'}`;
     const vt = voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline);
     note.textContent = vt;
-    note.hidden = !vt;
-    note.style.visibility = a.getSound() ? '' : 'hidden'; // Platz bleibt reserviert (kein Verrutschen beim Umschalten)
+    note.hidden = !vt || !a.getSound(); // unsichtbar = ohne Platz (1.19.0: sonst fehlten bei 800 px Höhe ~26 px im Menü)
     const fk = a.fullscreenKind ? a.fullscreenKind() : 'none';
     fs.hidden = fk !== 'api' && fk !== 'guide';
     fs.textContent = fk === 'guide' ? 'Vollbild …' : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? 'An' : 'Aus'}`;

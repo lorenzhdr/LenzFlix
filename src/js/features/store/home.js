@@ -310,7 +310,7 @@ function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
       }
     },
     play: (item, o = {}) => play(item, o.noCover ? { resume: Boolean(o.resume), noCover: true } : { resume: Boolean(o.resume) }),
-    toast: (text) => toast(text),
+    toast: (text, ms) => toast(text, ms > 0 ? { duration: ms } : undefined),
     classicView: () => { window.location.hash = CLASSIC_HASH; },
     openLibraries: () => { window.location.hash = CLASSIC_HASH; },
     openMenu: (anchor) => {
