@@ -208,7 +208,7 @@ export default {
         clearTimeout: (h) => clearTimeout(h),
         random: Math.random,
       },
-      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'], f: flags(), cv: mp.cv }),
+      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight', 'rich2'], f: flags(), cv: mp.cv }),
       onMsg,
       onState,
     });
@@ -317,7 +317,7 @@ export default {
         try {
           const fp = ctx.use('fight');
           const pc = fp && typeof fp.poseCode === 'function' ? fp.poseCode() : 0;
-          if (Number.isInteger(pc) && pc >= 9 && pc <= 15) s.a = pc;
+          if (Number.isInteger(pc) && ((pc >= 9 && pc <= 15) || pc === 7)) s.a = pc; // 7 = K.O.-Sitzen auf der Bank (a=7 ohne se)
         } catch { /* egal */ }
       }
       const m = pose.update(s, ms);

@@ -11,7 +11,7 @@ describe('eingefrorene Codes', () => {
   it('SUB, PV, CAPS, Flags', () => {
     expect(P.SUB).toBe('lfx-mp.1');
     expect(P.PV).toBe(1);
-    expect(P.CAPS).toEqual(['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight']);
+    expect(P.CAPS).toEqual(['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight', 'rich2']);
     expect(P.F).toEqual({ NAME: 1, FILM: 2, CHAT: 4, VR: 8 });
     expect(P.R).toEqual({ SHOP: 0, PALAST: 1, OUT: 2 });
   });
@@ -251,7 +251,7 @@ describe('Golden-Dateien des Workers (phys.json, rich.json, look.json, fight.jso
     expect(cases.length).toBeGreaterThan(20);
   });
   it('fight: CAPS/CAP_OF/Builder', () => {
-    expect(P.CAPS[P.CAPS.length - 1]).toBe('fight');
+    expect(P.CAPS.slice(-2)).toEqual(['fight', 'rich2']);
     for (const t of ['wp', 'fh', 'lz', 'lb', 'gc', 'gs', 'gr', 'gh']) expect(P.CAP_OF[t]).toBe('fight');
     expect(P.build.fh(3, 1, [100, 0], 1)).toEqual({ t: 'fh', c: 3, w: 1, d: [100, 0], src: 1 });
     expect(P.build.wp(9)).toBeNull();

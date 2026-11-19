@@ -5,7 +5,7 @@
 
 export const SUB = 'lfx-mp.1';
 export const PV = 1;
-export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'];
+export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight', 'rich2'];
 
 /** Flag-Bits `f`. */
 export const F = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
@@ -190,8 +190,9 @@ const NORM = {
     const pos = posQ(q, 3);
     const yaw = yawI(q[6]);
     const a = intIn(q[7], 0, 9);
-    if (s === null || h === null || r === null || !pos || yaw === null || a === null) return null;
-    return { t: 'rs', g, q: [s, h, r, pos[0], pos[1], pos[2], yaw, a], tg };
+    const k = q.length >= 9 ? intIn(q[8], 0, 1) : undefined; // 1.19.0 (Fähigkeit rich2): Trefferart, nur wenn vorhanden
+    if (s === null || h === null || r === null || !pos || yaw === null || a === null || k === null) return null;
+    return { t: 'rs', g, q: k === undefined ? [s, h, r, pos[0], pos[1], pos[2], yaw, a] : [s, h, r, pos[0], pos[1], pos[2], yaw, a, k], tg };
   },
   rr(m) { const g = intIn(m.g, 0, 0x7fffffff); return g === null ? null : { t: 'rr', g }; },
   ks(m) {

@@ -7,7 +7,7 @@
 //     60 s ohne `rs`, `ra` mit c = 0, `rs` mit calm/grudge, `stop()` oder Disconnect → zurück auf 'local'.
 //   Rolle 'local': wie 1.15 (auch ohne Mehrspieler, ohne Fähigkeit `rich` oder wenn rc nicht gesendet werden kann).
 // In VR: nie Autorität, nie rc (brawl.setNetRole('owner') verweigert), aber Spiegeln bleibt sichtbar.
-// Drahtformat rs.q = [s, h, r, x, y, z, yaw, a]: r in ds, x/y/z in cm über core.frame (Katalogbreite), yaw in cRad, a = Index brawl-pose ANIMS.
+// Drahtformat rs.q = [s, h, r, x, y, z, yaw, a(, k)] (k nur mit Fähigkeit rich2: 1 = Laser-Treffer, a bleibt dann 'stagger'): r in ds, x/y/z in cm über core.frame (Katalogbreite), yaw in cRad, a = Index brawl-pose ANIMS.
 // brawl-Provider: getNetState() (Meter/Sekunden), applyRemote(net, { self }), setNetRole(role, { self }), setNet({ claim, aim }), resetLocal().
 //   createRichard(core) → { welcome(wl), tick(dt), stop(), dispose(), role() }
 import { build } from './proto.js';
@@ -48,11 +48,13 @@ export function createRichard(core) {
     const s = f.s === GRUDGE ? 0 : f.s; // spitze Phase bleibt lokal (W14): auf der Leitung calm
     const calm = s === 0;
     const [x, y, z] = core.frame.enc(st.x, st.y || 0, st.z, 0);
-    return [s, calm ? 0 : f.h, calm ? 0 : Math.round(f.r * 10), x, y, z, core.frame.encYaw(st.yaw || 0), st.a | 0];
+    const q = [s, calm ? 0 : f.h, calm ? 0 : Math.round(f.r * 10), x, y, z, core.frame.encYaw(st.yaw || 0), st.a | 0];
+    if (core.cap('rich2')) q.push(st.k === 1 ? 1 : 0); // 1.19.0: 9. Element nur, wenn der Server es versteht (alter Worker prüft q.length === 8)
+    return q;
   }
   function decode(q) {
     const [x, y, z] = core.frame.dec(q[3], q[4], q[5], 0);
-    return { v: 1, f: { v: 1, s: q[0], h: q[1], r: q[2] / 10 }, x, z, y, yaw: core.frame.decYaw(q[6]), a: q[7] };
+    return { v: 1, f: { v: 1, s: q[0], h: q[1], r: q[2] / 10 }, x, z, y, yaw: core.frame.decYaw(q[6]), a: q[7], ...(q[8] === 1 ? { k: 1 } : {}) };
   }
 
   // ---------------------------------------------------------------- Haken in brawl.js
@@ -181,7 +183,7 @@ export function createRichard(core) {
     if (!st || !st.f) return;
     const q = encode(st);
     if (q[0] === 0) { release(); return; } // Streit vorbei (calm oder spitze Phase)
-    const sig = `${q[0]}|${q[1]}|${q[7]}`;
+    const sig = `${q[0]}|${q[1]}|${q[7]}|${q[8] | 0}`;
     const moved = lastSigPos === null || Math.hypot(st.x - lastSigPos.x, st.z - lastSigPos.z) > MOVE_M || Math.abs(st.yaw - lastSigPos.yaw) > YAW_RAD;
     const changed = sig !== lastSig || moved;
     if (!((changed && now - lastSentAt >= RS_MIN_MS) || now - lastSentAt >= RS_KEEP_MS)) return;

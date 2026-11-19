@@ -6,7 +6,7 @@ export const MIN_PV = 1;
 export const SUB = 'lfx-mp.1';
 export const MAX_FRAME = 2048;
 export const MAX_MSGS = 32;
-export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight'];
+export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look', 'fight', 'rich2'];
 export const FLAG = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
 
 // Nachrichtentyp -> benötigte Fähigkeit (Client -> Server, nur Nicht-Kern).

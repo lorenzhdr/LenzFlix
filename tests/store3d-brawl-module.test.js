@@ -131,7 +131,8 @@ describe('Richard wehrt sich', () => {
     host.hook('update', 0.016, t);
     bw.hitBy('laser', { x: 0, z: 1 });
     expect(bw.state()).toBe('annoyed');
-    expect(bw.getNetState().a).toBe(1); // 'cover' ist nur lokal, auf der Leitung 'stagger' (Worker begrenzt rs.a auf 0..9)
+    expect(bw.getNetState().a).toBe(1); // 'cover' liegt über rs.a 0..9: auf der Leitung 'stagger' plus k = 1 (Fähigkeit rich2)
+    expect(bw.getNetState().k).toBe(1);
     const { LINES } = await import('../src/js/store3d/modules/cashier-lines.js');
     const bt = dom.querySelector('.lfx-store-bubble').textContent;
     expect(LINES.laserHit.some((l) => bt.includes(l.replace('{name}', 'Max')))).toBe(true);

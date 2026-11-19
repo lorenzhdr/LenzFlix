@@ -101,6 +101,7 @@ export default {
     let mSelf = false; // Spiegel: Ich bin der Täter (Hausverbot gilt hier)
     let mTarget = null; // Spiegel: letzter Ort { x, z, y, yaw }
     let mA = -1; // Spiegel: letzter Animationscode
+    let mLaser = false; // Spiegel: aktueller Treffer war ein Laser (Satz 'laserHit')
     let mSnapGrudge = 0; // eigene spitze Phase (s), solange der Spiegel läuft
     const goal = { x: doorCx, z: D + 0.9 }; // Treibeziel: vor der Tür, außen
 
@@ -426,7 +427,7 @@ export default {
       },
       /** Netzformat (1.16.0): Zustand + Ort + Animation. */
       getNetState() {
-        return { v: 1, f: fsm.getNetState(T), x: Math.round(R.pos.x * 100) / 100, z: Math.round(R.pos.z * 100) / 100, y: Math.round(R.pos.y * 100) / 100, yaw: Math.round(R.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name === 'cover' ? 'stagger' : anim.name)) }; // 'cover' ist nur lokal (der Worker begrenzt rs.a auf 0..9)
+        return { v: 1, f: fsm.getNetState(T), x: Math.round(R.pos.x * 100) / 100, z: Math.round(R.pos.z * 100) / 100, y: Math.round(R.pos.y * 100) / 100, yaw: Math.round(R.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name === 'cover' ? 'stagger' : anim.name)), k: anim.name === 'cover' ? 1 : 0 }; // 'cover' (Index 10) liegt über rs.a 0..9: a bleibt 'stagger' (alte Clients), k = 1 trägt den Laser-Treffer (Fähigkeit rich2, net/richard.js)
       },
       /** Zustand + Ort übernehmen. Rolle 'mirror': glättet auf das Ziel, Hausverbot nur mit o.self; sonst wie 1.15 (hart). */
       applyRemote(net, o) {
@@ -490,7 +491,7 @@ export default {
     }
     function mirrorTransition(to) {
       R.setBusy(to === 'shove' || to === 'throw' || to === 'chase' || to === 'banned');
-      if (to === 'annoyed') say('hit1', {}, { always: true });
+      if (to === 'annoyed') say(mLaser ? 'laserHit' : 'hit1', {}, { always: true });
       else if (to === 'shove') say('hit2', {}, { always: true });
       else if (to === 'throw') { starsT = 1.6; say('hit3', {}, { always: true }); } else if (to === 'chase') say('chase', {}, { always: true });
       else if (to === 'banned') {
@@ -512,11 +513,14 @@ export default {
       if (!mTarget || Math.hypot(tgt.x - rest.x, tgt.z - rest.z) > MIRROR_SNAP) { rest.x = tgt.x; rest.z = tgt.z; rest.y = tgt.y; }
       mTarget = tgt;
       rest.yaw = tgt.yaw;
-      const a = Math.max(0, num(net.a, 0) | 0);
+      const a0 = Math.max(0, num(net.a, 0) | 0);
+      const laser = net.k === 1 && ANIMS[a0] === 'stagger'; // Laser-Treffer: 'cover' statt Taumeln (Fähigkeit rich2)
+      const a = laser ? ANIMS.indexOf('cover') : a0;
+      mLaser = laser;
       if (a !== mA) {
         mA = a;
         const name = ANIMS[a] || 'idle';
-        anim = { name, t: 0, dur: ONESHOT[name] || Infinity };
+        anim = { name, t: 0, dur: name === 'cover' ? 1.6 : ONESHOT[name] || Infinity };
         if (name === 'throw' && fsm.state === 'throw' && netHook && typeof netHook.aim === 'function') {
           const aim = netHook.aim();
           if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.z)) launchTape(aim);
