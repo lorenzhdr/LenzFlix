@@ -149,7 +149,8 @@ async function applyManifest(theme) {
       if (link && !blobUrl) link.setAttribute('href', origHref);
       if (fails < MAX_FAILS && running) {
         clearRetry();
-        retryTimer = setTimeout(() => { retryTimer = null; if (running && failTheme === theme) applyManifest(theme); }, RETRY_MS[fails - 1] || 0);
+        // Der Timer bedeutet „Frist abgelaufen“: nextTryAt zurücksetzen, sonst blockiert ein paar ms zu frühes Feuern jeden weiteren Versuch.
+        retryTimer = setTimeout(() => { retryTimer = null; if (running && failTheme === theme) { nextTryAt = 0; applyManifest(theme); } }, RETRY_MS[fails - 1] || 0);
       }
     }
   }
