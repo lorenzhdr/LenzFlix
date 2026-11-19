@@ -892,7 +892,7 @@ export class StoreApp {
   /** Bleibt das Ladebild stehen, bis das Vorwärmen fertig ist (höchstens 4 s, nur high/ultra)? */
   warmHold(now) {
     const wd = this.warmDraw;
-    if (!wd || !wd.busy()) return false;
+    if (!this.ultraOk || !wd || !wd.busy()) return false;
     if (this.warmT0 == null) this.warmT0 = now;
     return now - this.warmT0 < 4000;
   }
@@ -900,7 +900,7 @@ export class StoreApp {
   /** Programm-Vorwärmen der Basisszene (engine/warm.js createWarmDraw, nur high/ultra): zeichnet vor dem normalen Bild; vor der Spielfreigabe größere Häppchen. */
   stepWarmDraw() {
     const eng = this.engine;
-    if (!eng || this.disposed || this.suspended) return;
+    if (!eng || this.disposed || this.suspended || !this.ultraOk) return; // Gerätesperre: Handy/TV wie 1.18.1 ohne Vorab-Zeichnen
     if (!this.warmDraw) {
       this.warmDraw = createWarmDraw({
         renderer: eng.renderer, camera: eng.camera, scene: () => (eng.scene === eng.storeScene ? eng.storeScene : null), makeRt: makeTarget,
@@ -1172,7 +1172,7 @@ export class StoreApp {
       spawns() { return app.layout.city ? JSON.parse(JSON.stringify(app.layout.city.spawns)) : {}; },
       area() { return areaAt(app.layout, app.player.x, app.player.z, app.player.y || 0); },
       city() { return app.layout.city; },
-      warmDraw() { return app.warmDraw ? app.warmDraw.state() : null; }, // Programm-Vorwärmen: { done, pending, drawn, chunks, ms, maxChunkMs, keys, failed }
+      warmDraw() { return !app.ultraOk ? { off: true } : app.warmDraw ? app.warmDraw.state() : null; }, // Programm-Vorwärmen: { done, pending, drawn, chunks, ms, maxChunkMs, keys, failed }
       ultra() { return app.mods && app.mods.ultra ? app.mods.ultra.api.list() : []; }, // Ultra-Details: [{ key, built, visible, ms }]
       stats() {
         const info = app.engine.renderer.info;

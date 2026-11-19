@@ -125,6 +125,8 @@ export function warmKey(o) {
   return `${mats.map((m) => (m ? m.uuid : '-')).join('+')}|${flags}|${attrs}|${morph}`;
 }
 
+const flagBits = (o) => (o.instanceColor ? 1 : 0) | (o.receiveShadow ? 2 : 0) | (o.isInstancedMesh ? 4 : 0) | (o.isSkinnedMesh ? 8 : 0);
+
 /**
  * Zeichnet die sichtbare Szene einmal reihum in Häppchen (je Programm-Schlüssel ein Vertreter), damit alle Programme der aktuellen Stufe
  * existieren, bevor der Spieler sie erstmals sieht. Je Häppchen zwei Pässe: in ein kleines Render-Target gleichen Typs wie die Spiegel-Ziele
@@ -154,6 +156,28 @@ export function createWarmDraw(ctx) {
   let maxChunkMs = 0;
   let finished = false;
   let scanned = false;
+  let scanMs = 0;
+  let keyBuilds = 0;
+  // Memo je Objekt: Schlüssel nur neu bauen, wenn sich Material-Referenzen, Geometrie oder Flags geändert haben (Rescan ohne Strings)
+  const memo = new WeakMap();
+  const keyOf = (o) => {
+    const m = o.material;
+    const e = memo.get(o);
+    const fb = flagBits(o);
+    if (e && e.g === o.geometry && e.f === fb) {
+      if (Array.isArray(m)) {
+        if (Array.isArray(e.m) && e.m.length === m.length) {
+          let same = true;
+          for (let i = 0; i < m.length; i++) if (e.m[i] !== m[i]) { same = false; break; }
+          if (same) return e.key;
+        }
+      } else if (e.m === m) return e.key;
+    }
+    keyBuilds++;
+    const key = warmKey(o);
+    memo.set(o, { m: Array.isArray(m) ? m.slice() : m, g: o.geometry, f: fb, key });
+    return key;
+  };
   const warn = (e) => { if (ctx.debug) { try { console.warn('[LenzFlix Store3D] warmDraw', e); } catch { /* egal */ } } };
 
   const levelOk = (l) => l === 'high' || l === 'ultra';
@@ -173,7 +197,7 @@ export function createWarmDraw(ctx) {
       }
       if (o.isLight && !reveal.length) lights.push(o);
       if (isRenderable(o)) {
-        const k = warmKey(o);
+        const k = keyOf(o);
         if (!done.has(k) && !seen.has(k)) { seen.add(k); queue.push({ o, key: k, reveal }); }
       }
       const ch = o.children;
@@ -233,7 +257,9 @@ export function createWarmDraw(ctx) {
       lastLevel = level;
       lastScan = t;
       scanned = true;
+      const s0 = now();
       scan(scene);
+      scanMs = now() - s0;
       if (queue.length) finished = false;
     }
     if (!queue.length) { finished = true; return; }
@@ -268,7 +294,7 @@ export function createWarmDraw(ctx) {
     /** Gibt es (auf der aktuellen Stufe, außerhalb XR) noch etwas zu tun, oder steht der erste Durchlauf noch aus? */
     busy: () => !disposed && !failed && levelOk(ctx.level()) && !(ctx.xr && ctx.xr()) && (!scanned || queue.length > 0),
     /** Fortschritt für das Debug-Fenster. */
-    state: () => ({ done: finished && !failed, pending: queue.length, drawn, chunks, ms: +totalMs.toFixed(1), maxChunkMs: +maxChunkMs.toFixed(1), keys: done.size, failed }),
+    state: () => ({ done: finished && !failed, pending: queue.length, drawn, chunks, ms: +totalMs.toFixed(1), maxChunkMs: +maxChunkMs.toFixed(1), keys: done.size, failed, scanMs: +scanMs.toFixed(2), keyBuilds }),
     dispose() {
       disposed = true;
       queue = [];

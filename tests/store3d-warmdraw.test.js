@@ -224,4 +224,44 @@ describe('createWarmDraw', () => {
     w.step();
     expect(s.renderer.render.mock.calls.length).toBe(n);
   });
+
+  it('Memo: unveränderte Szene baut beim Rescan keine Schlüssel neu; Materialtausch/Geometrie/Flag → neuer Vertreter', () => {
+    const s = setup({ rescanMs: 10 });
+    const w = createWarmDraw(s.ctx);
+    w.step();
+    const built = w.state().keyBuilds;
+    expect(built).toBeGreaterThan(0);
+    s.state.t += 100;
+    w.step(); // Rescan, nichts geändert
+    expect(w.state().keyBuilds).toBe(built);
+    expect(w.state().scanMs).toBeGreaterThanOrEqual(0);
+    s.a.material = { uuid: 'neu-a' };
+    s.state.t += 100;
+    w.step();
+    expect(w.state().keyBuilds).toBe(built + 1);
+    expect(w.state().keys).toBe(3);
+    s.b.receiveShadow = true;
+    s.state.t += 100;
+    w.step();
+    expect(w.state().keyBuilds).toBeGreaterThanOrEqual(built + 2);
+    s.same.material = [{ uuid: 'x1' }, { uuid: 'x2' }];
+    s.state.t += 100;
+    w.step();
+    const b2 = w.state().keyBuilds;
+    s.state.t += 100;
+    w.step();
+    expect(w.state().keyBuilds).toBe(b2); // Material-Array unverändert: Memo greift
+  });
+});
+
+describe('StoreApp Gerätesperre (ultraOk)', () => {
+  it('ultraOk false: stepWarmDraw legt nichts an, warmHold hält nie, auch auf high', async () => {
+    const { StoreApp } = await import('../src/js/store3d/store.js');
+    const self = { engine: { preset: { level: 'high' }, renderer: {}, camera: {} }, disposed: false, suspended: false, ultraOk: false, warmDraw: null };
+    StoreApp.prototype.stepWarmDraw.call(self);
+    expect(self.warmDraw).toBe(null);
+    const busy = { busy: () => true };
+    expect(StoreApp.prototype.warmHold.call({ ultraOk: false, warmDraw: busy }, 0)).toBe(false);
+    expect(StoreApp.prototype.warmHold.call({ ultraOk: true, warmDraw: busy }, 0)).toBe(true);
+  });
 });
