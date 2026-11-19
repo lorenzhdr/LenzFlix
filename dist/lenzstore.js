@@ -31643,6 +31643,670 @@ void main() {
     };
   }
 
+  // src/js/store3d/engine/warm.js
+  var TEX_KEYS = ["map", "alphaMap", "emissiveMap", "lightMap", "aoMap", "bumpMap", "normalMap", "specularMap", "envMap", "gradientMap", "displacementMap", "roughnessMap", "metalnessMap"];
+  function collectTextures(object, extra) {
+    const out = /* @__PURE__ */ new Set();
+    const add = (t) => {
+      if (t && t.isTexture) out.add(t);
+    };
+    if (object && typeof object.traverse === "function") {
+      object.traverse((o) => {
+        for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+          for (const k of TEX_KEYS) add(m[k]);
+          if (m.uniforms) for (const k of Object.keys(m.uniforms)) add(m.uniforms[k] && m.uniforms[k].value);
+        }
+      });
+    }
+    if (Array.isArray(extra)) extra.forEach(add);
+    return [...out];
+  }
+  function showAll(object) {
+    const saved = [];
+    if (object && typeof object.traverse === "function") object.traverse((o) => {
+      saved.push([o, o.visible]);
+      o.visible = true;
+    });
+    else if (object) {
+      saved.push([object, object.visible]);
+      object.visible = true;
+    }
+    return () => {
+      for (const [o, v] of saved) o.visible = v;
+    };
+  }
+  function warmObject(renderer, object, camera, scene, opts = {}) {
+    const warn25 = (e) => {
+      if (opts.debug) {
+        try {
+          console.warn("[LenzFlix Store3D] warm", e);
+        } catch {
+        }
+      }
+    };
+    let did = false;
+    let pending = null;
+    if (renderer && object && camera) {
+      const restore = showAll(object);
+      try {
+        if (typeof renderer.compileAsync === "function") {
+          pending = renderer.compileAsync(object, camera, scene || object);
+          did = true;
+        } else if (typeof renderer.compile === "function") {
+          renderer.compile(object, camera, scene || object);
+          did = true;
+        }
+      } catch (e) {
+        warn25(e);
+        pending = null;
+      } finally {
+        restore();
+      }
+    }
+    if (renderer && typeof renderer.initTexture === "function") {
+      for (const t of collectTextures(object, opts.textures)) {
+        try {
+          renderer.initTexture(t);
+          did = true;
+        } catch (e) {
+          warn25(e);
+        }
+      }
+    }
+    return Promise.resolve(pending).then(() => did, (e) => {
+      warn25(e);
+      return did;
+    });
+  }
+  function scheduleWarm(ctx, getList, { delayMs = 2500, sched } = {}) {
+    let cancelled = false;
+    let timer = null;
+    let idle = null;
+    let started = false;
+    let dirty = false;
+    const done = /* @__PURE__ */ new Set();
+    const later = sched || ((fn) => {
+      if (typeof requestIdleCallback === "function") {
+        const id2 = requestIdleCallback(() => fn(), { timeout: 2e3 });
+        return () => {
+          if (typeof cancelIdleCallback === "function") cancelIdleCallback(id2);
+        };
+      }
+      const id = setTimeout(fn, 32);
+      return () => clearTimeout(id);
+    });
+    const allowed = (x) => {
+      try {
+        return !x.ok || !!x.ok();
+      } catch {
+        return false;
+      }
+    };
+    const run = (list) => {
+      idle = null;
+      if (cancelled) return;
+      const it = list.shift();
+      if (it && it.object && !done.has(it.object) && allowed(it)) {
+        done.add(it.object);
+        warmObject(ctx.renderer, it.object, ctx.camera, ctx.scene, { textures: it.textures, debug: !!(ctx.opts && ctx.opts.debug) });
+      }
+      if (list.length) idle = later(() => run(list));
+      else if (dirty) {
+        dirty = false;
+        collect2();
+      }
+    };
+    const collect2 = () => {
+      let list = [];
+      try {
+        list = (getList() || []).filter((x) => x && x.object && !done.has(x.object) && allowed(x));
+      } catch {
+        list = [];
+      }
+      if (list.length) idle = later(() => run(list));
+    };
+    timer = setTimeout(() => {
+      timer = null;
+      if (cancelled || !ctx || !ctx.renderer || !ctx.camera) return;
+      started = true;
+      collect2();
+    }, delayMs);
+    const cancel = () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (typeof idle === "function") {
+        try {
+          idle();
+        } catch {
+        }
+      }
+      idle = null;
+    };
+    cancel.retry = () => {
+      if (cancelled || !started) return;
+      if (idle === null) collect2();
+      else dirty = true;
+    };
+    return cancel;
+  }
+  var WARM_LAYER = 30;
+  var WARM_BIT = 1 << WARM_LAYER;
+  var isRenderable = (o) => !!(o && o.material && (o.isMesh || o.isLine || o.isPoints || o.isSprite));
+  function warmKey(o) {
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const g = o.geometry;
+    const attrs = g && g.attributes ? Object.keys(g.attributes).sort().join(",") : "";
+    const morph = g && g.morphAttributes ? Object.keys(g.morphAttributes).sort().join(",") : "";
+    const flags = (o.isInstancedMesh ? "i" : "") + (o.instanceColor ? "c" : "") + (o.isSkinnedMesh ? "s" : "") + (o.isBatchedMesh ? "b" : "") + (o.isPoints ? "p" : "") + (o.isLine ? "l" : "") + (o.isSprite ? "x" : "") + (o.receiveShadow ? "r" : "");
+    return `${mats.map((m) => m ? m.uuid : "-").join("+")}|${flags}|${attrs}|${morph}`;
+  }
+  var flagBits = (o) => (o.instanceColor ? 1 : 0) | (o.receiveShadow ? 2 : 0) | (o.isInstancedMesh ? 4 : 0) | (o.isSkinnedMesh ? 8 : 0);
+  function createWarmDraw(ctx) {
+    const now2 = ctx.now || (() => typeof performance !== "undefined" ? performance.now() : Date.now());
+    const budgetMs = ctx.budgetMs || 8;
+    const boostMs = ctx.boostMs || 40;
+    const rescanMs = ctx.rescanMs || 4e3;
+    const done = /* @__PURE__ */ new Set();
+    let queue = [];
+    let lights = [];
+    let rt = null;
+    let chunk2 = 1;
+    let lastScan = -Infinity;
+    let lastLevel = null;
+    let disposed = false;
+    let failed = false;
+    let drawn = 0;
+    let chunks = 0;
+    let totalMs = 0;
+    let maxChunkMs = 0;
+    let finished = false;
+    let scanned = false;
+    let scanMs = 0;
+    let keyBuilds = 0;
+    const memo = /* @__PURE__ */ new WeakMap();
+    const keyOf3 = (o) => {
+      const m = o.material;
+      const e = memo.get(o);
+      const fb = flagBits(o);
+      if (e && e.g === o.geometry && e.f === fb) {
+        if (Array.isArray(m)) {
+          if (Array.isArray(e.m) && e.m.length === m.length) {
+            let same2 = true;
+            for (let i = 0; i < m.length; i++) if (e.m[i] !== m[i]) {
+              same2 = false;
+              break;
+            }
+            if (same2) return e.key;
+          }
+        } else if (e.m === m) return e.key;
+      }
+      keyBuilds++;
+      const key2 = warmKey(o);
+      memo.set(o, { m: Array.isArray(m) ? m.slice() : m, g: o.geometry, f: fb, key: key2 });
+      return key2;
+    };
+    const warn25 = (e) => {
+      if (ctx.debug) {
+        try {
+          console.warn("[LenzFlix Store3D] warmDraw", e);
+        } catch {
+        }
+      }
+    };
+    const levelOk = (l) => l === "high" || l === "ultra";
+    function scan(scene) {
+      const seen = new Set(queue.map((q) => q.key));
+      lights = [];
+      let roots;
+      try {
+        roots = ctx.roots && ctx.roots() || [];
+      } catch {
+        roots = [];
+      }
+      const rootSet = new Set(roots);
+      const walk = (o, reveal) => {
+        if (!o) return;
+        if (o.visible === false) {
+          if (!rootSet.has(o)) return;
+          reveal = reveal.concat(o);
+        }
+        if (o.isLight && !reveal.length) lights.push(o);
+        if (isRenderable(o)) {
+          const k = keyOf3(o);
+          if (!done.has(k) && !seen.has(k)) {
+            seen.add(k);
+            queue.push({ o, key: k, reveal });
+          }
+        }
+        const ch = o.children;
+        if (ch) for (let i = 0; i < ch.length; i++) walk(ch[i], reveal);
+      };
+      walk(scene, []);
+    }
+    function drawChunk(scene, items) {
+      const r = ctx.renderer;
+      const cam = ctx.camera;
+      const objs = items.map((i) => i.o);
+      const reveal = /* @__PURE__ */ new Set();
+      for (const i of items) for (const g of i.reveal) reveal.add(g);
+      const savedReveal = [...reveal].map((g) => [g, g.visible]);
+      const savedObjs = objs.map((o) => [o, o.layers.mask, o.frustumCulled]);
+      const savedLights = lights.map((l) => [l, l.layers.mask]);
+      const camMask = cam.layers.mask;
+      const info = r.info;
+      const prevAuto = info ? info.autoReset : void 0;
+      const sm = r.shadowMap;
+      const prevShadow = sm ? sm.autoUpdate : void 0;
+      const prevRt = r.getRenderTarget();
+      try {
+        for (const g of reveal) g.visible = true;
+        for (const o of objs) {
+          o.layers.mask |= WARM_BIT;
+          o.frustumCulled = false;
+        }
+        for (const l of lights) l.layers.mask |= WARM_BIT;
+        cam.layers.mask = WARM_BIT;
+        if (info) info.autoReset = false;
+        if (sm) sm.autoUpdate = false;
+        if (!rt) rt = ctx.makeRt(16);
+        r.setRenderTarget(rt);
+        r.render(scene, cam);
+        r.setRenderTarget(prevRt);
+        r.render(scene, cam);
+      } finally {
+        for (const [g, v] of savedReveal) g.visible = v;
+        for (const [o, m, f] of savedObjs) {
+          o.layers.mask = m;
+          o.frustumCulled = f;
+        }
+        for (const [l, m] of savedLights) l.layers.mask = m;
+        cam.layers.mask = camMask;
+        r.setRenderTarget(prevRt);
+        if (info) info.autoReset = prevAuto;
+        if (sm) sm.autoUpdate = prevShadow;
+      }
+    }
+    function step() {
+      if (disposed || failed || !ctx.renderer || !ctx.camera) return;
+      const level = ctx.level();
+      if (!levelOk(level) || ctx.xr && ctx.xr() || ctx.canDraw && !ctx.canDraw()) return;
+      const scene = ctx.scene();
+      if (!scene) return;
+      if (ctx.shadowsReady && !ctx.shadowsReady()) return;
+      const t = now2();
+      if (level !== lastLevel || !queue.length && t - lastScan >= rescanMs) {
+        lastLevel = level;
+        lastScan = t;
+        scanned = true;
+        const s0 = now2();
+        scan(scene);
+        scanMs = now2() - s0;
+        if (queue.length) finished = false;
+      }
+      if (!queue.length) {
+        finished = true;
+        return;
+      }
+      const boost = !!(ctx.boost && ctx.boost());
+      const budget = boost ? boostMs : budgetMs;
+      const cap = boost ? 12 : 2;
+      const progs = () => ctx.renderer.info && ctx.renderer.info.programs ? ctx.renderer.info.programs.length : 0;
+      const t0 = now2();
+      try {
+        while (queue.length) {
+          const c0 = now2();
+          const p0 = progs();
+          const take = queue.splice(0, Math.min(chunk2, cap));
+          for (const q of take) done.add(q.key);
+          drawChunk(scene, take);
+          const dt = now2() - c0;
+          drawn += take.length;
+          chunks++;
+          if (dt > maxChunkMs) maxChunkMs = dt;
+          if (progs() === p0 && dt < budget / 4) chunk2 = Math.min(chunk2 * 2, 12);
+          else if (dt > budget / 2) chunk2 = Math.max(1, chunk2 >> 1);
+          if (now2() - t0 >= budget) break;
+        }
+      } catch (e) {
+        failed = true;
+        queue = [];
+        warn25(e);
+      }
+      totalMs += now2() - t0;
+      if (!queue.length) finished = true;
+    }
+    return {
+      step,
+      /** Gibt es (auf der aktuellen Stufe, außerhalb XR) noch etwas zu tun, oder steht der erste Durchlauf noch aus? */
+      busy: () => !disposed && !failed && levelOk(ctx.level()) && !(ctx.xr && ctx.xr()) && (!scanned || queue.length > 0),
+      /** Fortschritt für das Debug-Fenster. */
+      state: () => ({ done: finished && !failed, pending: queue.length, drawn, chunks, ms: +totalMs.toFixed(1), maxChunkMs: +maxChunkMs.toFixed(1), keys: done.size, failed, scanMs: +scanMs.toFixed(2), keyBuilds }),
+      dispose() {
+        disposed = true;
+        queue = [];
+        lights = [];
+        if (rt) {
+          try {
+            rt.dispose();
+          } catch {
+          }
+          rt = null;
+        }
+      }
+    };
+  }
+
+  // src/js/store3d/world/mirror.js
+  var MIRROR_RT = 256;
+  var MIRROR_MAX_DIST = 8;
+  var MIRROR_FAR = 40;
+  var LAYER_MIRROR = 2;
+  function mirrorHz(level) {
+    if (level === "ultra") return 30;
+    if (level === "high") return 20;
+    if (level === "mid") return 10;
+    return 0;
+  }
+  function mirrorGate(s) {
+    if (!s || s.xr || s.store === false) return false;
+    if (mirrorHz(s.quality) <= 0) return false;
+    if (!s.visible || !s.facing) return false;
+    return Number.isFinite(s.dist) && s.dist < (s.maxDist || MIRROR_MAX_DIST);
+  }
+  var HUBS = /* @__PURE__ */ new WeakMap();
+  var STALE_MS = 600;
+  function liveHub(key2) {
+    let h3 = HUBS.get(key2);
+    if (h3) return h3;
+    let owner = null;
+    h3 = {
+      claim(id, dist, now2) {
+        if (!owner || owner.id === id || now2 - owner.at > STALE_MS || dist < owner.dist - 0.75) {
+          owner = { id, dist, at: now2 };
+          return true;
+        }
+        return false;
+      },
+      release(id) {
+        if (owner && owner.id === id) owner = null;
+      },
+      owner: () => owner ? owner.id : null
+    };
+    HUBS.set(key2, h3);
+    return h3;
+  }
+  var VERT = (
+    /* glsl */
+    `
+uniform mat4 textureMatrix;
+varying vec4 vProj;
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  vProj = textureMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`
+  );
+  var FRAG = (
+    /* glsl */
+    `
+uniform sampler2D tDiffuse;
+uniform float uLive;
+uniform vec3 uMatteA;
+uniform vec3 uMatteB;
+varying vec4 vProj;
+varying vec2 vUv;
+void main() {
+  vec3 c;
+  if (uLive > 0.5) c = texture2DProj(tDiffuse, vProj).rgb * vec3(0.97, 0.99, 1.0);
+  else c = mix(uMatteB, uMatteA, vUv.y);
+  gl_FragColor = vec4(c, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`
+  );
+  function mirrorMaterial(rt) {
+    return new ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: rt ? rt.texture : null },
+        textureMatrix: { value: new Matrix4() },
+        uLive: { value: 0 },
+        uMatteA: { value: new Vector3(0.52, 0.6, 0.66) },
+        uMatteB: { value: new Vector3(0.22, 0.26, 0.31) }
+      },
+      vertexShader: VERT,
+      fragmentShader: FRAG
+    });
+  }
+  function shadowsReady(renderer, scene) {
+    const sm = renderer && renderer.shadowMap;
+    if (!sm || !sm.enabled) return true;
+    let ok = true;
+    scene.traverse((o) => {
+      if (o.isLight && o.castShadow && o.shadow && !o.shadow.map) ok = false;
+    });
+    return ok;
+  }
+  function renderToTarget(renderer, scene, cam, rt, hide = []) {
+    const prevRt = renderer.getRenderTarget();
+    const info = renderer.info;
+    const prevAuto = info ? info.autoReset : void 0;
+    const sm = renderer.shadowMap;
+    const prevShadow = sm ? sm.autoUpdate : void 0;
+    const prevVis = hide.map((o) => o.visible);
+    try {
+      if (info) info.autoReset = false;
+      if (sm) sm.autoUpdate = false;
+      for (const o of hide) o.visible = false;
+      renderer.setRenderTarget(rt);
+      renderer.render(scene, cam);
+    } finally {
+      hide.forEach((o, i) => {
+        o.visible = prevVis[i];
+      });
+      renderer.setRenderTarget(prevRt);
+      if (info) info.autoReset = prevAuto;
+      if (sm) sm.autoUpdate = prevShadow;
+    }
+  }
+  function makeTarget(size = MIRROR_RT) {
+    return new WebGLRenderTarget(size, size, { type: UnsignedByteType, samples: 0, depthBuffer: true, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false });
+  }
+  var _a = new Vector3();
+  var _b = new Vector3();
+  var _normal = new Vector3();
+  var _view = new Vector3();
+  var _target2 = new Vector3();
+  var _look = new Vector3();
+  var _q = new Vector4();
+  var _clip = new Vector4();
+  var _plane = new Plane();
+  var _rot = new Matrix4();
+  var _pv = new Matrix4();
+  var _fr = new Frustum();
+  var _sph = new Sphere();
+  function createMirror(ctx, o) {
+    const id = o.id || "mirror";
+    const now2 = o.now || (() => typeof performance !== "undefined" ? performance.now() : Date.now());
+    const hub = liveHub(ctx.renderer || ctx);
+    const mat2 = mirrorMaterial(null);
+    const mesh = new Mesh(new PlaneGeometry(o.w, o.h), mat2);
+    mesh.name = `mirror-${id}`;
+    mesh.position.set(o.x, o.y, o.z);
+    mesh.rotation.y = o.yaw || 0;
+    mesh.frustumCulled = true;
+    if (o.parent) o.parent.add(mesh);
+    mesh.updateMatrixWorld(true);
+    const radius = Math.hypot(o.w, o.h) / 2;
+    const vcam = new PerspectiveCamera();
+    vcam.layers.set(0);
+    vcam.layers.enable(LAYER_MIRROR);
+    let rt = null;
+    let rtSize = MIRROR_RT;
+    let acc = 1;
+    let rendered = false;
+    let live = false;
+    let suppressed = false;
+    let renders = 0;
+    let wanted = false;
+    const chainVisible = () => {
+      for (let n = mesh; n; n = n.parent) if (n.visible === false) return false;
+      return true;
+    };
+    function setup(cam) {
+      mesh.updateWorldMatrix(true, false);
+      cam.updateMatrixWorld();
+      _a.setFromMatrixPosition(mesh.matrixWorld);
+      _b.setFromMatrixPosition(cam.matrixWorld);
+      _rot.extractRotation(mesh.matrixWorld);
+      _normal.set(0, 0, 1).applyMatrix4(_rot);
+      _view.subVectors(_a, _b);
+      if (_view.dot(_normal) > 0) return false;
+      _view.reflect(_normal).negate().add(_a);
+      _rot.extractRotation(cam.matrixWorld);
+      _look.set(0, 0, -1).applyMatrix4(_rot).add(_b);
+      _target2.subVectors(_a, _look).reflect(_normal).negate().add(_a);
+      vcam.position.copy(_view);
+      vcam.up.set(0, 1, 0).applyMatrix4(_rot).reflect(_normal);
+      vcam.lookAt(_target2);
+      vcam.near = cam.near;
+      vcam.far = Math.min(cam.far, MIRROR_FAR);
+      vcam.fov = cam.fov;
+      vcam.aspect = cam.aspect;
+      vcam.updateProjectionMatrix();
+      vcam.updateMatrixWorld();
+      vcam.matrixWorldInverse.copy(vcam.matrixWorld).invert();
+      const tm = mat2.uniforms.textureMatrix.value;
+      tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+      tm.multiply(vcam.projectionMatrix).multiply(vcam.matrixWorldInverse).multiply(mesh.matrixWorld);
+      _plane.setFromNormalAndCoplanarPoint(_normal, _a).applyMatrix4(vcam.matrixWorldInverse);
+      _clip.set(_plane.normal.x, _plane.normal.y, _plane.normal.z, _plane.constant);
+      const p = vcam.projectionMatrix.elements;
+      _q.x = (Math.sign(_clip.x) + p[8]) / p[0];
+      _q.y = (Math.sign(_clip.y) + p[9]) / p[5];
+      _q.z = -1;
+      _q.w = (1 + p[10]) / p[14];
+      _clip.multiplyScalar(2 / _clip.dot(_q));
+      p[2] = _clip.x;
+      p[6] = _clip.y;
+      p[10] = _clip.z + 1 - 3e-3;
+      p[14] = _clip.w;
+      return true;
+    }
+    let shadowOk = false;
+    let shadowOn = null;
+    function shadowsOk() {
+      const on = !!(ctx.renderer.shadowMap && ctx.renderer.shadowMap.enabled);
+      if (on !== shadowOn) {
+        shadowOn = on;
+        shadowOk = false;
+      }
+      if (shadowOk) return true;
+      shadowOk = shadowsReady(ctx.renderer, ctx.scene);
+      return shadowOk;
+    }
+    function renderNow() {
+      const cam = ctx.camera;
+      if (!shadowsOk()) return false;
+      if (!setup(cam)) return false;
+      if (rt && rt.width !== rtSize) {
+        rt.dispose();
+        rt = null;
+      }
+      if (!rt) {
+        rt = makeTarget(rtSize);
+        mat2.uniforms.tDiffuse.value = rt.texture;
+      }
+      renderToTarget(ctx.renderer, ctx.scene, vcam, rt, [mesh]);
+      renders++;
+      return true;
+    }
+    const api = {
+      mesh,
+      /** Auflösung des Spiegelbilds ändern (z. B. 1024 beim Frisieren, MIRROR_RT sonst); legt das Ziel beim nächsten Bild neu an. */
+      setSize(n) {
+        const v = Math.max(64, Math.min(2048, Math.round(Number(n)) || MIRROR_RT));
+        if (v === rtSize) return;
+        shadowOk = false;
+        rtSize = v;
+      },
+      getSize: () => rtSize,
+      /** Wird pro Frame aus update(dt) des Moduls gerufen (vor dem Hauptbild). */
+      update(dt) {
+        const cam = ctx.camera;
+        const level = typeof ctx.quality === "function" ? ctx.quality() : "low";
+        const xr = !!(ctx.xr && typeof ctx.xr.presenting === "function" && ctx.xr.presenting());
+        const store = !(ctx.stage && typeof ctx.stage.isStore === "function") || ctx.stage.isStore();
+        wanted = false;
+        if (suppressed || xr || mirrorHz(level) <= 0 || !store) {
+          if (live) {
+            live = false;
+            mat2.uniforms.uLive.value = 0;
+            hub.release(id);
+          }
+          return;
+        }
+        cam.updateMatrixWorld();
+        _b.setFromMatrixPosition(cam.matrixWorld);
+        mesh.updateWorldMatrix(true, false);
+        _a.setFromMatrixPosition(mesh.matrixWorld);
+        _rot.extractRotation(mesh.matrixWorld);
+        _normal.set(0, 0, 1).applyMatrix4(_rot);
+        const dist = _b.distanceTo(_a);
+        const facing = _view.subVectors(_b, _a).dot(_normal) > 0;
+        _pv.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+        _fr.setFromProjectionMatrix(_pv);
+        _sph.set(_a, radius);
+        const visible = chainVisible() && _fr.intersectsSphere(_sph);
+        const gate = mirrorGate({ quality: level, xr, store, visible, facing, dist, maxDist: o.maxDist });
+        if (!gate) {
+          hub.release(id);
+          if (visible && live) {
+            live = false;
+            mat2.uniforms.uLive.value = 0;
+          }
+          return;
+        }
+        wanted = true;
+        if (!hub.claim(id, dist, now2())) return;
+        acc += dt;
+        if (acc < 1 / mirrorHz(level)) return;
+        acc = 0;
+        if (renderNow()) {
+          rendered = true;
+          live = true;
+          mat2.uniforms.uLive.value = 1;
+        }
+      },
+      isLive: () => live && rendered,
+      wanted: () => wanted,
+      stats: () => ({ renders, live: live && rendered, hasTarget: !!rt }),
+      /** Zeitweise aus (z. B. anderer Spiegel soll live sein / Editor offen mit Studio). */
+      setSuppressed(on) {
+        suppressed = !!on;
+        if (suppressed && live) {
+          live = false;
+          mat2.uniforms.uLive.value = 0;
+          hub.release(id);
+        }
+      },
+      dispose() {
+        hub.release(id);
+        mesh.removeFromParent();
+        mesh.geometry.dispose();
+        mat2.dispose();
+        if (rt) {
+          rt.dispose();
+          rt = null;
+        }
+      }
+    };
+    return api;
+  }
+
   // node_modules/three/examples/jsm/utils/BufferGeometryUtils.js
   function mergeGeometries(geometries, useGroups = false) {
     const isIndexed = geometries[0].index !== null;
@@ -31795,7 +32459,7 @@ void main() {
 
   // src/js/store3d/util/geo.js
   var _m2 = new Matrix4();
-  var _q = new Quaternion();
+  var _q2 = new Quaternion();
   var _e = new Euler();
   var _p = new Vector3();
   var _s = new Vector3(1, 1, 1);
@@ -31814,9 +32478,9 @@ void main() {
   }
   function xform(g, x, y, z, rx, ry, rz) {
     _e.set(rx, ry, rz, "YXZ");
-    _q.setFromEuler(_e);
+    _q2.setFromEuler(_e);
     _p.set(x, y, z);
-    _m2.compose(_p, _q, _s);
+    _m2.compose(_p, _q2, _s);
     g.applyMatrix4(_m2);
   }
   function box({ w, h: h3, d, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, color: color2 = [1, 1, 1], shade: shade2 = null, tile = 0 }) {
@@ -33165,6 +33829,87 @@ void main() {
     return c;
   }
 
+  // src/js/store3d/covers/stripe.js
+  var STRIPES = 8;
+  function createStripeUpload(renderer, canvas, o = {}) {
+    const stripes = o.stripes || STRIPES;
+    if (!renderer || typeof renderer.copyTextureToTexture !== "function" || typeof renderer.initTexture !== "function" || !canvas) return null;
+    const W2 = canvas.width;
+    const H2 = canvas.height;
+    if (!W2 || !H2 || H2 % stripes) return null;
+    const sh = H2 / stripes;
+    let dst = null;
+    let src = null;
+    try {
+      dst = new DataTexture(null, W2, H2, RGBAFormat, UnsignedByteType);
+      dst.colorSpace = SRGBColorSpace;
+      dst.flipY = true;
+      dst.unpackAlignment = 4;
+      dst.generateMipmaps = true;
+      dst.minFilter = LinearMipmapLinearFilter;
+      dst.magFilter = LinearFilter;
+      dst.anisotropy = o.anisotropy || 1;
+      dst.source.dataReady = false;
+      dst.needsUpdate = true;
+      renderer.initTexture(dst);
+      src = new Texture(canvas);
+    } catch {
+      if (dst) try {
+        dst.dispose();
+      } catch {
+      }
+      return null;
+    }
+    let next = 0;
+    let finished = false;
+    const free = () => {
+      if (src) {
+        try {
+          src.dispose();
+        } catch {
+        }
+        src = null;
+      }
+      try {
+        canvas.width = 1;
+        canvas.height = 1;
+      } catch {
+      }
+    };
+    return {
+      tex: dst,
+      get done() {
+        return finished;
+      },
+      step() {
+        if (finished) return true;
+        const a = next * sh;
+        dst.generateMipmaps = next === stripes - 1;
+        renderer.copyTextureToTexture(src, dst, { min: { x: 0, y: a }, max: { x: W2, y: a + sh } }, { x: 0, y: a, z: 0 });
+        next++;
+        if (next >= stripes) {
+          finished = true;
+          dst.generateMipmaps = true;
+          free();
+        }
+        return finished;
+      },
+      dispose() {
+        free();
+        finished = true;
+        try {
+          dst.dispose();
+        } catch {
+        }
+      },
+      /** Nach Kontextverlust: nur Leinwand freigeben, die (verlorene) Zieltextur nicht mehr dispose()n (sonst WebGL-Warnungen). */
+      abandon() {
+        free();
+        finished = true;
+      }
+    };
+  }
+
   // src/js/store3d/covers/loader.js
   function blobToImage(blob) {
     return new Promise((resolve) => {
@@ -33720,6 +34465,7 @@ void main() {
       const now2 = this.now();
       this.frame++;
       this.trackFrame(now2);
+      this.stepHiStripes(now2);
       if (this.frame - this.lastUploadFrame < 2) return;
       const low = this.lowEnabled ? this.pickLow() : null;
       let job = null;
@@ -33804,6 +34550,13 @@ void main() {
       l.ac.abort();
       l.bitmaps.forEach(closeBitmap);
       l.bitmaps.clear();
+      if (l.stripe) {
+        try {
+          l.stripe.dispose();
+        } catch {
+        }
+        l.stripe = null;
+      }
       f.hiLoading = null;
       this.queue = this.queue.filter((j) => j.loading !== l);
       this.composeQueue = this.composeQueue.filter((j) => !(j.f === f && j.kind === "hi"));
@@ -33965,6 +34718,12 @@ void main() {
       l.bitmaps.forEach(closeBitmap);
       l.bitmaps.clear();
       f.hiLoading = null;
+      const up = this.renderer && !this.phone ? createStripeUpload(this.renderer, canvas, { anisotropy: this.preset.anisotropy }) : null;
+      if (up) {
+        f.hiLoading = { ac: { abort() {
+        } }, bitmaps: /* @__PURE__ */ new Map(), pending: 0, hi: true, stripe: up };
+        return;
+      }
       const tex = this.makeTexture(canvas);
       f.fv.material.map = tex;
       f.hiTex = tex;
@@ -33974,6 +34733,37 @@ void main() {
       try {
         if (this.renderer) this.renderer.initTexture(tex);
       } catch {
+      }
+    }
+    /** Pro Frame ein Streifen des laufenden 2048er-Uploads (composeHi); am Ende wird die fertige Textur eingehängt. */
+    stepHiStripes(now2) {
+      for (const f of this.faces) {
+        const l = f.hiLoading;
+        if (!l || !l.stripe) continue;
+        if (f.state !== "full" || !f.tex || !this.hiEnabled) {
+          this.cancelHiLoad(f);
+          continue;
+        }
+        let done;
+        try {
+          done = l.stripe.step();
+        } catch {
+          this.cancelHiLoad(f);
+          f.hiSkip = true;
+          continue;
+        }
+        if (done) {
+          const tex = l.stripe.tex;
+          l.stripe = null;
+          f.hiLoading = null;
+          f.fv.material.map = tex;
+          f.hiTex = tex;
+          f.hiChangedAt = now2;
+          this.lastHiAt = now2;
+          this.counters.hiUp++;
+          this.counters.coverUploads++;
+        }
+        return;
       }
     }
     makeTexture(canvas, keepCanvas) {
@@ -34049,6 +34839,10 @@ void main() {
         if (f.hiTex) {
           f.hiTex.onUpdate = null;
           f.hiTex = null;
+        }
+        if (f.hiLoading && f.hiLoading.stripe) {
+          f.hiLoading.stripe.abandon();
+          f.hiLoading.stripe = null;
         }
         this.evict(f, true);
         if (this.lowEnabled) f.lowDirty = true;
@@ -40448,6 +41242,8 @@ float lfxNoise(vec2 p) {
         visibleRef: () => vis,
         /** Wird die Ladenhülle (Innenraum samt Ultra-Innenraum) gerade gezeichnet? Allokationsfrei, pro Frame lesbar. */
         shellVisible: () => !shopShell || shopShell.visible !== false,
+        /** Nach Bereich ein-/ausgeblendete Gruppen (Laden, Regale, Hof, Palast-/Salon-Innenraum): engine/warm.js zeichnet sie einmal auch im Ausgeblendeten vor. */
+        warmRoots: () => [shopShell, shelves, ...cm ? [cm.groups.yard, cm.groups.palastInterior, cm.groups.salonInterior] : []].filter(Boolean),
         /** Szene aufteilen (store.js ruft das nach mods.init): Laden-Hülle und Regale werden je Bereich ein-/ausgeblendet. */
         partition() {
           if (shopShell || !cm) {
@@ -40847,158 +41643,8 @@ float lfxNoise(vec2 p) {
     }
   };
 
-  // src/js/store3d/engine/warm.js
-  var TEX_KEYS = ["map", "alphaMap", "emissiveMap", "lightMap", "aoMap", "bumpMap", "normalMap", "specularMap", "envMap", "gradientMap", "displacementMap", "roughnessMap", "metalnessMap"];
-  function collectTextures(object, extra) {
-    const out = /* @__PURE__ */ new Set();
-    const add = (t) => {
-      if (t && t.isTexture) out.add(t);
-    };
-    if (object && typeof object.traverse === "function") {
-      object.traverse((o) => {
-        for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
-          for (const k of TEX_KEYS) add(m[k]);
-          if (m.uniforms) for (const k of Object.keys(m.uniforms)) add(m.uniforms[k] && m.uniforms[k].value);
-        }
-      });
-    }
-    if (Array.isArray(extra)) extra.forEach(add);
-    return [...out];
-  }
-  function showAll(object) {
-    const saved = [];
-    if (object && typeof object.traverse === "function") object.traverse((o) => {
-      saved.push([o, o.visible]);
-      o.visible = true;
-    });
-    else if (object) {
-      saved.push([object, object.visible]);
-      object.visible = true;
-    }
-    return () => {
-      for (const [o, v] of saved) o.visible = v;
-    };
-  }
-  function warmObject(renderer, object, camera, scene, opts = {}) {
-    const warn25 = (e) => {
-      if (opts.debug) {
-        try {
-          console.warn("[LenzFlix Store3D] warm", e);
-        } catch {
-        }
-      }
-    };
-    let did = false;
-    let pending = null;
-    if (renderer && object && camera) {
-      const restore = showAll(object);
-      try {
-        if (typeof renderer.compileAsync === "function") {
-          pending = renderer.compileAsync(object, camera, scene || object);
-          did = true;
-        } else if (typeof renderer.compile === "function") {
-          renderer.compile(object, camera, scene || object);
-          did = true;
-        }
-      } catch (e) {
-        warn25(e);
-        pending = null;
-      } finally {
-        restore();
-      }
-    }
-    if (renderer && typeof renderer.initTexture === "function") {
-      for (const t of collectTextures(object, opts.textures)) {
-        try {
-          renderer.initTexture(t);
-          did = true;
-        } catch (e) {
-          warn25(e);
-        }
-      }
-    }
-    return Promise.resolve(pending).then(() => did, (e) => {
-      warn25(e);
-      return did;
-    });
-  }
-  function scheduleWarm(ctx, getList, { delayMs = 2500, sched } = {}) {
-    let cancelled = false;
-    let timer = null;
-    let idle = null;
-    let started = false;
-    let dirty = false;
-    const done = /* @__PURE__ */ new Set();
-    const later = sched || ((fn) => {
-      if (typeof requestIdleCallback === "function") {
-        const id2 = requestIdleCallback(() => fn(), { timeout: 2e3 });
-        return () => {
-          if (typeof cancelIdleCallback === "function") cancelIdleCallback(id2);
-        };
-      }
-      const id = setTimeout(fn, 32);
-      return () => clearTimeout(id);
-    });
-    const allowed = (x) => {
-      try {
-        return !x.ok || !!x.ok();
-      } catch {
-        return false;
-      }
-    };
-    const run = (list) => {
-      idle = null;
-      if (cancelled) return;
-      const it = list.shift();
-      if (it && it.object && !done.has(it.object) && allowed(it)) {
-        done.add(it.object);
-        warmObject(ctx.renderer, it.object, ctx.camera, ctx.scene, { textures: it.textures, debug: !!(ctx.opts && ctx.opts.debug) });
-      }
-      if (list.length) idle = later(() => run(list));
-      else if (dirty) {
-        dirty = false;
-        collect2();
-      }
-    };
-    const collect2 = () => {
-      let list = [];
-      try {
-        list = (getList() || []).filter((x) => x && x.object && !done.has(x.object) && allowed(x));
-      } catch {
-        list = [];
-      }
-      if (list.length) idle = later(() => run(list));
-    };
-    timer = setTimeout(() => {
-      timer = null;
-      if (cancelled || !ctx || !ctx.renderer || !ctx.camera) return;
-      started = true;
-      collect2();
-    }, delayMs);
-    const cancel = () => {
-      cancelled = true;
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-      if (typeof idle === "function") {
-        try {
-          idle();
-        } catch {
-        }
-      }
-      idle = null;
-    };
-    cancel.retry = () => {
-      if (cancelled || !started) return;
-      if (idle === null) collect2();
-      else dirty = true;
-    };
-    return cancel;
-  }
-
   // src/js/store3d/modules/precip.js
-  var VERT = (
+  var VERT2 = (
     /* glsl */
     `
 uniform float uTime;
@@ -41072,7 +41718,7 @@ void main() {
 }
 `
   );
-  var FRAG = (
+  var FRAG2 = (
     /* glsl */
     `
 uniform float uKind;
@@ -41144,7 +41790,7 @@ void main() {
         uBoxA: { value: boxA },
         uBoxY: { value: boxY }
       };
-      const mat2 = new ShaderMaterial({ uniforms: U, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, side: DoubleSide, fog: false });
+      const mat2 = new ShaderMaterial({ uniforms: U, vertexShader: VERT2, fragmentShader: FRAG2, transparent: true, depthWrite: false, side: DoubleSide, fog: false });
       const mesh = new Mesh(geo, mat2);
       mesh.frustumCulled = false;
       mesh.renderOrder = 8;
@@ -42186,7 +42832,7 @@ void main() {
   };
 
   // src/js/store3d/modules/ultra-wet.js
-  var VERT2 = (
+  var VERT3 = (
     /* glsl */
     `
 uniform vec3 uCam;
@@ -42207,7 +42853,7 @@ void main() {
 }
 `
   );
-  var FRAG2 = (
+  var FRAG3 = (
     /* glsl */
     `
 uniform sampler2D uMap;
@@ -42302,7 +42948,7 @@ void main() {
     sg.setIndex(new BufferAttribute(idx2, 1));
     const streakTex = toTexture(streakCanvas(), { aniso: 1 });
     const U = { uCam: { value: new Vector3() }, uMap: { value: streakTex }, uA: { value: 0 } };
-    const smat = new ShaderMaterial({ uniforms: U, vertexShader: VERT2, fragmentShader: FRAG2, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, fog: false });
+    const smat = new ShaderMaterial({ uniforms: U, vertexShader: VERT3, fragmentShader: FRAG3, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, fog: false });
     const streaks = new Mesh(sg, smat);
     streaks.frustumCulled = false;
     streaks.renderOrder = 7;
@@ -43315,7 +43961,7 @@ void main() {
   // src/js/store3d/physics/instancer.js
   var _m4 = new Matrix4();
   var _p2 = new Vector3();
-  var _q2 = new Quaternion();
+  var _q3 = new Quaternion();
   var _s2 = new Vector3(1, 1, 1);
   var _z2 = new Vector3(0, 0, 0);
   function createInstancer(group, shapes, baseMat, standeeMat, counts) {
@@ -43325,7 +43971,7 @@ void main() {
       const mesh = new InstancedMesh(shapes.geometry(kind), kind === "standee" ? standeeMat() : baseMat, n);
       mesh.name = `lfx-props-${kind}`;
       mesh.frustumCulled = false;
-      _m4.compose(_z2, _q2.identity(), _z2);
+      _m4.compose(_z2, _q3.identity(), _z2);
       for (let i = 0; i < n; i++) mesh.setMatrixAt(i, _m4);
       mesh.instanceMatrix.needsUpdate = true;
       group.add(mesh);
@@ -43343,8 +43989,8 @@ void main() {
         const s = sets.get(kind);
         if (!s || idx2 < 0) return;
         _p2.set(pos.x, pos.y, pos.z);
-        _q2.set(q.x, q.y, q.z, q.w);
-        _m4.compose(_p2, _q2, visible ? _s2 : _z2);
+        _q3.set(q.x, q.y, q.z, q.w);
+        _m4.compose(_p2, _q3, visible ? _s2 : _z2);
         s.mesh.setMatrixAt(idx2, _m4);
         s.dirty = true;
       },
@@ -48998,7 +49644,7 @@ void main() {
   var NECK_PIVOT = 1.44;
   var HAIRLINE = 1.665;
   var _m5 = new Matrix4();
-  var _q3 = new Quaternion();
+  var _q4 = new Quaternion();
   var _e3 = new Euler();
   var _p3 = new Vector3();
   var _s3 = new Vector3(1, 1, 1);
@@ -49016,9 +49662,9 @@ void main() {
   function cone(r, h3, seg, x, y, z, color2, rx = 0, ry = 0, rz = 0) {
     const g = tint(new ConeGeometry(r, h3, seg, 1), color2);
     _e3.set(rx, ry, rz, "YXZ");
-    _q3.setFromEuler(_e3);
+    _q4.setFromEuler(_e3);
     _p3.set(x, y, z);
-    g.applyMatrix4(_m5.compose(_p3, _q3, _s3));
+    g.applyMatrix4(_m5.compose(_p3, _q4, _s3));
     return g;
   }
   function roll(r, h3, x, y, z, color2) {
@@ -49849,8 +50495,8 @@ void main() {
         l(0.024, 7e-3, 0.014, 8e-3, 0, [0.95, 0.96, 0.98], 0, 0.02);
         l(0.035, 0.1, 0.012, 0.05, -0.075, LA, 0.35);
         _p3.set(x, 0.78, -0.04);
-        _q3.setFromEuler(_e3.set(0, 0.7, 0));
-        _m5.compose(_p3, _q3, _s3);
+        _q4.setFromEuler(_e3.set(0, 0.7, 0));
+        _m5.compose(_p3, _q4, _s3);
         for (const g of loop) {
           g.applyMatrix4(_m5);
           out.push(g);
@@ -51902,7 +52548,7 @@ void main() {
     };
   }
   var _m6 = new Matrix4();
-  var _q4 = new Quaternion();
+  var _q5 = new Quaternion();
   var _e4 = new Euler();
   var _p4 = new Vector3();
   var _s4 = new Vector3();
@@ -51948,10 +52594,10 @@ void main() {
           const peck = p.state === "peck" ? Math.max(0, Math.sin(p.bob)) * 0.5 : 0;
           const bob = p.state === "walk" ? Math.sin(p.bob) * 0.015 : 0;
           _e4.set(air ? -0.15 : peck, p.yaw, 0, "YXZ");
-          _q4.setFromEuler(_e4);
+          _q5.setFromEuler(_e4);
           _p4.set(p.x, p.y + bob, p.z);
           _s4.set(1, 1, 1);
-          _m6.compose(_p4, _q4, _s4);
+          _m6.compose(_p4, _q5, _s4);
           bodies.setMatrixAt(i, _m6);
           const ang = air ? Math.sin(p.flap) * 0.9 : 0.15;
           const span2 = air ? 1 : 0.35;
@@ -51959,7 +52605,7 @@ void main() {
             _wp.set(side * 0.05, 0.12, -0.02).applyMatrix4(_m6);
             _e4.set(0, 0, side * ang);
             _wq.setFromEuler(_e4);
-            _wq.premultiply(_q4);
+            _wq.premultiply(_q5);
             _ws.set(side * span2, 1, 1);
             _w.compose(_wp, _wq, _ws);
             wings.setMatrixAt(i * 2 + (side < 0 ? 0 : 1), _w);
@@ -52721,7 +53367,7 @@ void main() {
 
   // src/js/store3d/npc/throwpool.js
   var _m7 = new Matrix4();
-  var _q5 = new Quaternion();
+  var _q6 = new Quaternion();
   var _p5 = new Vector3();
   var _s5 = new Vector3(1, 1, 1);
   var _e5 = new Euler();
@@ -52743,9 +53389,9 @@ void main() {
       for (let i = 0; i < list.length; i++) {
         const p = list[i];
         _e5.set(p.spin, p.spin * 0.7, 0);
-        _q5.setFromEuler(_e5);
+        _q6.setFromEuler(_e5);
         _p5.set(p.x, p.y, p.z);
-        _m7.compose(_p5, _q5, _s5);
+        _m7.compose(_p5, _q6, _s5);
         mesh.setMatrixAt(i, _m7);
         const cols = THROW_COLORS[p.kind] || THROW_COLORS.popcorn;
         const c = cols[p.color % cols.length];
@@ -60013,314 +60659,6 @@ void main() {
       };
     }
   };
-
-  // src/js/store3d/world/mirror.js
-  var MIRROR_RT = 256;
-  var MIRROR_MAX_DIST = 8;
-  var MIRROR_FAR = 40;
-  var LAYER_MIRROR = 2;
-  function mirrorHz(level) {
-    if (level === "ultra") return 30;
-    if (level === "high") return 20;
-    if (level === "mid") return 10;
-    return 0;
-  }
-  function mirrorGate(s) {
-    if (!s || s.xr || s.store === false) return false;
-    if (mirrorHz(s.quality) <= 0) return false;
-    if (!s.visible || !s.facing) return false;
-    return Number.isFinite(s.dist) && s.dist < (s.maxDist || MIRROR_MAX_DIST);
-  }
-  var HUBS = /* @__PURE__ */ new WeakMap();
-  var STALE_MS = 600;
-  function liveHub(key2) {
-    let h3 = HUBS.get(key2);
-    if (h3) return h3;
-    let owner = null;
-    h3 = {
-      claim(id, dist, now2) {
-        if (!owner || owner.id === id || now2 - owner.at > STALE_MS || dist < owner.dist - 0.75) {
-          owner = { id, dist, at: now2 };
-          return true;
-        }
-        return false;
-      },
-      release(id) {
-        if (owner && owner.id === id) owner = null;
-      },
-      owner: () => owner ? owner.id : null
-    };
-    HUBS.set(key2, h3);
-    return h3;
-  }
-  var VERT3 = (
-    /* glsl */
-    `
-uniform mat4 textureMatrix;
-varying vec4 vProj;
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  vProj = textureMatrix * vec4(position, 1.0);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`
-  );
-  var FRAG3 = (
-    /* glsl */
-    `
-uniform sampler2D tDiffuse;
-uniform float uLive;
-uniform vec3 uMatteA;
-uniform vec3 uMatteB;
-varying vec4 vProj;
-varying vec2 vUv;
-void main() {
-  vec3 c;
-  if (uLive > 0.5) c = texture2DProj(tDiffuse, vProj).rgb * vec3(0.97, 0.99, 1.0);
-  else c = mix(uMatteB, uMatteA, vUv.y);
-  gl_FragColor = vec4(c, 1.0);
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
-}`
-  );
-  function mirrorMaterial(rt) {
-    return new ShaderMaterial({
-      uniforms: {
-        tDiffuse: { value: rt ? rt.texture : null },
-        textureMatrix: { value: new Matrix4() },
-        uLive: { value: 0 },
-        uMatteA: { value: new Vector3(0.52, 0.6, 0.66) },
-        uMatteB: { value: new Vector3(0.22, 0.26, 0.31) }
-      },
-      vertexShader: VERT3,
-      fragmentShader: FRAG3
-    });
-  }
-  function shadowsReady(renderer, scene) {
-    const sm = renderer && renderer.shadowMap;
-    if (!sm || !sm.enabled) return true;
-    let ok = true;
-    scene.traverse((o) => {
-      if (o.isLight && o.castShadow && o.shadow && !o.shadow.map) ok = false;
-    });
-    return ok;
-  }
-  function renderToTarget(renderer, scene, cam, rt, hide = []) {
-    const prevRt = renderer.getRenderTarget();
-    const info = renderer.info;
-    const prevAuto = info ? info.autoReset : void 0;
-    const sm = renderer.shadowMap;
-    const prevShadow = sm ? sm.autoUpdate : void 0;
-    const prevVis = hide.map((o) => o.visible);
-    try {
-      if (info) info.autoReset = false;
-      if (sm) sm.autoUpdate = false;
-      for (const o of hide) o.visible = false;
-      renderer.setRenderTarget(rt);
-      renderer.render(scene, cam);
-    } finally {
-      hide.forEach((o, i) => {
-        o.visible = prevVis[i];
-      });
-      renderer.setRenderTarget(prevRt);
-      if (info) info.autoReset = prevAuto;
-      if (sm) sm.autoUpdate = prevShadow;
-    }
-  }
-  function makeTarget(size = MIRROR_RT) {
-    return new WebGLRenderTarget(size, size, { type: UnsignedByteType, samples: 0, depthBuffer: true, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false });
-  }
-  var _a = new Vector3();
-  var _b = new Vector3();
-  var _normal = new Vector3();
-  var _view = new Vector3();
-  var _target2 = new Vector3();
-  var _look = new Vector3();
-  var _q6 = new Vector4();
-  var _clip = new Vector4();
-  var _plane = new Plane();
-  var _rot = new Matrix4();
-  var _pv = new Matrix4();
-  var _fr = new Frustum();
-  var _sph = new Sphere();
-  function createMirror(ctx, o) {
-    const id = o.id || "mirror";
-    const now2 = o.now || (() => typeof performance !== "undefined" ? performance.now() : Date.now());
-    const hub = liveHub(ctx.renderer || ctx);
-    const mat2 = mirrorMaterial(null);
-    const mesh = new Mesh(new PlaneGeometry(o.w, o.h), mat2);
-    mesh.name = `mirror-${id}`;
-    mesh.position.set(o.x, o.y, o.z);
-    mesh.rotation.y = o.yaw || 0;
-    mesh.frustumCulled = true;
-    if (o.parent) o.parent.add(mesh);
-    mesh.updateMatrixWorld(true);
-    const radius = Math.hypot(o.w, o.h) / 2;
-    const vcam = new PerspectiveCamera();
-    vcam.layers.set(0);
-    vcam.layers.enable(LAYER_MIRROR);
-    let rt = null;
-    let rtSize = MIRROR_RT;
-    let acc = 1;
-    let rendered = false;
-    let live = false;
-    let suppressed = false;
-    let renders = 0;
-    let wanted = false;
-    const chainVisible = () => {
-      for (let n = mesh; n; n = n.parent) if (n.visible === false) return false;
-      return true;
-    };
-    function setup(cam) {
-      mesh.updateWorldMatrix(true, false);
-      cam.updateMatrixWorld();
-      _a.setFromMatrixPosition(mesh.matrixWorld);
-      _b.setFromMatrixPosition(cam.matrixWorld);
-      _rot.extractRotation(mesh.matrixWorld);
-      _normal.set(0, 0, 1).applyMatrix4(_rot);
-      _view.subVectors(_a, _b);
-      if (_view.dot(_normal) > 0) return false;
-      _view.reflect(_normal).negate().add(_a);
-      _rot.extractRotation(cam.matrixWorld);
-      _look.set(0, 0, -1).applyMatrix4(_rot).add(_b);
-      _target2.subVectors(_a, _look).reflect(_normal).negate().add(_a);
-      vcam.position.copy(_view);
-      vcam.up.set(0, 1, 0).applyMatrix4(_rot).reflect(_normal);
-      vcam.lookAt(_target2);
-      vcam.near = cam.near;
-      vcam.far = Math.min(cam.far, MIRROR_FAR);
-      vcam.fov = cam.fov;
-      vcam.aspect = cam.aspect;
-      vcam.updateProjectionMatrix();
-      vcam.updateMatrixWorld();
-      vcam.matrixWorldInverse.copy(vcam.matrixWorld).invert();
-      const tm = mat2.uniforms.textureMatrix.value;
-      tm.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
-      tm.multiply(vcam.projectionMatrix).multiply(vcam.matrixWorldInverse).multiply(mesh.matrixWorld);
-      _plane.setFromNormalAndCoplanarPoint(_normal, _a).applyMatrix4(vcam.matrixWorldInverse);
-      _clip.set(_plane.normal.x, _plane.normal.y, _plane.normal.z, _plane.constant);
-      const p = vcam.projectionMatrix.elements;
-      _q6.x = (Math.sign(_clip.x) + p[8]) / p[0];
-      _q6.y = (Math.sign(_clip.y) + p[9]) / p[5];
-      _q6.z = -1;
-      _q6.w = (1 + p[10]) / p[14];
-      _clip.multiplyScalar(2 / _clip.dot(_q6));
-      p[2] = _clip.x;
-      p[6] = _clip.y;
-      p[10] = _clip.z + 1 - 3e-3;
-      p[14] = _clip.w;
-      return true;
-    }
-    let shadowOk = false;
-    let shadowOn = null;
-    function shadowsOk() {
-      const on = !!(ctx.renderer.shadowMap && ctx.renderer.shadowMap.enabled);
-      if (on !== shadowOn) {
-        shadowOn = on;
-        shadowOk = false;
-      }
-      if (shadowOk) return true;
-      shadowOk = shadowsReady(ctx.renderer, ctx.scene);
-      return shadowOk;
-    }
-    function renderNow() {
-      const cam = ctx.camera;
-      if (!shadowsOk()) return false;
-      if (!setup(cam)) return false;
-      if (rt && rt.width !== rtSize) {
-        rt.dispose();
-        rt = null;
-      }
-      if (!rt) {
-        rt = makeTarget(rtSize);
-        mat2.uniforms.tDiffuse.value = rt.texture;
-      }
-      renderToTarget(ctx.renderer, ctx.scene, vcam, rt, [mesh]);
-      renders++;
-      return true;
-    }
-    const api = {
-      mesh,
-      /** Auflösung des Spiegelbilds ändern (z. B. 1024 beim Frisieren, MIRROR_RT sonst); legt das Ziel beim nächsten Bild neu an. */
-      setSize(n) {
-        const v = Math.max(64, Math.min(2048, Math.round(Number(n)) || MIRROR_RT));
-        if (v === rtSize) return;
-        shadowOk = false;
-        rtSize = v;
-      },
-      getSize: () => rtSize,
-      /** Wird pro Frame aus update(dt) des Moduls gerufen (vor dem Hauptbild). */
-      update(dt) {
-        const cam = ctx.camera;
-        const level = typeof ctx.quality === "function" ? ctx.quality() : "low";
-        const xr = !!(ctx.xr && typeof ctx.xr.presenting === "function" && ctx.xr.presenting());
-        const store = !(ctx.stage && typeof ctx.stage.isStore === "function") || ctx.stage.isStore();
-        wanted = false;
-        if (suppressed || xr || mirrorHz(level) <= 0 || !store) {
-          if (live) {
-            live = false;
-            mat2.uniforms.uLive.value = 0;
-            hub.release(id);
-          }
-          return;
-        }
-        cam.updateMatrixWorld();
-        _b.setFromMatrixPosition(cam.matrixWorld);
-        mesh.updateWorldMatrix(true, false);
-        _a.setFromMatrixPosition(mesh.matrixWorld);
-        _rot.extractRotation(mesh.matrixWorld);
-        _normal.set(0, 0, 1).applyMatrix4(_rot);
-        const dist = _b.distanceTo(_a);
-        const facing = _view.subVectors(_b, _a).dot(_normal) > 0;
-        _pv.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
-        _fr.setFromProjectionMatrix(_pv);
-        _sph.set(_a, radius);
-        const visible = chainVisible() && _fr.intersectsSphere(_sph);
-        const gate = mirrorGate({ quality: level, xr, store, visible, facing, dist, maxDist: o.maxDist });
-        if (!gate) {
-          hub.release(id);
-          if (visible && live) {
-            live = false;
-            mat2.uniforms.uLive.value = 0;
-          }
-          return;
-        }
-        wanted = true;
-        if (!hub.claim(id, dist, now2())) return;
-        acc += dt;
-        if (acc < 1 / mirrorHz(level)) return;
-        acc = 0;
-        if (renderNow()) {
-          rendered = true;
-          live = true;
-          mat2.uniforms.uLive.value = 1;
-        }
-      },
-      isLive: () => live && rendered,
-      wanted: () => wanted,
-      stats: () => ({ renders, live: live && rendered, hasTarget: !!rt }),
-      /** Zeitweise aus (z. B. anderer Spiegel soll live sein / Editor offen mit Studio). */
-      setSuppressed(on) {
-        suppressed = !!on;
-        if (suppressed && live) {
-          live = false;
-          mat2.uniforms.uLive.value = 0;
-          hub.release(id);
-        }
-      },
-      dispose() {
-        hub.release(id);
-        mesh.removeFromParent();
-        mesh.geometry.dispose();
-        mat2.dispose();
-        if (rt) {
-          rt.dispose();
-          rt = null;
-        }
-      }
-    };
-    return api;
-  }
 
   // src/js/store3d/modules/shopmirror.js
   var DOME_R = 0.17;
@@ -83546,7 +83884,8 @@ void main() {
         this.covers.update(p.x, p.z, p.yaw, { zoom: this.zoom, pitch: p.pitch });
       }
       if (p.moved !== this.lastMoved && now2 - this.lastNotify >= 500) this.notifyState(false, now2);
-      if (!this.ready && ++this.readyFrames >= 2) {
+      if (!inXr) this.stepWarmDraw();
+      if (!this.ready && !this.warmHold(now2) && ++this.readyFrames >= 2) {
         this.ready = true;
         this.progress(1, "Fertig");
         if (this.onReadyHook) this.onReadyHook();
@@ -83556,6 +83895,37 @@ void main() {
         } catch {
         }
       }
+    }
+    /** Bleibt das Ladebild stehen, bis das Vorwärmen fertig ist (höchstens 4 s, nur high/ultra)? */
+    warmHold(now2) {
+      const wd = this.warmDraw;
+      if (!this.ultraOk || !wd || !wd.busy()) return false;
+      if (this.warmT0 == null) this.warmT0 = now2;
+      return now2 - this.warmT0 < 4e3;
+    }
+    /** Programm-Vorwärmen der Basisszene (engine/warm.js createWarmDraw, nur high/ultra): zeichnet vor dem normalen Bild; vor der Spielfreigabe größere Häppchen. */
+    stepWarmDraw() {
+      const eng = this.engine;
+      if (!eng || this.disposed || this.suspended || !this.ultraOk) return;
+      if (!this.warmDraw) {
+        this.warmDraw = createWarmDraw({
+          renderer: eng.renderer,
+          camera: eng.camera,
+          scene: () => eng.scene === eng.storeScene ? eng.storeScene : null,
+          makeRt: makeTarget,
+          level: () => eng.preset.level,
+          roots: () => {
+            const c = this.mods && this.mods.ctx.use("city");
+            return c && c.warmRoots ? c.warmRoots() : [];
+          },
+          xr: () => !!(this.xr && this.xr.presenting),
+          canDraw: () => eng.renderEnabled && !eng.lost,
+          boost: () => !this.ready || this.mode !== "play" || !!(this.mods && this.mods.locked),
+          shadowsReady: () => shadowsReady(eng.renderer, eng.storeScene),
+          debug: !!this.opts.debug
+        });
+      }
+      this.warmDraw.step();
     }
     getState() {
       const p = this.player;
@@ -83805,6 +84175,10 @@ void main() {
       } catch {
       }
       if (this.engine) this.engine.stop();
+      if (this.warmDraw) {
+        this.warmDraw.dispose();
+        this.warmDraw = null;
+      }
       if (this.mods) this.mods.dispose();
       if (this.holdview) this.holdview.dispose(true);
       if (this.covers) this.covers.dispose();
@@ -83907,6 +84281,10 @@ void main() {
         city() {
           return app.layout.city;
         },
+        warmDraw() {
+          return !app.ultraOk ? { off: true } : app.warmDraw ? app.warmDraw.state() : null;
+        },
+        // Programm-Vorwärmen: { done, pending, drawn, chunks, ms, maxChunkMs, keys, failed }
         ultra() {
           return app.mods && app.mods.ultra ? app.mods.ultra.api.list() : [];
         },
