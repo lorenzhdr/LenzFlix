@@ -3535,12 +3535,16 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social[hidden], html.lfx-js.
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social.is-desk {
   right: auto;
-  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  left: calc(max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px)) + 54px);
   flex-direction: row;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) :has(.lfx-store-viewbtn:not([hidden])) > .lfx-mp-social.is-desk {
-  left: calc(max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px)) + 54px);
+html.lfx-js.lfx-theme-store:not(.layout-tv) :has(.lfx-store-viewbtn[hidden]) > .lfx-mp-social.is-desk {
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) :not(:has(.lfx-store-viewbtn)) > .lfx-mp-social.is-desk {
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-tag {

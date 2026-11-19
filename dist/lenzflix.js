@@ -1412,7 +1412,9 @@
   var lastTheme = null;
   var failTheme = null;
   var fails = 0;
-  var MAX_FAILS = 4;
+  var nextTryAt = 0;
+  var RETRY_MS = [2e3, 5e3, 15e3, 6e4];
+  var MAX_FAILS = RETRY_MS.length + 1;
   var seq2 = 0;
   function isStandalone() {
     if (typeof window.__lfxStandalone === "boolean") return window.__lfxStandalone;
@@ -1443,7 +1445,7 @@
     m.name = name;
     m.short_name = name;
     const start10 = abs(src.start_url || ".", base) || base;
-    m.id = start10;
+    m.id = src.id && abs(src.id, base) || start10;
     m.start_url = start10;
     m.scope = abs(src.scope || ".", base) || start10;
     const icons = Array.isArray(src.icons) ? src.icons : [];
@@ -1464,6 +1466,7 @@
     lastTheme = null;
     failTheme = null;
     fails = 0;
+    nextTryAt = 0;
   }
   function loadSource() {
     if (!sourcePromise) {
@@ -1486,8 +1489,9 @@
     if (theme2 !== failTheme) {
       failTheme = theme2;
       fails = 0;
+      nextTryAt = 0;
     }
-    if (fails >= MAX_FAILS) return;
+    if (fails >= MAX_FAILS || Date.now() < nextTryAt) return;
     if (!link || link !== el4) {
       if (link) restoreLink();
       const href = el4.getAttribute("href");
@@ -1512,9 +1516,11 @@
       link.setAttribute("href", next);
       if (old) URL.revokeObjectURL(old);
       fails = 0;
+      nextTryAt = 0;
     } catch {
       if (mine === seq2) {
         fails++;
+        nextTryAt = Date.now() + (RETRY_MS[fails - 1] || 0);
         lastTheme = null;
         if (link && !blobUrl) link.setAttribute("href", origHref);
       }
@@ -3406,6 +3412,7 @@
     });
   }
   var ONLINE_POLL_MS = 3e4;
+  var ONLINE_MAX_FAILS = 2;
   function showOnline(card3, n) {
     let pill = card3.querySelector(".lfx-tp__online");
     const base = card3.dataset.baseLabel || card3.getAttribute("aria-label") || "";
@@ -3427,6 +3434,7 @@
   function fillStoreOnline(c) {
     const card3 = c.cards.get("store");
     if (!card3) return;
+    let fails2 = 0;
     const tick = () => {
       if (current !== c || document.hidden) return;
       if (c.onlineCtl) c.onlineCtl.abort();
@@ -3434,6 +3442,10 @@
       c.onlineCtl = ctl;
       fetchOnline(ctl ? ctl.signal : void 0).then((n) => {
         if (current !== c || !card3.isConnected || ctl && ctl.signal.aborted) return;
+        if (n === null || n === void 0) {
+          fails2++;
+          if (fails2 < ONLINE_MAX_FAILS) return;
+        } else fails2 = 0;
         showOnline(card3, n);
       }).catch(() => {
       });
@@ -11849,7 +11861,7 @@
   // src/js/features/sabback.js
   var ICON_BACK = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m14.5 5-7 7 7 7"/></svg>';
   var ID10 = "lfx-sab-back";
-  var ON_CLASS6 = "lfx-sab-on";
+  var BACK_CHECK_MS = 450;
   var EXCLUDED6 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|configurationpage|queue)/;
   var PLAYER2 = '[id="videoOsdPage"]:not(.hide)';
   function needsButton(theme2) {
@@ -11865,9 +11877,19 @@
         return false;
     }
   }
+  var backTimer = null;
   function goBack() {
-    if (window.history.length <= 1) window.location.hash = "#/home";
-    else window.history.back();
+    if (window.history.length <= 1) {
+      window.location.hash = "#/home";
+      return;
+    }
+    const before = window.location.hash;
+    if (backTimer) clearTimeout(backTimer);
+    window.history.back();
+    backTimer = setTimeout(() => {
+      backTimer = null;
+      if (window.location.hash === before) window.location.hash = "#/home";
+    }, BACK_CHECK_MS);
   }
   var sabbackFeature = {
     name: "sabback",
@@ -11888,11 +11910,13 @@
       el4.title = "Zur\xFCck";
       el4.innerHTML = ICON_BACK;
       el4.onclick = goBack;
-      document.documentElement.classList.add(ON_CLASS6);
     },
     unmount() {
       unmountPoint(ID10);
-      document.documentElement.classList.remove(ON_CLASS6);
+      if (backTimer) {
+        clearTimeout(backTimer);
+        backTimer = null;
+      }
     }
   };
   var sabback_default = sabbackFeature;
@@ -11965,7 +11989,7 @@
 
   // src/js/features/plus/header.js
   var ROOT_ID7 = "lfx-plus-header";
-  var ON_CLASS7 = "lfx-plus-header-on";
+  var ON_CLASS6 = "lfx-plus-header-on";
   var HIDDEN_CLASS = "lfx-plus-header-hidden";
   var EXCLUDED7 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SOLID_AT = 10;
@@ -12212,7 +12236,7 @@
           openMenu2();
         }
       });
-      document.documentElement.classList.add(ON_CLASS7);
+      document.documentElement.classList.add(ON_CLASS6);
       renderNav();
       window.addEventListener("scroll", onScroll2, { passive: true });
       state9.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
@@ -12238,7 +12262,7 @@
       if (state9.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state9.raf);
       state9.raf = 0;
       unmountPoint(ROOT_ID7);
-      document.documentElement.classList.remove(ON_CLASS7, HIDDEN_CLASS);
+      document.documentElement.classList.remove(ON_CLASS6, HIDDEN_CLASS);
       state9.root = null;
       state9.nav = null;
       state9.chip = null;
@@ -12249,7 +12273,7 @@
 
   // src/js/features/plus/mobilehead.js
   var ROOT_ID8 = "lfx-plus-mhead";
-  var ON_CLASS8 = "lfx-plus-mhead-on";
+  var ON_CLASS7 = "lfx-plus-mhead-on";
   var EXCLUDED8 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SOLID_AT2 = 8;
   function showsBack(route) {
@@ -12335,7 +12359,7 @@
       state10.root = root6;
       state10.backEl = backEl;
       state10.titleEl = titleEl2;
-      document.documentElement.classList.add(ON_CLASS8);
+      document.documentElement.classList.add(ON_CLASS7);
       window.addEventListener("scroll", onScroll3, { passive: true });
       state10.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
       render6();
@@ -12353,7 +12377,7 @@
       if (state10.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state10.raf);
       state10.raf = 0;
       unmountPoint(ROOT_ID8);
-      document.documentElement.classList.remove(ON_CLASS8);
+      document.documentElement.classList.remove(ON_CLASS7);
       state10.root = null;
       state10.backEl = null;
       state10.titleEl = null;
@@ -12365,7 +12389,7 @@
 
   // src/js/features/plus/switcher.js
   var ROOT_ID9 = "lfx-plus-switcher";
-  var ON_CLASS9 = "lfx-plus-switcher-on";
+  var ON_CLASS8 = "lfx-plus-switcher-on";
   function isSwitcherRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return false;
     const { kind: kind2 } = parseLfxRoute(route);
@@ -12443,7 +12467,7 @@
       state11.route = route;
       state11.libs = [];
       state11.root = mountPoint(ROOT_ID9, { className: "lfx-plus-switcher" });
-      document.documentElement.classList.add(ON_CLASS9);
+      document.documentElement.classList.add(ON_CLASS8);
       render7();
       loadLibraries3(seq4);
     },
@@ -12454,7 +12478,7 @@
     unmount() {
       state11.seq++;
       unmountPoint(ROOT_ID9);
-      document.documentElement.classList.remove(ON_CLASS9);
+      document.documentElement.classList.remove(ON_CLASS8);
       state11.root = null;
       state11.libs = [];
     }
@@ -13224,7 +13248,7 @@
 
   // src/js/features/plus/home.js
   var ROOT_ID10 = "lfx-plus-home";
-  var ON_CLASS10 = "lfx-plus-home-on";
+  var ON_CLASS9 = "lfx-plus-home-on";
   var cleanups3 = [];
   var waitTimer5 = null;
   var token = 0;
@@ -13254,7 +13278,7 @@
       }
     }
     document.getElementById(ROOT_ID10)?.remove();
-    document.documentElement.classList.remove(ON_CLASS10);
+    document.documentElement.classList.remove(ON_CLASS9);
     currentKey = null;
     currentPhone = false;
   }
@@ -13266,7 +13290,7 @@
     const rowsSlot = h("div", { class: "lfx-plus-rows" });
     const root6 = h("div", { id: ROOT_ID10, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
     tab2.prepend(root6);
-    document.documentElement.classList.add(ON_CLASS10);
+    document.documentElement.classList.add(ON_CLASS9);
     currentKey = key;
     currentPhone = isPhone();
     const alive = () => my === token;
@@ -13547,7 +13571,7 @@
   // src/js/features/plus/title.js
   var ROOT_ID11 = "lfx-plus-title";
   var TRAILER_ID = "lfx-plus-trailer";
-  var ON_CLASS11 = "lfx-plus-title-on";
+  var ON_CLASS10 = "lfx-plus-title-on";
   var TICKS_PER_MIN3 = 6e8;
   var svg7 = (path) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${path}</svg>`;
   var ICON_PLAY3 = svg7('<path d="M7 4.5v15l12-7.5z"/>');
@@ -13599,7 +13623,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID11)?.remove();
-    setPageOn(ON_CLASS11, false);
+    setPageOn(ON_CLASS10, false);
   }
   function circle(mod, label, icon5, onClick2) {
     const b = h("button", { type: "button", class: `lfx-plus-circle lfx-plus-circle--${mod}`, "aria-label": label, title: label });
@@ -14112,7 +14136,7 @@
       ]);
       s.root = root6;
       tab2.prepend(root6);
-      setPageOn(ON_CLASS11, true);
+      setPageOn(ON_CLASS10, true);
       if (!keepScroll) scrollTop();
       load2(g).then(() => {
         if (state12 === s) root6.removeAttribute("aria-busy");
@@ -14137,7 +14161,7 @@
 
   // src/js/features/plus/browse.js
   var ROOT_ID12 = "lfx-plus-browse";
-  var ON_CLASS12 = "lfx-plus-browse-on";
+  var ON_CLASS11 = "lfx-plus-browse-on";
   var PAGE4 = 40;
   var state13 = null;
   var routeOf2 = (route) => {
@@ -14160,7 +14184,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID12)?.remove();
-    setPageOn(ON_CLASS12, false);
+    setPageOn(ON_CLASS11, false);
   }
   function paintChips(s) {
     for (const chip of s.chips.querySelectorAll(".lfx-plus-chip")) {
@@ -14248,7 +14272,7 @@
     const root6 = h("div", { id: ROOT_ID12, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
     Object.assign(s, { root: root6, chips, grid: grid2, status, sentinel });
     tab2.prepend(root6);
-    setPageOn(ON_CLASS12, true);
+    setPageOn(ON_CLASS11, true);
     scrollTop();
     const addChip = (label, genreId) => {
       chips.append(h("a", {
@@ -14397,7 +14421,7 @@
 
   // src/js/features/plus/search.js
   var ROOT_ID13 = "lfx-plus-search";
-  var ON_CLASS13 = "lfx-plus-search-on";
+  var ON_CLASS12 = "lfx-plus-search-on";
   var DEBOUNCE_MS = 300;
   var MIN_LEN2 = 2;
   var LUPE = '<svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="13.5" cy="13.5" r="8.5"/><path d="M20 20l8 8"/></svg>';
@@ -14424,7 +14448,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID13)?.remove();
-    setPageOn(ON_CLASS13, false);
+    setPageOn(ON_CLASS12, false);
   }
   function tile(href, label, imageUrl2, { nameOnImage = true } = {}) {
     const hide2 = !!imageUrl2 && !nameOnImage;
@@ -14548,7 +14572,7 @@
       clear.hidden = !input.value;
     };
     tab2.prepend(root6);
-    setPageOn(ON_CLASS13, true);
+    setPageOn(ON_CLASS12, true);
     const writeHash = (term) => {
       try {
         history.replaceState(history.state, "", searchHref(term));
@@ -14630,7 +14654,7 @@
 
   // src/js/features/plus/tabbar.js
   var ROOT_ID14 = "lfx-plus-tabbar";
-  var ON_CLASS14 = "lfx-plus-tabbar-on";
+  var ON_CLASS13 = "lfx-plus-tabbar-on";
   var KB_CLASS = "lfx-plus-kb";
   var HIDE_CLASS = "lfx-plus-tabbar-hide";
   var EXCLUDED9 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
@@ -14800,7 +14824,7 @@
         cl2.remove(HIDE_CLASS);
       });
       cl2.remove(HIDE_CLASS);
-      cl2.add(ON_CLASS14);
+      cl2.add(ON_CLASS13);
       applyActive6();
       fillAvatar();
     },
@@ -14814,7 +14838,7 @@
       closeProfile();
       for (const fn of state15.cleanups.splice(0)) fn();
       unmountPoint(ROOT_ID14);
-      document.documentElement.classList.remove(ON_CLASS14);
+      document.documentElement.classList.remove(ON_CLASS13);
       state15.root = null;
       state15.profileBtn = null;
     }
@@ -16477,7 +16501,7 @@
 
   // src/js/features/prime/home-route.js
   var ROOT_ID15 = "lfx-prime-home";
-  var ON_CLASS15 = "lfx-prime-home-on";
+  var ON_CLASS14 = "lfx-prime-home-on";
   function primeHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return null;
     const lfx = route.params.get("lfx");
@@ -16753,7 +16777,7 @@
       }
     }
     document.getElementById(ROOT_ID15)?.remove();
-    document.documentElement.classList.remove(ON_CLASS15);
+    document.documentElement.classList.remove(ON_CLASS14);
   }
   var isGenreDef = (d) => /(^|-)genre-/.test(d.id);
   function moreHrefFor(def, { hub, libs: libs2, lib }) {
@@ -16795,7 +16819,7 @@
     const moreSlot = h("div", { class: "lfx-prime-moreslot" });
     const root6 = h("div", { id: ROOT_ID15, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
     tab2.prepend(root6);
-    document.documentElement.classList.add(ON_CLASS15);
+    document.documentElement.classList.add(ON_CLASS14);
     current4 = route;
     builtMobile = isMobile() && isNarrow();
     cleanups4.push(renderHero(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchHomePool() }));
@@ -17512,7 +17536,7 @@
 
   // src/js/features/prime/title.js
   var ROOT_ID16 = "lfx-prime-title";
-  var ON_CLASS16 = "lfx-prime-title-on";
+  var ON_CLASS15 = "lfx-prime-title-on";
   var TRAILER_DELAY_MS2 = 1200;
   var HEADER_H2 = 80;
   var root3 = null;
@@ -18008,7 +18032,7 @@
     if (root3) root3.remove();
     root3 = null;
     document.getElementById(ROOT_ID16)?.remove();
-    document.documentElement.classList.remove(ON_CLASS16);
+    document.documentElement.classList.remove(ON_CLASS15);
   }
   function pullToTop(el4) {
     el4.style.marginTop = "";
@@ -18026,7 +18050,7 @@
         root3 = h("div", { id: ROOT_ID16, class: "lfx-pt" });
         tab3.prepend(root3);
       }
-      document.documentElement.classList.add(ON_CLASS16);
+      document.documentElement.classList.add(ON_CLASS15);
       pullToTop(root3);
       load3(r.id);
     };
@@ -18603,7 +18627,7 @@
   // src/js/features/retro/tabbar.js
   var ROOT_ID17 = "lfx-retro-tabbar";
   var TOP_ID = "lfx-retro-topbar";
-  var ON_CLASS17 = "lfx-retro-tabbar-on";
+  var ON_CLASS16 = "lfx-retro-tabbar-on";
   var MOBILE_CLASS2 = "lfx-retro-mobile";
   var KB_CLASS2 = "lfx-retro-kb";
   var HIDE_CLASS2 = "lfx-retro-tabbar-hide";
@@ -18846,7 +18870,7 @@
         cl2.remove(KB_CLASS2, HIDE_CLASS2);
       });
       cl2.remove(HIDE_CLASS2);
-      cl2.add(ON_CLASS17, MOBILE_CLASS2);
+      cl2.add(ON_CLASS16, MOBILE_CLASS2);
       applyActive9();
       fillTopbar();
     },
@@ -18870,7 +18894,7 @@
       state20.clock = null;
       unmountPoint(ROOT_ID17);
       unmountPoint(TOP_ID);
-      document.documentElement.classList.remove(ON_CLASS17, MOBILE_CLASS2);
+      document.documentElement.classList.remove(ON_CLASS16, MOBILE_CLASS2);
       state20.root = null;
       state20.top = null;
       state20.moreBtn = null;
@@ -19417,7 +19441,7 @@
 
   // src/js/features/retro/home-route.js
   var ROOT_ID18 = "lfx-retro-home";
-  var ON_CLASS18 = "lfx-retro-home-on";
+  var ON_CLASS17 = "lfx-retro-home-on";
   function retroHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return null;
     const lfx = route.params.get("lfx");
@@ -19451,7 +19475,7 @@
       }
     }
     document.getElementById(ROOT_ID18)?.remove();
-    document.documentElement.classList.remove(ON_CLASS18);
+    document.documentElement.classList.remove(ON_CLASS17);
   }
   var isGenreDef2 = (d) => /(^|-)genre-/.test(d.id);
   function moreHrefFor2(def, { hub, libs: libs2, lib }) {
@@ -19499,7 +19523,7 @@
     const moreSlot = h("div", { class: "lfx-retro-moreslot" });
     const root6 = h("div", { id: ROOT_ID18, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
     tab2.prepend(root6);
-    document.documentElement.classList.add(ON_CLASS18);
+    document.documentElement.classList.add(ON_CLASS17);
     current5 = route;
     builtPhone = isPhone2();
     cleanups5.push(renderHero2(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchCachedHomePool(), peekPool: hub ? null : peekHomePool }));
@@ -19787,7 +19811,7 @@
 
   // src/js/features/retro/title.js
   var ROOT_ID19 = "lfx-retro-title";
-  var ON_CLASS19 = "lfx-retro-title-on";
+  var ON_CLASS18 = "lfx-retro-title-on";
   var state21 = null;
   var gen5 = 0;
   var routeId2 = (route) => {
@@ -19816,7 +19840,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID19)?.remove();
-    setPageOn2(ON_CLASS19, false);
+    setPageOn2(ON_CLASS18, false);
   }
   function preloadImages2(item) {
     let target2 = item;
@@ -20162,7 +20186,7 @@
       ]);
       s.root = root6;
       tab2.prepend(root6);
-      setPageOn2(ON_CLASS19, true);
+      setPageOn2(ON_CLASS18, true);
       if (!keepScroll) scrollTop2();
       load4(g).then(() => {
         if (state21 === s) root6.removeAttribute("aria-busy");
@@ -20187,7 +20211,7 @@
 
   // src/js/features/retro/search.js
   var ROOT_ID20 = "lfx-retro-search";
-  var ON_CLASS20 = "lfx-retro-search-on";
+  var ON_CLASS19 = "lfx-retro-search-on";
   var DEBOUNCE_MS3 = 300;
   var MIN_LEN4 = 2;
   var state22 = null;
@@ -20213,7 +20237,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID20)?.remove();
-    setPageOn2(ON_CLASS20, false);
+    setPageOn2(ON_CLASS19, false);
   }
   function group(title, body, mod = "") {
     return h("section", { class: `lfx-rs__group ${mod}`.trim() }, [h("h2", { class: "lfx-retro-label" }, title), body]);
@@ -20351,7 +20375,7 @@
       placeCaret();
     };
     tab2.prepend(root6);
-    setPageOn2(ON_CLASS20, true);
+    setPageOn2(ON_CLASS19, true);
     const writeHash = (term) => {
       try {
         history.replaceState(history.state, "", searchHref(term));
@@ -20464,7 +20488,7 @@
 
   // src/js/features/retro/browse.js
   var ROOT_ID21 = "lfx-retro-browse";
-  var ON_CLASS21 = "lfx-retro-browse-on";
+  var ON_CLASS20 = "lfx-retro-browse-on";
   var PAGE5 = 40;
   var VIEW_KEY = "lfx.retro.browseview";
   var SORTS4 = {
@@ -20511,7 +20535,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID21)?.remove();
-    setPageOn2(ON_CLASS21, false);
+    setPageOn2(ON_CLASS20, false);
   }
   function listRow(it) {
     const genre = it.Genres && it.Genres[0] || "";
@@ -20693,7 +20717,7 @@
     ]);
     Object.assign(s, { root: root6, path, count, opts, genres, genreBtn, grid: grid2, status, sentinel });
     tab2.prepend(root6);
-    setPageOn2(ON_CLASS21, true);
+    setPageOn2(ON_CLASS20, true);
     scrollTop2();
     const addGenre = (label, genreId) => {
       genres.append(h("a", {
@@ -22873,7 +22897,7 @@
 
   // src/js/features/store/home-route.js
   var ROOT_ID22 = "lfx-store-home";
-  var ON_CLASS22 = "lfx-store-home-on";
+  var ON_CLASS21 = "lfx-store-home-on";
   var BAR_ID = "lfx-store-bar";
   var BAR_CLASS = "lfx-store-bar-on";
   function storeHomeRoute(route) {
@@ -24104,7 +24128,7 @@
     }
     ui2 = null;
     document.getElementById(ROOT_ID22)?.remove();
-    root5().classList.remove(ON_CLASS22);
+    root5().classList.remove(ON_CLASS21);
     shown = false;
   }
   function showFallback2(message, { retry = false, detail = "" } = {}) {
@@ -24389,7 +24413,7 @@
     teardownUi2();
     ui2 = buildUi();
     tab2.prepend(ui2.root);
-    root5().classList.add(ON_CLASS22);
+    root5().classList.add(ON_CLASS21);
     shown = true;
     const r = storeHomeRoute(route);
     if (inst2 && inst2.instance && inst2.uid !== getUserId()) disposeInstance2();

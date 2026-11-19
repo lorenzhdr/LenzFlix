@@ -31268,7 +31268,7 @@ void main() {
     low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], precip: [260, 180], fogNear: 34, fogFar: 56 },
     mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
     high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
-    // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Handy-Werte = high.
+    // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Tablet (phone=true) nutzt dieselben Werte.
     ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 44, fogFar: 59 }
   };
   function city(lv, phone) {
@@ -31278,7 +31278,6 @@ void main() {
   }
   function presetFor(level, phone = false) {
     let lv = LEVELS.includes(level) ? level : "mid";
-    if (lv === "ultra" && phone) lv = "high";
     if (lv === "low") {
       return { level: lv, pixelRatio: phone ? 1 : 0.9, shadows: false, anisotropy: 1, atlas: 512, maxAtlases: phone ? 24 : 32, loadRadius: phone ? 9 : 11, signMips: false, ...city(lv, phone) };
     }
@@ -38939,6 +38938,14 @@ void main() {
     rain: { id: 0, fallMin: 9, fallMax: 13, alpha: 0.8 },
     snow: { id: 1, fallMin: 1, fallMax: 1.5, alpha: 0.9 }
   };
+  function calmFor(reduced2) {
+    return reduced2 ? { fall: 0.5, wind: 0.5, len: 0.6, sway: 0 } : { fall: 1, wind: 1, len: 1, sway: 1 };
+  }
+  var TIME_PERIOD = 10 * Math.PI * 115;
+  function shaderTime(t, t0) {
+    const d = t - t0;
+    return d - Math.floor(d / TIME_PERIOD) * TIME_PERIOD;
+  }
   var clamp01 = (v) => v > 1 ? 1 : v > 0 ? v : 0;
   function normalizeWeather(w) {
     const kind = w && (w.kind === "rain" || w.kind === "snow") ? w.kind : null;
@@ -40969,6 +40976,7 @@ uniform float uLen;
 uniform float uWidth;
 uniform float uSize;
 uniform float uKind;
+uniform float uSway;
 uniform float uAlpha;
 uniform vec3 uCam;
 uniform vec4 uBoxA[${MAX_BOXES}];
@@ -40988,8 +40996,8 @@ void main() {
     mod(raw.z - uCam.z + uHalf, span) - uHalf);
   vec3 p = vec3(uCam.x + rel.x, uCam.y + uYLo + rel.y, uCam.z + rel.z);
   if (uKind > 0.5) {
-    p.x += sin(uTime * 0.8 + aSeed.x * 40.0) * 0.25;
-    p.z += cos(uTime * 0.6 + aSeed.z * 40.0) * 0.25;
+    p.x += sin(uTime * 0.8 + aSeed.x * 40.0) * 0.25 * uSway;
+    p.z += cos(uTime * 0.6 + aSeed.z * 40.0) * 0.25 * uSway;
   }
   // Schutz: unter Dach (Box) verschwindet das Partikel (alle vier Ecken au\xDFerhalb des Clip-Raums)
   for (int i = 0; i < ${MAX_BOXES}; i++) {
@@ -41095,6 +41103,7 @@ void main() {
         uWidth: { value: 0.024 },
         uSize: { value: 0.035 },
         uKind: { value: 0 },
+        uSway: { value: 1 },
         uAlpha: { value: 0 },
         uCam: { value: new Vector3() },
         uBoxA: { value: boxA },
@@ -41117,19 +41126,34 @@ void main() {
       let near = false;
       let suspended = false;
       let checkT = 0;
+      let t0 = null;
       const cam = ctx.camera;
       const wp = new Vector3();
       const D2 = ctx.layout.d;
+      let calm = calmFor(prefersReducedMotion());
+      let curKind = null;
+      let mq = null;
+      try {
+        mq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+      } catch {
+        mq = null;
+      }
       function applyKind(k) {
         const K = KINDS[k] || KINDS.rain;
+        curKind = k;
         U.uKind.value = K.id;
-        U.uFall.value.set(K.fallMin, K.fallMax);
-        if (k === "snow") {
-          U.uWind.value.set(0.35, 0.15);
-        } else {
-          U.uWind.value.set(1.1, 0.4);
-        }
+        U.uFall.value.set(K.fallMin * calm.fall, K.fallMax * calm.fall);
+        const wx = k === "snow" ? 0.35 : 1.1;
+        const wz = k === "snow" ? 0.15 : 0.4;
+        U.uWind.value.set(wx * calm.wind, wz * calm.wind);
+        U.uLen.value = 0.5 * calm.len;
+        U.uSway.value = calm.sway;
       }
+      const onMotion = () => {
+        calm = calmFor(prefersReducedMotion());
+        if (curKind) applyKind(curKind);
+      };
+      if (mq && mq.addEventListener) mq.addEventListener("change", onMotion);
       function setWeather(w) {
         want = normalizeWeather(w);
         if (first) {
@@ -41170,10 +41194,11 @@ void main() {
             mesh.visible = false;
             return;
           }
-          if (U.uKind.value !== KINDS[st.kind].id) applyKind(st.kind);
+          if (curKind !== st.kind) applyKind(st.kind);
           cam.getWorldPosition(wp);
           U.uCam.value.copy(wp);
-          U.uTime.value = t;
+          if (t0 === null) t0 = t;
+          U.uTime.value = shaderTime(t, t0);
           U.uAlpha.value = KINDS[st.kind].alpha * (0.5 + 0.5 * Math.min(1, st.a));
           geo.setDrawRange(0, n * 6);
           mesh.visible = true;
@@ -41190,6 +41215,7 @@ void main() {
         },
         dispose() {
           cancelWarm();
+          if (mq && mq.removeEventListener) mq.removeEventListener("change", onMotion);
           if (window.__lfxM4) delete window.__lfxM4.precip;
         }
       };
@@ -41430,6 +41456,9 @@ void main() {
       let activeS = 0;
       let failStreak = 0;
       let fetching = false;
+      let fetchId = 0;
+      let fetchGuard = null;
+      const FETCH_MAX_MS = 15e3;
       let gone = false;
       let waitTimer = null;
       const dueS = () => failStreak > 0 && failStreak <= RETRY_MAX ? RETRY_S : REFRESH_S;
@@ -41442,8 +41471,26 @@ void main() {
       function fetchReal() {
         if (!getReal || fetching) return;
         fetching = true;
+        const id = ++fetchId;
         fetchedAt = Date.now();
         activeS = 0;
+        const done = () => {
+          fetching = false;
+          if (fetchGuard) {
+            clearTimeout(fetchGuard);
+            fetchGuard = null;
+          }
+        };
+        fetchGuard = setTimeout(() => {
+          fetchGuard = null;
+          if (id !== fetchId || !fetching) return;
+          fetching = false;
+          fetchId++;
+          if (!gone) {
+            failStreak++;
+            endPending();
+          }
+        }, FETCH_MAX_MS);
         let p;
         try {
           p = getReal();
@@ -41451,7 +41498,8 @@ void main() {
           p = null;
         }
         Promise.resolve(p).then((v) => {
-          fetching = false;
+          if (id !== fetchId) return;
+          done();
           if (gone) return;
           if (v && typeof v === "object") {
             real = v;
@@ -41460,7 +41508,8 @@ void main() {
           } else failStreak++;
           endPending();
         }, () => {
-          fetching = false;
+          if (id !== fetchId) return;
+          done();
           if (!gone) {
             failStreak++;
             endPending();
@@ -41621,6 +41670,10 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         },
         dispose() {
           gone = true;
+          if (fetchGuard) {
+            clearTimeout(fetchGuard);
+            fetchGuard = null;
+          }
           if (waitTimer) {
             clearTimeout(waitTimer);
             waitTimer = null;
@@ -41812,7 +41865,7 @@ void main() {
           idx2.set([b, b + 1, b + 2, b, b + 2, b + 3], i * 6);
         }
         g.setIndex(new BufferAttribute(idx2, 1));
-        const m = new MeshBasicMaterial({ color: 15266047, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, fog: false, toneMapped: false });
+        const m = new MeshBasicMaterial({ color: 15266047, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, fog: false, toneMapped: false, forceSinglePass: true });
         bolt = new Mesh(g, m);
         bolt.frustumCulled = false;
         bolt.renderOrder = 12;
@@ -41918,13 +41971,25 @@ void main() {
       }
       const tmp4 = new Vector3();
       let pickT = 0;
+      const shownChain = (o) => {
+        for (let q = o; q; q = q.parent) if (q.visible === false) return false;
+        return true;
+      };
+      const outside = (p, h3) => {
+        try {
+          return OUTDOOR_AREAS.includes(areaAt(L2, p.x, p.z, h3.root && h3.root.position && h3.root.position.y || 0));
+        } catch {
+          return false;
+        }
+      };
       function pickSlots() {
         const np = ctx.use("npc");
         const list = np && typeof np.people === "function" ? np.people() : [];
         const cands2 = [];
         for (const p of list) {
           const h3 = p.handle;
-          if (!h3 || h3.disposed || !h3.root || !h3.root.visible || p.kind === "cat" || p.kind === "pigeon") continue;
+          if (!h3 || h3.disposed || !h3.root || !shownChain(h3.root) || p.kind === "cat" || p.kind === "pigeon") continue;
+          if (!outside(p, h3)) continue;
           const d = Math.hypot(p.x - cam.position.x, p.z - cam.position.z);
           if (d <= 14) cands2.push({ h: h3, d });
         }
@@ -41952,7 +42017,7 @@ void main() {
         let any = false;
         for (let i = 0; i < BREATH_MAX; i++) {
           const h3 = slots[i];
-          if (!h3 || h3.disposed || !h3.root.visible) {
+          if (!h3 || h3.disposed || !shownChain(h3.root)) {
             breathPhA[i] = -1;
             continue;
           }
@@ -46325,6 +46390,7 @@ void main() {
       let mSelf = false;
       let mTarget = null;
       let mA = -1;
+      let mLaser = false;
       let mSnapGrudge = 0;
       const goal = { x: doorCx, z: D2 + 0.9 };
       const store = (() => {
@@ -46753,7 +46819,7 @@ void main() {
         },
         /** Netzformat (1.16.0): Zustand + Ort + Animation. */
         getNetState() {
-          return { v: 1, f: fsm.getNetState(T5), x: Math.round(R2.pos.x * 100) / 100, z: Math.round(R2.pos.z * 100) / 100, y: Math.round(R2.pos.y * 100) / 100, yaw: Math.round(R2.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name === "cover" ? "stagger" : anim.name)) };
+          return { v: 1, f: fsm.getNetState(T5), x: Math.round(R2.pos.x * 100) / 100, z: Math.round(R2.pos.z * 100) / 100, y: Math.round(R2.pos.y * 100) / 100, yaw: Math.round(R2.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name === "cover" ? "stagger" : anim.name)), k: anim.name === "cover" ? 1 : 0 };
         },
         /** Zustand + Ort übernehmen. Rolle 'mirror': glättet auf das Ziel, Hausverbot nur mit o.self; sonst wie 1.15 (hart). */
         applyRemote(net, o) {
@@ -46845,7 +46911,7 @@ void main() {
       }
       function mirrorTransition(to) {
         R2.setBusy(to === "shove" || to === "throw" || to === "chase" || to === "banned");
-        if (to === "annoyed") say("hit1", {}, { always: true });
+        if (to === "annoyed") say(mLaser ? "laserHit" : "hit1", {}, { always: true });
         else if (to === "shove") say("hit2", {}, { always: true });
         else if (to === "throw") {
           starsT = 1.6;
@@ -46879,11 +46945,14 @@ void main() {
         }
         mTarget = tgt;
         rest.yaw = tgt.yaw;
-        const a = Math.max(0, num6(net.a, 0) | 0);
+        const a0 = Math.max(0, num6(net.a, 0) | 0);
+        const laser = net.k === 1 && ANIMS[a0] === "stagger";
+        const a = laser ? ANIMS.indexOf("cover") : a0;
+        mLaser = laser;
         if (a !== mA) {
           mA = a;
           const name = ANIMS[a] || "idle";
-          anim = { name, t: 0, dur: ONESHOT[name] || Infinity };
+          anim = { name, t: 0, dur: name === "cover" ? 1.6 : ONESHOT[name] || Infinity };
           if (name === "throw" && fsm.state === "throw" && netHook && typeof netHook.aim === "function") {
             const aim = netHook.aim();
             if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.z)) launchTape(aim);
@@ -53295,7 +53364,7 @@ void main() {
         const temper = dv === "hot" || dv === "shy" || dv === "normal" ? dv : temperOf(seed);
         w.temper = temper;
         const rawReact = handle.hitReact.bind(handle);
-        const entry = { w, handle, acc: 0, rawReact, col: null, look, seed, temper, tst: { temper }, act: null, pend: null, pose: null, known: rand() < 0.25, waved: false, danceCool: 0 };
+        const entry = { w, handle, acc: 0, rawReact, col: null, look, seed, temper, umb: rain ? !!look.umbrella : umbQuota(seed), tst: { temper }, act: null, pend: null, pose: null, known: rand() < 0.25, waved: false, danceCool: 0 };
         voiceIds.set(handle, { id: `w${seed}`, voiceSeed: seed });
         handle.hitReact = (dir) => walkerProvoked(entry, "hit", dir);
         entry.col = ctx.addCollider({ x0: PARK, z0: PARK, x1: PARK + 0.5, z1: PARK + 0.5, y1: 1.8, top: false, kind: "walker" }, { dynamic: true });
@@ -53326,7 +53395,10 @@ void main() {
         const h3 = e.handle;
         try {
           if (h3.getHandItem && h3.getHandItem()) h3.setHandItem(null);
-          if (e.look && e.look.umbrella && raining()) h3.setUmbrella(true);
+          if (e.look) {
+            e.look.umbrella = raining() && !!e.umb;
+            h3.setUmbrella(e.look.umbrella);
+          }
         } catch {
         }
       }
@@ -53438,7 +53510,7 @@ void main() {
         if (!f || typeof f.hitPlayer !== "function" || xrOn()) return;
         let ok;
         try {
-          ok = f.hitPlayer({ dmg: ev.dmg, knock: { x: ev.dir.x, z: ev.dir.z }, src: "npc", from: { x: ev.from.x, z: ev.from.z } });
+          ok = f.hitPlayer({ dmg: ev.dmg, knock: { x: ev.dir.x, z: ev.dir.z }, src: "npc", from: { x: ev.from.x, z: ev.from.z }, fromY: Number(e && e.handle && e.handle.root && e.handle.root.position.y) || 0 });
         } catch {
           ok = false;
         }
@@ -53740,18 +53812,21 @@ void main() {
         }
         flock = null;
       }
-      const umbQuota = (seed) => frac((seed ^ 1374496523) >>> 0) < 0.75;
+      function umbQuota(seed) {
+        return frac((seed ^ 1374496523) >>> 0) < 0.75;
+      }
       let wetPrev = raining();
       let offWx = null;
       function syncUmbrellas() {
         for (const e of walkers) {
-          const want = () => raining() && umbQuota(e.seed);
+          const want = () => raining() && !!e.umb;
           if (want() === !!e.look.umbrella) continue;
           later(0.4 + frac(e.seed) * 5, () => {
             if (!walkers.includes(e)) return;
             const v = want();
             if (v === !!e.look.umbrella) return;
             e.look.umbrella = v;
+            if (e.act || e.handle.getHandItem && e.handle.getHandItem()) return;
             try {
               e.handle.setUmbrella(v);
             } catch {
@@ -59074,7 +59149,7 @@ void main() {
   // src/js/store3d/net/proto.js
   var SUB = "lfx-mp.1";
   var PV = 1;
-  var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look", "fight"];
+  var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look", "fight", "rich2"];
   var F2 = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
   var BODY_TO_NET = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
   var NET_A_ANIM = [
@@ -59308,8 +59383,9 @@ void main() {
       const pos = posQ(q, 3);
       const yaw = yawI(q[6]);
       const a = intIn(q[7], 0, 9);
-      if (s === null || h3 === null || r === null || !pos || yaw === null || a === null) return null;
-      return { t: "rs", g, q: [s, h3, r, pos[0], pos[1], pos[2], yaw, a], tg };
+      const k = q.length >= 9 ? intIn(q[8], 0, 1) : void 0;
+      if (s === null || h3 === null || r === null || !pos || yaw === null || a === null || k === null) return null;
+      return { t: "rs", g, q: k === void 0 ? [s, h3, r, pos[0], pos[1], pos[2], yaw, a] : [s, h3, r, pos[0], pos[1], pos[2], yaw, a, k], tg };
     },
     rr(m) {
       const g = intIn(m.g, 0, 2147483647);
@@ -60124,9 +60200,21 @@ void main() {
       p[14] = _clip.w;
       return true;
     }
+    let shadowOk = false;
+    let shadowOn = null;
+    function shadowsOk() {
+      const on = !!(ctx.renderer.shadowMap && ctx.renderer.shadowMap.enabled);
+      if (on !== shadowOn) {
+        shadowOn = on;
+        shadowOk = false;
+      }
+      if (shadowOk) return true;
+      shadowOk = shadowsReady(ctx.renderer, ctx.scene);
+      return shadowOk;
+    }
     function renderNow() {
       const cam = ctx.camera;
-      if (!shadowsReady(ctx.renderer, ctx.scene)) return false;
+      if (!shadowsOk()) return false;
       if (!setup(cam)) return false;
       if (rt && rt.width !== rtSize) {
         rt.dispose();
@@ -60146,6 +60234,7 @@ void main() {
       setSize(n) {
         const v = Math.max(64, Math.min(2048, Math.round(Number(n)) || MIRROR_RT));
         if (v === rtSize) return;
+        shadowOk = false;
         rtSize = v;
       },
       getSize: () => rtSize,
@@ -61093,7 +61182,7 @@ void main() {
         const l = Math.hypot(dx, dz) || 1;
         let ok;
         try {
-          ok = f.hitPlayer({ dmg: AGGRO[who].dmg, knock: { x: dx / l, z: dz / l }, src: "npc", from: { x: p.handle.root.position.x, z: p.handle.root.position.z } });
+          ok = f.hitPlayer({ dmg: AGGRO[who].dmg, knock: { x: dx / l, z: dz / l }, src: "npc", from: { x: p.handle.root.position.x, z: p.handle.root.position.z }, fromY: Number(p.handle.root.position.y) || 0 });
         } catch {
           ok = false;
         }
@@ -63227,6 +63316,7 @@ void main() {
   var FLEE_HP = 0.25;
   var BODY_R = 0.3;
   var REACH_Y = 0.6;
+  var REACH_LOST_S = 0.8;
   var ST = ["idle", "approach", "taunt", "threaten", "attack", "flee", "beaten"];
   function fnv2(s) {
     let h3 = 2166136261;
@@ -63379,7 +63469,7 @@ void main() {
       return ev;
     }
     const usable = p && !p.safe && gangAreaOk(p.x, p.z, env2.playerAllowed || env2.allowed, env2.playerForbidden || env2.forbidden);
-    const reach = !p || !(p.y > REACH_Y);
+    const high = !!p && (Number(p.y) || 0) - (Number(m.y) || 0) > REACH_Y;
     const dist = p ? Math.hypot(p.x - m.x, p.z - m.z) : Infinity;
     if (!usable) {
       if (m.st !== "idle") {
@@ -63425,13 +63515,18 @@ void main() {
       return ev;
     }
     if (m.st === "attack") {
-      if (!reach) {
-        m.st = "taunt";
-        m.t = 2.5;
-        m.stuck = 0;
-        ev.push({ type: "say", i: m.i, cat: "taunt" });
+      if (high) {
+        m.over = (m.over || 0) + dt;
+        if (m.over >= REACH_LOST_S) {
+          m.over = 0;
+          m.st = "taunt";
+          m.t = 2.5;
+          m.stuck = 0;
+          ev.push({ type: "say", i: m.i, cat: "taunt" });
+        }
         return ev;
       }
+      m.over = 0;
       if (dist > 1.2) {
         stuckStep(m, moveTo(m, p.x, p.z, dt, env2, 1.5), dt);
         if (m.stuck >= STUCK_GIVE_UP_S) {
@@ -63975,7 +64070,7 @@ void main() {
           const fp = fightProv();
           if (fp && typeof fp.hitPlayer === "function") {
             try {
-              fp.hitPlayer({ dmg: e.dmg, knock: dir, src: "gang", from: { x: m.x, z: m.z } });
+              fp.hitPlayer({ dmg: e.dmg, knock: dir, src: "gang", from: { x: m.x, z: m.z }, fromY: Number(m.y) || 0 });
             } catch (err) {
               warn9("hitPlayer", err);
             }
@@ -64261,10 +64356,26 @@ void main() {
   function shadowOpacity(tod, raining) {
     return (tod === "night" ? 0.26 : tod === "dusk" ? 0.32 : 0.4) * (raining ? 0.8 : 1);
   }
+  function poolSnowFactor(cover) {
+    return 1 - 0.6 * (Number.isFinite(cover) ? Math.min(1, Math.max(0, cover)) : 0);
+  }
+  function neonFogFactor(fog) {
+    return 1 - 0.55 * (Number.isFinite(fog) ? Math.min(1, Math.max(0, fog)) : 0);
+  }
+  function airShadowScale(h3) {
+    if (!Number.isFinite(h3) || h3 <= 0.08) return 1;
+    const k = 1 - h3 / 1.5;
+    return k > 0.05 ? 0.4 + 0.6 * k : 0;
+  }
   var lerp3 = (a, b, k) => a + (b - a) * Math.min(1, k);
   function weatherOf(ctx) {
     const w = ctx.use && ctx.use("weather");
-    return { tod: w && w.tod || "day", raining: !!(w && w.raining) };
+    return {
+      tod: w && w.tod || "day",
+      raining: !!(w && w.raining),
+      cover: w && Number.isFinite(w.cover) ? w.cover : 0,
+      fog: w && Number.isFinite(w.fog) ? w.fog : 0
+    };
   }
   var normalOf = (yaw) => ({ nx: Math.sin(yaw), nz: Math.cos(yaw) });
   function neonSources(L2) {
@@ -64311,7 +64422,9 @@ void main() {
       const k = s.id === "palast" ? 0.4 : 0.5;
       const col2 = s.color.map((v) => v * k);
       floor.push({ x: s.x + nx * (1.6 + s.w * 0.3), z: s.z + nz * (1.6 + s.w * 0.3), w: s.w * 1.7, d: Math.max(3, s.w * 1.2), color: col2 });
-      wall.push({ x: s.x + nx * 0.05, y: Math.max(1.4, s.y - 1), z: s.z + nz * 0.05, yaw: s.yaw, w: s.w * 1.35, h: 3, color: col2 });
+      const top = s.y - s.h / 2 - 0.05;
+      const hh = Math.max(0.6, Math.min(3, top - 0.3));
+      wall.push({ x: s.x + nx * 0.05, y: top - hh / 2, z: s.z + nz * 0.05, yaw: s.yaw, w: s.w * 1.35, h: hh, color: col2, top });
     }
     return { floor, wall };
   }
@@ -64335,26 +64448,34 @@ void main() {
   var NEON_VERT = `
 attribute vec3 aColor;
 attribute vec3 aA;
+attribute vec2 aR;
 varying vec2 vUv;
 varying vec3 vC;
 varying vec3 vA;
+varying vec2 vR;
 void main() {
-  vUv = uv; vC = aColor; vA = aA;
+  vUv = uv; vC = aColor; vA = aA; vR = aR;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
   var NEON_FRAG = `
 uniform sampler2D map;
 uniform float uTime;
 uniform float uStrength;
+uniform float uFlick;
 varying vec2 vUv;
 varying vec3 vC;
 varying vec3 vA;
+varying vec2 vR;
 void main() {
   float a = texture2D(map, vUv).a;
+  // Schildfl\xE4che (halbe Ausdehnung als Anteil des Quads in vR): der Schein liegt vor dem Schild und w\xFCrde die Glyphen \xFCberstrahlen, dort stark ged\xE4mpft
+  vec2 d = abs(vUv - 0.5) * 2.0;
+  float inside = (1.0 - smoothstep(vR.x * 0.9, vR.x * 1.08 + 0.001, d.x)) * (1.0 - smoothstep(vR.y * 0.9, vR.y * 1.08 + 0.001, d.y)) * step(0.001, vR.x);
+  a *= 1.0 - 0.96 * inside;
   float ph = vA.z;
   float hum = 0.5 + 0.5 * sin(uTime * (2.0 + ph * 1.5) + ph * 40.0);
   float dip = smoothstep(0.93, 1.0, sin(uTime * (1.3 + ph) + ph * 31.0));
-  float f = 1.0 - vA.y * (0.16 * hum + 0.7 * dip);
+  float f = 1.0 - vA.y * uFlick * (0.16 * hum + 0.7 * dip);
   gl_FragColor = vec4(vC, a * uStrength * vA.x * f);
   #include <colorspace_fragment>
 }`;
@@ -64363,7 +64484,7 @@ void main() {
   var LAMP_FACE = { mainE: -PI9 / 2, mainW: PI9 / 2, sideS: PI9, sideN: 0 };
   var LAMP_OFF = 0.07;
   var PHASES = ["red", "yellow", "green"];
-  function neonQuad(o, gain, flick, phase) {
+  function neonQuad(o, gain, flick, phase, rx = 0, ry = 0) {
     const g = quad(o);
     g.setAttribute("aColor", g.attributes.color);
     g.deleteAttribute("color");
@@ -64374,6 +64495,12 @@ void main() {
       a[i * 3 + 2] = phase;
     }
     g.setAttribute("aA", new Float32BufferAttribute(a, 3));
+    const r = new Float32Array(8);
+    for (let i = 0; i < 4; i++) {
+      r[i * 2] = rx;
+      r[i * 2 + 1] = ry;
+    }
+    g.setAttribute("aR", new Float32BufferAttribute(r, 2));
     return g;
   }
   function buildNeon(ctx) {
@@ -64383,15 +64510,17 @@ void main() {
     for (const s of neonSources(L2)) {
       const { nx, nz } = normalOf(s.yaw);
       const stripe = s.id === "canopy";
+      const qw = stripe ? s.w * 1.2 : s.w * 2.1 + 1;
+      const qh = stripe ? 1.3 : s.h * 3.2 + 1.2;
       list.push(neonQuad({
-        w: stripe ? s.w * 1.2 : s.w * 2.1 + 1,
-        h: stripe ? 1.3 : s.h * 3.2 + 1.2,
+        w: qw,
+        h: qh,
         x: s.x + nx * 0.14,
         y: s.y,
         z: s.z + nz * 0.14,
         ry: s.yaw,
         color: s.color
-      }, stripe ? 0.7 : 1, s.flick, n++ * 0.6180339 % 1));
+      }, stripe ? 0.7 : 0.75, s.flick, n++ * 0.6180339 % 1, stripe ? 0 : s.w / qw, stripe ? 0 : s.h / qh));
     }
     const signals = L2.city && L2.city.signals || [];
     const lampBase = n;
@@ -64404,7 +64533,7 @@ void main() {
     const geo = merge(list);
     const tex = toTexture(glowCanvas2(), { mips: false });
     const mat2 = new ShaderMaterial({
-      uniforms: { map: { value: tex }, uTime: { value: 0 }, uStrength: { value: 0 } },
+      uniforms: { map: { value: tex }, uTime: { value: 0 }, uStrength: { value: 0 }, uFlick: { value: 1 } },
       vertexShader: NEON_VERT,
       fragmentShader: NEON_FRAG,
       transparent: true,
@@ -64422,6 +64551,18 @@ void main() {
     const group = new Group();
     group.name = "ultra-neon-group";
     group.add(mesh);
+    let mq = null;
+    try {
+      mq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+    } catch {
+      mq = null;
+    }
+    const applyMotion = () => {
+      mat2.uniforms.uFlick.value = mq && mq.matches ? 0 : 1;
+    };
+    applyMotion();
+    if (mq && mq.addEventListener) mq.addEventListener("change", applyMotion);
+    let t0 = null;
     let cur = -1;
     let lastSig = "";
     function setSignals(sig) {
@@ -64443,10 +64584,11 @@ void main() {
       mesh,
       update(dt, t) {
         const w = weatherOf(ctx);
-        const target = neonStrength(w.tod, w.raining);
+        const target = neonStrength(w.tod, w.raining) * neonFogFactor(w.fog);
         cur = cur < 0 ? target : lerp3(cur, target, dt * 1.5);
         mat2.uniforms.uStrength.value = cur;
-        mat2.uniforms.uTime.value = t;
+        if (t0 === null) t0 = t;
+        mat2.uniforms.uTime.value = shaderTime(t, t0);
         const city2 = ctx.use && ctx.use("city");
         if (city2 && typeof city2.signals === "function") {
           try {
@@ -64456,6 +64598,7 @@ void main() {
         }
       },
       dispose() {
+        if (mq && mq.removeEventListener) mq.removeEventListener("change", applyMotion);
         geo.dispose();
         mat2.dispose();
         tex.dispose();
@@ -64479,6 +64622,7 @@ void main() {
       side: DoubleSide,
       opacity: 0,
       fog: false,
+      forceSinglePass: true,
       polygonOffset: true,
       polygonOffsetFactor: -2,
       polygonOffsetUnits: -2,
@@ -64498,7 +64642,7 @@ void main() {
       mesh,
       update(dt) {
         const w = weatherOf(ctx);
-        const target = poolStrength(w.tod) * 0.24;
+        const target = poolStrength(w.tod) * 0.24 * poolSnowFactor(w.cover);
         cur = cur < 0 ? target : lerp3(cur, target, dt * 1.5);
         mat2.opacity = cur;
         mesh.visible = cur > 0.01;
@@ -64587,6 +64731,7 @@ void main() {
     const group = new Group();
     group.name = "ultra-shadows-group";
     group.add(mesh);
+    const src = L2.cidx ? { index: L2.cidx, dyn: L2.dyn } : L2.colliders || [];
     const lanes = new Map((L2.city && L2.city.lanes || []).map((l) => [l.id, l]));
     const wp = new Vector3();
     let frame = 0;
@@ -64611,12 +64756,23 @@ void main() {
       let d = 0;
       const add = (x, y, z, sx, sz) => {
         if (d >= SHADOW_DYN_MAX || !Number.isFinite(x + y + z) || !near(x, z)) return;
-        put(i + d, x, y, z, sx, sz);
+        let gy = 0;
+        if (y > 0.08) {
+          try {
+            gy = groundHeight(x, z, 0, y, src).y;
+          } catch {
+            gy = 0;
+          }
+        }
+        const k = airShadowScale(y - gy);
+        if (k <= 0) return;
+        put(i + d, x, gy, z, sx * k, sz * k);
         d++;
       };
       const npc = ctx.use && ctx.use("npc");
       if (npc && typeof npc.people === "function") {
         for (const p of npc.people()) {
+          if (p.kind === "peer") continue;
           const r = p.handle && p.handle.root;
           if (!r || !shown(r)) continue;
           add(p.x, r.position.y || 0, p.z, 1.1, 1.1);
@@ -64762,6 +64918,11 @@ void main() {
     for (const s of city2.shopFronts || []) {
       const h3 = s.w / 4 + 0.16;
       list.push({ axis: "z", c: s.z, a0: s.x - s.w / 2 - 0.1, a1: s.x + s.w / 2 + 0.1, y0: s.y - h3 / 2, y1: s.y + h3 / 2 });
+    }
+    const ps = city2.palast && city2.palast.sign;
+    if (ps && city2.frame && Number.isFinite(city2.frame.sz)) {
+      const h3 = ps.w / 4 + 0.8;
+      list.push({ axis: "z", c: city2.frame.sz, a0: ps.x - ps.w / 2 - 0.3, a1: ps.x + ps.w / 2 + 0.3, y0: ps.y - h3 / 2, y1: ps.y + h3 / 2 });
     }
     return list;
   }
@@ -66089,6 +66250,21 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
     }
     return { px, words: out };
   }
+  function wrapWords(words, measure, maxW) {
+    const lines = [];
+    let cur = "";
+    let prev = "";
+    for (const w of words) {
+      const t = cur ? prev.endsWith("-") ? cur + w : `${cur} ${w}` : w;
+      if (cur && measure(t) > maxW) {
+        lines.push(cur);
+        cur = w;
+      } else cur = t;
+      prev = w;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
   var C = (hex2) => [(hex2 >> 16 & 255) / 255, (hex2 >> 8 & 255) / 255, (hex2 & 255) / 255];
   function clutterBoxes(layout) {
     const { w: W2, d: D2 } = layout;
@@ -66194,17 +66370,7 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
     ctx.closePath();
   }
   function wrapLines(ctx, text, maxW) {
-    const lines = [];
-    let cur = "";
-    for (const w of text.split(" ")) {
-      const t = cur ? `${cur} ${w}` : w;
-      if (cur && ctx.measureText(t).width > maxW) {
-        lines.push(cur);
-        cur = w;
-      } else cur = t;
-    }
-    if (cur) lines.push(cur);
-    return lines;
+    return wrapWords(text.split(" "), (t) => ctx.measureText(t).width, maxW);
   }
   function posterAtlas2() {
     const c = makeCanvas(1024, 768);
@@ -66250,7 +66416,7 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
         return ctx.measureText(t).width;
       });
       ctx.font = `bold ${fit2.px}px ${FONT}`;
-      const lines = wrapLines(ctx, fit2.words.join(" "), 216);
+      const lines = wrapWords(fit2.words, (t) => ctx.measureText(t).width, 216);
       const lh = Math.round(fit2.px * 1.07);
       const y0 = y + 296 - (lines.length - 1) * lh / 2;
       ctx.shadowColor = "rgba(0,0,0,0.6)";
@@ -70645,11 +70811,13 @@ void main() {
       const s = f.s === GRUDGE ? 0 : f.s;
       const calm = s === 0;
       const [x, y, z] = core.frame.enc(st.x, st.y || 0, st.z, 0);
-      return [s, calm ? 0 : f.h, calm ? 0 : Math.round(f.r * 10), x, y, z, core.frame.encYaw(st.yaw || 0), st.a | 0];
+      const q = [s, calm ? 0 : f.h, calm ? 0 : Math.round(f.r * 10), x, y, z, core.frame.encYaw(st.yaw || 0), st.a | 0];
+      if (core.cap("rich2")) q.push(st.k === 1 ? 1 : 0);
+      return q;
     }
     function decode2(q) {
       const [x, y, z] = core.frame.dec(q[3], q[4], q[5], 0);
-      return { v: 1, f: { v: 1, s: q[0], h: q[1], r: q[2] / 10 }, x, z, y, yaw: core.frame.decYaw(q[6]), a: q[7] };
+      return { v: 1, f: { v: 1, s: q[0], h: q[1], r: q[2] / 10 }, x, z, y, yaw: core.frame.decYaw(q[6]), a: q[7], ...q[8] === 1 ? { k: 1 } : {} };
     }
     function aim() {
       const tg = ra.tg || ra.c;
@@ -70824,7 +70992,7 @@ void main() {
         release2();
         return;
       }
-      const sig = `${q[0]}|${q[1]}|${q[7]}`;
+      const sig = `${q[0]}|${q[1]}|${q[7]}|${q[8] | 0}`;
       const moved3 = lastSigPos === null || Math.hypot(st.x - lastSigPos.x, st.z - lastSigPos.z) > MOVE_M || Math.abs(st.yaw - lastSigPos.yaw) > YAW_RAD;
       const changed = sig !== lastSig || moved3;
       if (!(changed && now2 - lastSentAt >= RS_MIN_MS || now2 - lastSentAt >= RS_KEEP_MS)) return;
@@ -71725,7 +71893,7 @@ void main() {
           clearTimeout: (h3) => clearTimeout(h3),
           random: Math.random
         },
-        hello: () => ({ cap: ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look", "fight"], f: flags(), cv: mp.cv }),
+        hello: () => ({ cap: ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look", "fight", "rich2"], f: flags(), cv: mp.cv }),
         onMsg,
         onState
       });
@@ -71807,7 +71975,12 @@ void main() {
         return !!p && peers.showCard(p.c);
       }
       offs.push(on("msg:er", (e) => {
-        if (e && e.y === "ki") toast("Entfernen nicht m\xF6glich.");
+        if (e && e.y === "ki") {
+          try {
+            ctx.xr.toast("Entfernen nicht m\xF6glich.");
+          } catch {
+          }
+        }
       }));
       function others() {
         const me = transport.me();
@@ -71855,7 +72028,7 @@ void main() {
           try {
             const fp = ctx.use("fight");
             const pc = fp && typeof fp.poseCode === "function" ? fp.poseCode() : 0;
-            if (Number.isInteger(pc) && pc >= 9 && pc <= 15) s.a = pc;
+            if (Number.isInteger(pc) && (pc >= 9 && pc <= 15 || pc === 7)) s.a = pc;
           } catch {
           }
         }
@@ -72202,7 +72375,7 @@ void main() {
     };
     const isActive = () => level() === "ultra";
     const allowed = (key2) => flt.only ? key2 === flt.only : !flt.off.has(key2);
-    const reachable = () => !!(ctx && ctx.opts && ctx.opts.ultraOk === true && !ctx.isPhone);
+    const reachable = () => !!(ctx && ctx.opts && ctx.opts.ultraOk === true);
     const wantBuild = () => reachable() ? atLeast(level(), "high") : level() === "ultra";
     const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built;
     function setShown(e, v) {
@@ -82307,8 +82480,10 @@ void main() {
       this.vr = this.opts.vr;
       this.phone = !!this.opts.phone;
       this.touch = !!this.opts.touch;
-      this.ultraOk = this.opts.ultraOk === true && !this.phone;
+      this.ultraOk = this.opts.ultraOk === true;
       this.qualitySetting = QUALITY_SETTINGS.includes(this.opts.quality) ? this.opts.quality : "auto";
+      this.savedQuality = this.qualitySetting;
+      this.qualityChosen = false;
       if (this.qualitySetting === "ultra" && !this.ultraOk) this.qualitySetting = "high";
       this.sound = !!this.opts.sound;
       this.showFps = this.opts.showFps === true;
@@ -82388,6 +82563,7 @@ void main() {
         // ohne requestLock: das Terminal ist ein Overlay
         onClassic: () => this.deps.classicView(),
         onQuality: (q) => {
+          this.qualityChosen = true;
           this.setQuality(q);
           this.savePrefs();
         },
@@ -83330,7 +83506,7 @@ void main() {
     }
     savePrefs() {
       try {
-        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, ...this.touchChosen ? { touchControl: this.touchScheme, touchControlChosen: true } : {}, ...this.touchTune, vr: { ...this.vr } });
+        this.deps.onPrefs({ quality: this.qualityChosen ? this.qualitySetting : this.savedQuality, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, ...this.touchChosen ? { touchControl: this.touchScheme, touchControlChosen: true } : {}, ...this.touchTune, vr: { ...this.vr } });
       } catch {
       }
     }
