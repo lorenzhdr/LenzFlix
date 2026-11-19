@@ -1,6 +1,7 @@
 // VIDEOTHEK LENZ · Ultra-Details „Licht & Atmosphäre“ (1.19.0, Stufe 'ultra'): Neon-Halos, Lichtpools/Wandwäsche, Kontaktschatten.
 // Reine Bauer: jeder liefert { object, update(dt, t), dispose() } für die Ultra-Registry (engine/ultra.js, Provider 'ultra').
-// Kosten: neon 1 Draw-Call (ein ShaderMaterial, Flackern per Vertexattribut), pools 1, shadows 1 (ein InstancedMesh für statische + dynamische Blobs) = 3.
+// Kosten: neon 1 Draw-Call (ein ShaderMaterial, Flackern per Vertexattribut), pools 1, shadows 1 (ein InstancedMesh für statische + dynamische Blobs) = 3
+// (pools tragen forceSinglePass: das transparente DoubleSide-MeshBasicMaterial zeichnete sonst in zwei Durchgängen, gemessen 2 statt 1 Draw-Call; die ShaderMaterialien neon/precip/wet nicht).
 // Alles unbeleuchtet (Basic bzw. kleiner Shader), Canvas-Texturen, additiv bzw. normal mit niedriger Deckkraft, depthWrite aus, kein Nebel.
 // Zustandsbehaftetes (Wetter, Passanten, Autos, Mitspieler, Selbstansicht) nur über Provider mit Guard (ctx.use).
 import {
@@ -11,6 +12,7 @@ import { quad, merge, hex } from '../util/geo.js';
 import { makeCanvas, toTexture } from './textures.js';
 import { glowCanvas } from '../modules/outdoor.js';
 import { CAR_LEN, CAR_W } from '../npc/cars-logic.js';
+import { groundHeight } from '../nav/collide.js';
 
 const PI = Math.PI;
 
@@ -26,11 +28,30 @@ export function poolStrength(tod) { return tod === 'night' ? 1 : tod === 'dusk' 
 /** Deckkraft der Kontaktschatten: tagsüber kräftiger, nachts weicher, bei Regen etwas heller (diffuses Licht). */
 export function shadowOpacity(tod, raining) { return (tod === 'night' ? 0.26 : tod === 'dusk' ? 0.32 : 0.4) * (raining ? 0.8 : 1); }
 
+/** Pool-Faktor bei liegendem Schnee: additives Warmlicht brennt auf hellem Boden aus, daher bei voller Decke nur 40 %. */
+export function poolSnowFactor(cover) { return 1 - 0.6 * (Number.isFinite(cover) ? Math.min(1, Math.max(0, cover)) : 0); }
+/** Halo-Faktor bei Nebel (0..1): der Halo wird ohne Nebel gezeichnet, dichter Nebel dämpft ihn bis auf 45 %. */
+export function neonFogFactor(fog) { return 1 - 0.55 * (Number.isFinite(fog) ? Math.min(1, Math.max(0, fog)) : 0); }
+/**
+ * Kontaktschatten in der Luft: h = Höhe der Füße über dem Boden. Größenfaktor 0..1 (bis 8 cm = Stufe/Schritt voll, ab 1,5 m weg).
+ * Deckkraft je Instanz gibt es nicht, deshalb schrumpft der Blob; 0 = nicht zeichnen.
+ */
+export function airShadowScale(h) {
+  if (!Number.isFinite(h) || h <= 0.08) return 1;
+  const k = 1 - h / 1.5;
+  return k > 0.05 ? 0.4 + 0.6 * k : 0;
+}
+
 const lerp = (a, b, k) => a + (b - a) * Math.min(1, k);
 
 function weatherOf(ctx) {
   const w = ctx.use && ctx.use('weather');
-  return { tod: (w && w.tod) || 'day', raining: !!(w && w.raining) };
+  return {
+    tod: (w && w.tod) || 'day',
+    raining: !!(w && w.raining),
+    cover: w && Number.isFinite(w.cover) ? w.cover : 0,
+    fog: w && Number.isFinite(w.fog) ? w.fog : 0,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------- Quellen (rein)
@@ -85,7 +106,10 @@ export function poolSources(L) {
     const k = s.id === 'palast' ? 0.4 : 0.5;
     const col = s.color.map((v) => v * k);
     floor.push({ x: s.x + nx * (1.6 + s.w * 0.3), z: s.z + nz * (1.6 + s.w * 0.3), w: s.w * 1.7, d: Math.max(3, s.w * 1.2), color: col });
-    wall.push({ x: s.x + nx * 0.05, y: Math.max(1.4, s.y - 1.0), z: s.z + nz * 0.05, yaw: s.yaw, w: s.w * 1.35, h: 3.0, color: col });
+    // Wandwäsche nur unterhalb der Schild-Unterkante (sonst überstrahlt sie die Schrift)
+    const top = s.y - s.h / 2 - 0.05;
+    const hh = Math.max(0.6, Math.min(3.0, top - 0.3));
+    wall.push({ x: s.x + nx * 0.05, y: top - hh / 2, z: s.z + nz * 0.05, yaw: s.yaw, w: s.w * 1.35, h: hh, color: col, top });
   }
   return { floor, wall };
 }
@@ -114,26 +138,34 @@ export function staticShadows(L, parked) {
 const NEON_VERT = `
 attribute vec3 aColor;
 attribute vec3 aA;
+attribute vec2 aR;
 varying vec2 vUv;
 varying vec3 vC;
 varying vec3 vA;
+varying vec2 vR;
 void main() {
-  vUv = uv; vC = aColor; vA = aA;
+  vUv = uv; vC = aColor; vA = aA; vR = aR;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 const NEON_FRAG = `
 uniform sampler2D map;
 uniform float uTime;
 uniform float uStrength;
+uniform float uFlick;
 varying vec2 vUv;
 varying vec3 vC;
 varying vec3 vA;
+varying vec2 vR;
 void main() {
   float a = texture2D(map, vUv).a;
+  // Schildfläche (halbe Ausdehnung als Anteil des Quads in vR): der Schein liegt vor dem Schild und würde die Glyphen überstrahlen, dort stark gedämpft
+  vec2 d = abs(vUv - 0.5) * 2.0;
+  float inside = (1.0 - smoothstep(vR.x * 0.9, vR.x * 1.08 + 0.001, d.x)) * (1.0 - smoothstep(vR.y * 0.9, vR.y * 1.08 + 0.001, d.y)) * step(0.001, vR.x);
+  a *= 1.0 - 0.96 * inside;
   float ph = vA.z;
   float hum = 0.5 + 0.5 * sin(uTime * (2.0 + ph * 1.5) + ph * 40.0);
   float dip = smoothstep(0.93, 1.0, sin(uTime * (1.3 + ph) + ph * 31.0));
-  float f = 1.0 - vA.y * (0.16 * hum + 0.7 * dip);
+  float f = 1.0 - vA.y * uFlick * (0.16 * hum + 0.7 * dip);
   gl_FragColor = vec4(vC, a * uStrength * vA.x * f);
   #include <colorspace_fragment>
 }`;
@@ -145,13 +177,16 @@ const LAMP_OFF = 0.07;
 const PHASES = ['red', 'yellow', 'green'];
 
 /** Ein Quad mit Neon-Attributen (aColor, aA = gain/flick/phase); die Vertexfarbe von quad() wird umbenannt. */
-function neonQuad(o, gain, flick, phase) {
+function neonQuad(o, gain, flick, phase, rx = 0, ry = 0) {
   const g = quad(o);
   g.setAttribute('aColor', g.attributes.color);
   g.deleteAttribute('color');
   const a = new Float32Array(12);
   for (let i = 0; i < 4; i++) { a[i * 3] = gain; a[i * 3 + 1] = flick; a[i * 3 + 2] = phase; }
   g.setAttribute('aA', new Float32BufferAttribute(a, 3));
+  const r = new Float32Array(8);
+  for (let i = 0; i < 4; i++) { r[i * 2] = rx; r[i * 2 + 1] = ry; }
+  g.setAttribute('aR', new Float32BufferAttribute(r, 2));
   return g;
 }
 
@@ -166,9 +201,11 @@ export function buildNeon(ctx) {
   for (const s of neonSources(L)) {
     const { nx, nz } = normalOf(s.yaw);
     const stripe = s.id === 'canopy';
+    const qw = stripe ? s.w * 1.2 : s.w * 2.1 + 1.0;
+    const qh = stripe ? 1.3 : s.h * 3.2 + 1.2;
     list.push(neonQuad({
-      w: stripe ? s.w * 1.2 : s.w * 2.1 + 1.0, h: stripe ? 1.3 : s.h * 3.2 + 1.2, x: s.x + nx * 0.14, y: s.y, z: s.z + nz * 0.14, ry: s.yaw, color: s.color,
-    }, stripe ? 0.7 : 1, s.flick, ((n++ * 0.6180339) % 1)));
+      w: qw, h: qh, x: s.x + nx * 0.14, y: s.y, z: s.z + nz * 0.14, ry: s.yaw, color: s.color,
+    }, stripe ? 0.7 : 0.75, s.flick, ((n++ * 0.6180339) % 1), stripe ? 0 : s.w / qw, stripe ? 0 : s.h / qh));
   }
   const signals = (L.city && L.city.signals) || [];
   const lampBase = n; // Quad-Index der ersten Ampellampe
@@ -181,7 +218,7 @@ export function buildNeon(ctx) {
   const geo = merge(list);
   const tex = toTexture(glowCanvas(), { mips: false });
   const mat = new ShaderMaterial({
-    uniforms: { map: { value: tex }, uTime: { value: 0 }, uStrength: { value: 0 } },
+    uniforms: { map: { value: tex }, uTime: { value: 0 }, uStrength: { value: 0 }, uFlick: { value: 1 } },
     vertexShader: NEON_VERT,
     fragmentShader: NEON_FRAG,
     transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, toneMapped: false, fog: false,
@@ -195,6 +232,13 @@ export function buildNeon(ctx) {
   group.name = 'ultra-neon-group';
   group.add(mesh);
 
+  // Flackern aus bei prefers-reduced-motion (Vertrag docs/store3d.md, das Basis-Neon macht es ebenso); live über das change-Ereignis
+  let mq = null;
+  try { mq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null; } catch { mq = null; }
+  const applyMotion = () => { mat.uniforms.uFlick.value = mq && mq.matches ? 0 : 1; };
+  applyMotion();
+  if (mq && mq.addEventListener) mq.addEventListener('change', applyMotion);
+  let t0 = null; // Zeitbasis ab erstem Update: uTime bleibt klein (float32 im Shader)
   let cur = -1;
   let lastSig = '';
   function setSignals(sig) {
@@ -216,14 +260,18 @@ export function buildNeon(ctx) {
     mesh,
     update(dt, t) {
       const w = weatherOf(ctx);
-      const target = neonStrength(w.tod, w.raining);
+      const target = neonStrength(w.tod, w.raining) * neonFogFactor(w.fog);
       cur = cur < 0 ? target : lerp(cur, target, dt * 1.5);
       mat.uniforms.uStrength.value = cur;
-      mat.uniforms.uTime.value = t;
+      if (t0 === null) t0 = t;
+      mat.uniforms.uTime.value = t - t0;
       const city = ctx.use && ctx.use('city');
       if (city && typeof city.signals === 'function') { try { setSignals(city.signals()); } catch { /* egal */ } }
     },
-    dispose() { geo.dispose(); mat.dispose(); tex.dispose(); },
+    dispose() {
+      if (mq && mq.removeEventListener) mq.removeEventListener('change', applyMotion);
+      geo.dispose(); mat.dispose(); tex.dispose();
+    },
   };
 }
 
@@ -239,7 +287,7 @@ export function buildPools(ctx) {
   const geo = merge(parts);
   const tex = toTexture(glowCanvas(), { mips: false });
   const mat = new MeshBasicMaterial({
-    map: tex, vertexColors: true, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, opacity: 0, fog: false,
+    map: tex, vertexColors: true, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, opacity: 0, fog: false, forceSinglePass: true,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, toneMapped: false,
   });
   const mesh = new Mesh(geo, mat);
@@ -256,7 +304,7 @@ export function buildPools(ctx) {
     mesh,
     update(dt) {
       const w = weatherOf(ctx);
-      const target = poolStrength(w.tod) * 0.24;
+      const target = poolStrength(w.tod) * 0.24 * poolSnowFactor(w.cover);
       cur = cur < 0 ? target : lerp(cur, target, dt * 1.5);
       mat.opacity = cur;
       mesh.visible = cur > 0.01;
@@ -332,6 +380,7 @@ export function buildShadows(ctx) {
   group.name = 'ultra-shadows-group';
   group.add(mesh);
 
+  const src = L.cidx ? { index: L.cidx, dyn: L.dyn } : L.colliders || [];
   const lanes = new Map(((L.city && L.city.lanes) || []).map((l) => [l.id, l]));
   const wp = new Vector3();
   let frame = 0;
@@ -352,10 +401,20 @@ export function buildShadows(ctx) {
       }
     }
     let d = 0;
-    const add = (x, y, z, sx, sz) => { if (d >= SHADOW_DYN_MAX || !Number.isFinite(x + y + z) || !near(x, z)) return; put(i + d, x, y, z, sx, sz); d++; };
+    // y = Fußhöhe: der Blob bleibt auf dem Boden (Standfläche unter den Füßen) und schrumpft mit der Höhe darüber (Sprung)
+    const add = (x, y, z, sx, sz) => {
+      if (d >= SHADOW_DYN_MAX || !Number.isFinite(x + y + z) || !near(x, z)) return;
+      let gy = 0;
+      if (y > 0.08) { try { gy = groundHeight(x, z, 0, y, src).y; } catch { gy = 0; } }
+      const k = airShadowScale(y - gy);
+      if (k <= 0) return;
+      put(i + d, x, gy, z, sx * k, sz * k);
+      d++;
+    };
     const npc = ctx.use && ctx.use('npc');
     if (npc && typeof npc.people === 'function') {
       for (const p of npc.people()) {
+        if (p.kind === 'peer') continue; // Mitspieler laufen über net.peerPositions() (sonst doppelter Schatten)
         const r = p.handle && p.handle.root;
         if (!r || !shown(r)) continue;
         add(p.x, r.position.y || 0, p.z, 1.1, 1.1);
