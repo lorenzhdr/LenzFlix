@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist/', 'node_modules/', '.tmp/', 'reference/', 'charts-worker/node_modules/', 'charts-worker/.wrangler/', 'charts-worker/.tmp-dry/'] },
+  { ignores: ['dist/', 'node_modules/', '.tmp/', 'reference/', 'charts-worker/node_modules/', 'charts-worker/.wrangler/', 'charts-worker/.tmp-dry/', 'Anwendung/'] },
   js.configs.recommended,
   {
     languageOptions: {

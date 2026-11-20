@@ -232,6 +232,10 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 
 Hinweis: `--lfx-cards-visible` und `--lfx-gutter` werden in Media-Queries pro Breite gesetzt. Ein Override im Custom-CSS gilt dadurch für alle Breiten, sofern nicht selbst per Media-Query eingeschränkt.
 
+## Desktop-App (in Entwicklung)
+
+**LENZFLIX Desktop** ist ein eigenständiger, nativer Jellyfin-Client in Rust für Windows (ARM64 und x64) und macOS (Apple Silicon) mit den Designs dieses Themes. Er braucht kein Theme auf dem Server und spielt Videos direkt ab. Code, Stand und Bauanleitung: [lorenzhdr/LenzFlix-Desktop](https://github.com/lorenzhdr/LenzFlix-Desktop) (hier als Submodul im Ordner `Anwendung/`). Noch keine Releases.
+
 ## Entwicklung
 
 ```bash
@@ -262,6 +266,7 @@ src/js/       main.js (Einstieg, setzt window.LenzFlix); store3d/ (3D-Engine) un
   shared/     von plus, prime und retro genutzte Module (Routen, Hubs, Suche, Titel-Aktionen)
 src/css/themes/  plus/, prime/, retro/, store/ (je index.css = Bundle-Einstieg)
 tests/        vitest-Tests (jsdom)
+Anwendung/    Submodul LenzFlix-Desktop (nativer Rust-Client, eigenes Repo)
 ```
 
 ### Architekturregeln
