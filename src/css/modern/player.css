@@ -295,6 +295,16 @@ html:not(.layout-tv) #videoOsdPage .upNextContainer {
   background: rgba(24, 24, 24, 0.95);
   box-shadow: var(--lfx-shadow-card);
   color: #fff;
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px); /* Handy: drei Knöpfe (Auto-Weiter) passen sonst nicht */
+}
+html:not(.layout-tv) #videoOsdPage .upNextContainer .flex-grow {
+  min-width: 0;
+}
+html:not(.layout-tv) #videoOsdPage .upNextDialog-buttons {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  max-width: 100%; /* sonst bleibt die Reihe so breit wie ihr Inhalt und bricht nie um */
 }
 html:not(.layout-tv) #videoOsdPage .upNextDialog-title {
   font-size: 16px;

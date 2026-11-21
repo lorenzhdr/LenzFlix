@@ -1724,7 +1724,19 @@ html:not(.layout-tv) #videoOsdPage .upNextContainer {
   border-radius: var(--lfx-popup-radius);
   box-shadow: var(--lfx-shadow-card);
   color: #fff;
+  box-sizing: border-box;
   background: rgba(24, 24, 24, .95);
+  max-width: calc(100vw - 24px);
+}
+
+html:not(.layout-tv) #videoOsdPage .upNextContainer .flex-grow {
+  min-width: 0;
+}
+
+html:not(.layout-tv) #videoOsdPage .upNextDialog-buttons {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  max-width: 100%;
 }
 
 html:not(.layout-tv) #videoOsdPage .upNextDialog-title {
