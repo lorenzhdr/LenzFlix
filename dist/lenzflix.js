@@ -420,7 +420,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.19.2";
+  var VERSION = "1.20.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -5501,13 +5501,344 @@
   };
   var osdcenter_default = osdcenterFeature;
 
+  // src/js/autonext/autonext.js
+  var AUTONEXT_VERSION = "1";
+  var AUTONEXT_DELAY_MS = 5e3;
+  var AUTONEXT_TICK_MS = 400;
+  var PREFS_ID2 = "lenzflix-player";
+  var PREFS_CLIENT2 = "lenzflix";
+  var PREFS_KEY = "autoNext";
+  var MIRROR = "lfx.autonext.";
+  var PAGE3 = '[id="videoOsdPage"]:not(.hide)';
+  var UP = ".upNextContainer:not(.hide):not(.upNextDialog-hidden)";
+  var BTN = "lfx-autonext";
+  var RETRY_MS2 = 3e4;
+  var inst = null;
+  function blocked() {
+    return document.documentElement.classList.contains("lfx-theme-store") || Boolean(document.getElementById("lfx-store-park"));
+  }
+  function warn(e) {
+    try {
+      console.warn("[LenzFlix] Auto-Weiter", e && e.message ? e.message : "Fehler");
+    } catch {
+    }
+  }
+  function create() {
+    let timer2 = 0;
+    let alive = true;
+    let enabled2 = true;
+    let userTouched = false;
+    let pageWasVisible = false;
+    let needLoad = true;
+    let dirty = false;
+    let busy3 = false;
+    let retryAt = 0;
+    let mirrorUid = null;
+    let curStart = null;
+    let run = null;
+    let pending2 = false;
+    const api = () => window.ApiClient || null;
+    const uidNow = () => {
+      try {
+        const c = api();
+        return c && typeof c.getCurrentUserId === "function" ? c.getCurrentUserId() || null : null;
+      } catch {
+        return null;
+      }
+    };
+    const mirrorKey = (uid) => MIRROR + (uid || "anon");
+    function readMirror(uid) {
+      try {
+        const v = window.localStorage.getItem(mirrorKey(uid));
+        return v === "0" ? false : v === "1" ? true : null;
+      } catch {
+        return null;
+      }
+    }
+    function writeMirror() {
+      try {
+        window.localStorage.setItem(mirrorKey(uidNow()), enabled2 ? "1" : "0");
+      } catch {
+      }
+    }
+    const activePage = () => document.querySelector(PAGE3);
+    function label() {
+      return enabled2 ? "Auto-Weiter: An" : "Auto-Weiter: Aus";
+    }
+    function paint2(btn3) {
+      btn3.classList.toggle("is-on", enabled2);
+      btn3.setAttribute("aria-pressed", enabled2 ? "true" : "false");
+      const text = btn3.querySelector(".lfx-autonext__text");
+      if (!text) return;
+      let s = label();
+      if (run) s = "Weiter in " + Math.max(1, Math.ceil((run.deadline - Date.now()) / 1e3));
+      if (text.textContent !== s) text.textContent = s;
+    }
+    function paintAll() {
+      const list = document.querySelectorAll("." + BTN);
+      for (let i = 0; i < list.length; i++) paint2(list[i]);
+    }
+    function makeBtn() {
+      const btn3 = document.createElement("button");
+      btn3.type = "button";
+      btn3.className = "raised raised-mini emby-button upNextDialog-button " + BTN;
+      const fill4 = document.createElement("span");
+      fill4.className = "lfx-autonext__fill";
+      fill4.setAttribute("aria-hidden", "true");
+      const text = document.createElement("span");
+      text.className = "lfx-autonext__text";
+      btn3.appendChild(fill4);
+      btn3.appendChild(text);
+      btn3.addEventListener("click", onBtnClick);
+      return btn3;
+    }
+    function ensureBtn(start10) {
+      const bar = start10.parentNode;
+      if (!bar) return null;
+      let btn3 = bar.querySelector("." + BTN);
+      if (!btn3) {
+        btn3 = makeBtn();
+        const hide2 = bar.querySelector(".btnHide");
+        bar.insertBefore(btn3, hide2 ? hide2.nextSibling : null);
+      }
+      return btn3;
+    }
+    const curBtn = () => curStart && curStart.parentNode ? curStart.parentNode.querySelector("." + BTN) : null;
+    function videoEl() {
+      return document.querySelector("video.htmlvideoplayer");
+    }
+    function onVideoAbort() {
+      if (run) endRun();
+    }
+    function onSeeking() {
+      if (run && run.video && run.video.currentTime < run.startTime - 1) endRun();
+    }
+    function unbindVideo() {
+      if (!run || !run.video) return;
+      run.video.removeEventListener("pause", onVideoAbort);
+      run.video.removeEventListener("emptied", onVideoAbort);
+      run.video.removeEventListener("seeking", onSeeking);
+    }
+    function endRun() {
+      unbindVideo();
+      run = null;
+      const btn3 = curBtn();
+      if (btn3) {
+        btn3.classList.remove("is-running");
+        paint2(btn3);
+      }
+    }
+    function startRun() {
+      const btn3 = curBtn();
+      if (!btn3 || !enabled2 || blocked()) return;
+      if (run) endRun();
+      const video2 = videoEl();
+      run = { deadline: Date.now() + AUTONEXT_DELAY_MS, startTime: video2 ? video2.currentTime : 0, video: video2 };
+      if (video2) {
+        video2.addEventListener("pause", onVideoAbort);
+        video2.addEventListener("emptied", onVideoAbort);
+        video2.addEventListener("seeking", onSeeking);
+      }
+      btn3.classList.remove("is-running");
+      paint2(btn3);
+      void btn3.offsetWidth;
+      btn3.classList.add("is-running");
+    }
+    function tryStart() {
+      if (!pending2 || run || !enabled2) return;
+      const v = videoEl();
+      if (v && v.paused) return;
+      pending2 = false;
+      startRun();
+    }
+    function fire() {
+      const page2 = activePage();
+      const sb = page2 && page2.querySelector(UP + " .btnStartNow");
+      endRun();
+      if (!sb || blocked() || sb !== curStart) return;
+      sb.click();
+    }
+    function onBtnClick(ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+      userTouched = true;
+      if (enabled2) {
+        enabled2 = false;
+        pending2 = false;
+        endRun();
+      } else {
+        enabled2 = true;
+        if (curStart && !blocked()) {
+          pending2 = true;
+          tryStart();
+        }
+      }
+      writeMirror();
+      dirty = true;
+      retryAt = 0;
+      paintAll();
+      sync5();
+    }
+    function sync5() {
+      if (!alive || busy3 || Date.now() < retryAt) return;
+      const c = api();
+      const uid = uidNow();
+      if (!c || !uid) return;
+      if (mirrorUid !== uid) {
+        mirrorUid = uid;
+        if (!userTouched) {
+          const m = readMirror(uid);
+          if (m !== null && m !== enabled2) {
+            enabled2 = m;
+            paintAll();
+          }
+        }
+      }
+      if (!dirty && !needLoad) return;
+      if (typeof c.getDisplayPreferences !== "function") return;
+      const writing = dirty;
+      busy3 = true;
+      let p;
+      try {
+        p = Promise.resolve(c.getDisplayPreferences(PREFS_ID2, uid, PREFS_CLIENT2));
+      } catch (err) {
+        p = Promise.reject(err);
+      }
+      p.then((prefs) => {
+        if (!alive) return null;
+        const cp = prefs && prefs.CustomPrefs ? prefs.CustomPrefs : null;
+        if (!writing && !dirty) {
+          if (!userTouched && cp) {
+            enabled2 = cp[PREFS_KEY] !== "0";
+            writeMirror();
+            paintAll();
+          }
+          needLoad = false;
+          return null;
+        }
+        if (typeof c.updateDisplayPreferences !== "function") return null;
+        const body = prefs || {};
+        const next = {};
+        if (body.CustomPrefs) for (const k in body.CustomPrefs) next[k] = body.CustomPrefs[k];
+        next[PREFS_KEY] = enabled2 ? "1" : "0";
+        body.CustomPrefs = next;
+        if (!body.Id) body.Id = PREFS_ID2;
+        dirty = false;
+        needLoad = false;
+        return Promise.resolve(c.updateDisplayPreferences(PREFS_ID2, body, uid, PREFS_CLIENT2));
+      }).then(() => {
+        busy3 = false;
+      }, (e) => {
+        busy3 = false;
+        if (!alive) return;
+        if (writing) dirty = true;
+        retryAt = Date.now() + RETRY_MS2;
+        warn(e);
+      });
+    }
+    function tick() {
+      if (!alive) return;
+      if (blocked()) {
+        endRun();
+        pending2 = false;
+        curStart = null;
+        const gone = document.querySelectorAll("." + BTN);
+        for (let i = 0; i < gone.length; i++) if (gone[i].parentNode) gone[i].parentNode.removeChild(gone[i]);
+        pageWasVisible = false;
+        return;
+      }
+      const page2 = activePage();
+      if (page2 && !pageWasVisible) needLoad = true;
+      pageWasVisible = Boolean(page2);
+      sync5();
+      const up = page2 && page2.querySelector(UP);
+      const start10 = up && up.querySelector(".btnStartNow");
+      if (!start10) {
+        if (run) endRun();
+        pending2 = false;
+        curStart = null;
+        return;
+      }
+      const fresh = start10 !== curStart;
+      if (fresh) {
+        if (run) endRun();
+        curStart = start10;
+      }
+      const btn3 = ensureBtn(start10);
+      if (!btn3) return;
+      if (fresh) {
+        paint2(btn3);
+        pending2 = enabled2;
+      }
+      tryStart();
+      if (!run) {
+        paint2(btn3);
+        return;
+      }
+      if (run.video && run.video.currentTime < run.startTime - 1) {
+        endRun();
+        return;
+      }
+      if (Date.now() >= run.deadline) fire();
+      else paint2(btn3);
+    }
+    timer2 = window.setInterval(tick, AUTONEXT_TICK_MS);
+    const mirror = readMirror(uidNow());
+    if (mirror !== null) enabled2 = mirror;
+    tick();
+    return function destroy2() {
+      if (!alive) return;
+      alive = false;
+      window.clearInterval(timer2);
+      endRun();
+      const list = document.querySelectorAll("." + BTN);
+      for (let i = 0; i < list.length; i++) {
+        list[i].removeEventListener("click", onBtnClick);
+        if (list[i].parentNode) list[i].parentNode.removeChild(list[i]);
+      }
+      curStart = null;
+      if (inst === destroy2) inst = null;
+      if (window.__lfxAutoNext && window.__lfxAutoNext.destroy === destroy2) {
+        try {
+          delete window.__lfxAutoNext;
+        } catch {
+          window.__lfxAutoNext = void 0;
+        }
+      }
+    };
+  }
+  function startAutoNext() {
+    if (window.__lfxAutoNext || inst) return false;
+    const destroy2 = create();
+    inst = destroy2;
+    window.__lfxAutoNext = { version: AUTONEXT_VERSION, destroy: destroy2 };
+    return true;
+  }
+  function stopAutoNext() {
+    if (inst) inst();
+  }
+
+  // src/js/features/autonext.js
+  var autonext_default = {
+    name: "autonext",
+    match() {
+      return !isTheme("store");
+    },
+    mount() {
+      startAutoNext();
+    },
+    unmount() {
+      stopAutoNext();
+    }
+  };
+
   // src/js/features/playerbg.js
   var CLASS3 = "lfx-in-player";
-  var PAGE3 = '[id="videoOsdPage"]:not(.hide)';
+  var PAGE4 = '[id="videoOsdPage"]:not(.hide)';
   var playerbgFeature = {
     name: "playerbg",
     match(route) {
-      return !isTv() && Boolean(document.querySelector(PAGE3) || route && route.path === "/video");
+      return !isTv() && Boolean(document.querySelector(PAGE4) || route && route.path === "/video");
     },
     mount() {
       document.documentElement.classList.add(CLASS3);
@@ -6535,10 +6866,10 @@
     }
     const hint = typeof itemOrId === "object" ? itemOrId : null;
     if (state4) return loadInto(id, hint, true);
-    create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay), id);
+    create2(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay), id);
     return loadInto(id, hint, false);
   }
-  function create(opener2, overlayMode = false, id = null) {
+  function create2(opener2, overlayMode = false, id = null) {
     const overlay = mountPoint(ROOT_ID2, { className: "lfx-modal-overlay" });
     overlay.replaceChildren();
     const closeBtn = h("button", { type: "button", class: "lfx-modal__close", "aria-label": "Schlie\xDFen", title: "Schlie\xDFen", onclick: () => closeModal() }, [icon("close")]);
@@ -11023,7 +11354,7 @@
   var BLOCK = ".lfx-modal-open,.lfx-themepicker-open,.lfx-sheet-open,.lfx-menu-open,.lfx-prime-search-open";
   var gen = 0;
   var waitTimer4 = null;
-  var inst = null;
+  var inst2 = null;
   var ui = null;
   var themeOff = null;
   var saverOff = null;
@@ -11037,8 +11368,8 @@
   };
   initUnlock();
   function disposeInstance() {
-    const cur3 = inst;
-    inst = null;
+    const cur3 = inst2;
+    inst2 = null;
     if (!cur3) return;
     try {
       cur3.instance.dispose();
@@ -11050,9 +11381,9 @@
     if (!themeOff) themeOff = onThemeChange(onTheme);
     if (!saverOff) {
       const rel = () => {
-        if (inst && isDataSaver("tvwarm")) {
+        if (inst2 && isDataSaver("tvwarm")) {
           try {
-            inst.instance.releaseWarm();
+            inst2.instance.releaseWarm();
           } catch {
           }
         }
@@ -11138,7 +11469,7 @@
       return void 0;
     }
   };
-  var blocked = () => isPopoverOpen() || html().matches(BLOCK);
+  var blocked2 = () => isPopoverOpen() || html().matches(BLOCK);
   async function playFromStart(id) {
     let item = null;
     try {
@@ -11156,9 +11487,9 @@
         toast("Wiedergabe konnte nicht gestartet werden");
       } catch {
       }
-      if (ui && inst && inst.ready) {
+      if (ui && inst2 && inst2.ready) {
         try {
-          if (!inst.instance.isOn() && !inst.pip) inst.instance.start();
+          if (!inst2.instance.isOn() && !inst2.pip) inst2.instance.start();
         } catch {
         }
       }
@@ -11175,14 +11506,14 @@
         openModal(id, { overlay: true });
       }),
       playFromStart: ret(playFromStart),
-      keysBlocked: ret(blocked),
+      keysBlocked: ret(blocked2),
       toast: ret((text) => toast(text)),
       onProgress: ret((f, label) => setProgress(CATALOG_SHARE + (1 - CATALOG_SHARE) * (Number(f) || 0), label)),
       onReady: ret(hooks.ready),
       onFatal: ret(hooks.fatal),
       onStopped: ret(hooks.stopped),
       onPip: ret((active7) => {
-        if (inst) inst.pip = Boolean(active7);
+        if (inst2) inst2.pip = Boolean(active7);
       })
     });
   }
@@ -11220,8 +11551,8 @@
     let early = false;
     let instance = null;
     const finishReady = () => {
-      if (!ui || !inst || inst.instance !== instance) return;
-      inst.ready = true;
+      if (!ui || !inst2 || inst2.instance !== instance) return;
+      inst2.ready = true;
       ui.boot.remove();
       ui.root.classList.remove("is-loading");
       try {
@@ -11241,7 +11572,7 @@
         if (ui) showFallback(err);
       },
       stopped: ({ reason } = {}) => {
-        if (ui || !inst || reason === "leave") return;
+        if (ui || !inst2 || reason === "leave") return;
         disposeInstance();
         unwatchTheme();
         removeAddonCss(ADDON);
@@ -11257,7 +11588,7 @@
         }
         return;
       }
-      inst = { instance, ready: false, pip: false };
+      inst2 = { instance, ready: false, pip: false };
       if (early) finishReady();
     } catch (e) {
       if (myGen === gen && ui) showFallback(e);
@@ -11277,14 +11608,14 @@
     tab2.prepend(ui.root);
     html().classList.add(ON_CLASS5);
     watchTheme();
-    if (inst && inst.instance) {
-      if (inst.ready) {
+    if (inst2 && inst2.instance) {
+      if (inst2.ready) {
         ui.boot.remove();
         ui.root.classList.remove("is-loading");
       }
       try {
-        inst.instance.resume(ui.root);
-        if (inst.ready && !inst.pip && !inst.instance.isOn()) inst.instance.start();
+        inst2.instance.resume(ui.root);
+        if (inst2.ready && !inst2.pip && !inst2.instance.isOn()) inst2.instance.start();
       } catch (e) {
         console.warn("[LenzFlix] tvmode resume", fatalText(e));
         restartBoot();
@@ -11334,17 +11665,17 @@
       gen += 1;
       clearTimeout(waitTimer4);
       waitTimer4 = null;
-      if (inst) {
+      if (inst2) {
         let kept = false;
         try {
-          kept = inst.instance.suspend() === true;
+          kept = inst2.instance.suspend() === true;
         } catch (e) {
           console.warn("[LenzFlix] tvmode suspend", fatalText(e));
         }
         if (!kept) disposeInstance();
       }
       teardownUi();
-      if (!inst) unwatchTheme();
+      if (!inst2) unwatchTheme();
     }
   };
   var page_default = tvModeFeature;
@@ -14205,7 +14536,7 @@
   // src/js/features/plus/browse.js
   var ROOT_ID12 = "lfx-plus-browse";
   var ON_CLASS11 = "lfx-plus-browse-on";
-  var PAGE4 = 40;
+  var PAGE5 = 40;
   var state13 = null;
   var routeOf2 = (route) => {
     const r = parseLfxRoute(route);
@@ -14264,7 +14595,7 @@
         SortOrder: "Ascending",
         GenreIds: s.genreId || void 0,
         StartIndex: s.items.length,
-        Limit: PAGE4
+        Limit: PAGE5
       });
       if (stale()) return;
       const items = asItems8(res);
@@ -14276,7 +14607,7 @@
         if (stale()) return;
       }
       for (const it of items) s.grid.append(gridCard(it, { badge: s.info ? plusBadge(it, s.info) : null }));
-      s.done = items.length < PAGE4 || s.total != null && s.items.length >= s.total;
+      s.done = items.length < PAGE5 || s.total != null && s.items.length >= s.total;
       if (!s.items.length) s.status.replaceChildren(h("p", { class: "lfx-plus-empty" }, "Keine Titel gefunden."));
     } catch (e) {
       if (stale()) return;
@@ -17082,7 +17413,7 @@
   var trendP = null;
   var selfScrollUntil = 0;
   var holdOpen2 = () => Boolean(isMenuOpen() || isChooserOpen());
-  var blocked2 = () => holdOpen2() || document.documentElement.classList.contains("lfx-modal-open") || Boolean(document.querySelector(".dialogContainer")) || document.hidden;
+  var blocked3 = () => holdOpen2() || document.documentElement.classList.contains("lfx-modal-open") || Boolean(document.querySelector(".dialogContainer")) || document.hidden;
   function loadDetail(id) {
     return cached(`lfx:prime:hover:${id}`, async () => {
       const it = await getItem(id, { Fields: FIELDS4 });
@@ -17139,7 +17470,7 @@
     const trendInfo = await trend();
     if (!intent2 || intent2.card !== card3) return;
     clearIntent();
-    if (active5 || blocked2()) return;
+    if (active5 || blocked3()) return;
     const a = { card: card3, kind: "popup", el: null, preview: null, video: null, timers: [] };
     const pic = landscapeFor(item, 900);
     const p = progressPercent(item);
@@ -17188,7 +17519,7 @@
     const trendInfo = await trend();
     if (!intent2 || intent2.card !== card3) return;
     clearIntent();
-    if (active5 || blocked2()) return;
+    if (active5 || blocked3()) return;
     const a = { card: card3, kind: "poster", el: null, preview: null, video: null, timers: [], t0: Date.now() };
     const pic = landscapeFor(item, 1e3);
     const mediaEl = h("div", { class: "lfx-prime-expand__media" }, [
@@ -17260,7 +17591,7 @@
   }
   function scheduleOpen2(card3) {
     clearIntent();
-    if (blocked2()) return;
+    if (blocked3()) return;
     const poster = card3.classList.contains("lfx-prime-card--poster");
     const timer2 = setTimeout(() => {
       if (!intent2 || intent2.card !== card3) return;
@@ -20532,7 +20863,7 @@
   // src/js/features/retro/browse.js
   var ROOT_ID21 = "lfx-retro-browse";
   var ON_CLASS20 = "lfx-retro-browse-on";
-  var PAGE5 = 40;
+  var PAGE6 = 40;
   var VIEW_KEY = "lfx.retro.browseview";
   var SORTS4 = {
     name: { label: "NAME", by: "SortName", order: "Ascending" },
@@ -20654,7 +20985,7 @@
         SortOrder: sort.order,
         GenreIds: s.genreId || void 0,
         StartIndex: s.items.length,
-        Limit: PAGE5
+        Limit: PAGE6
       });
       if (stale()) return;
       if (s.builtList !== wantList(s)) rerender(s);
@@ -20663,7 +20994,7 @@
       s.total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
       s.items.push(...items);
       for (const it of items) s.grid.append(itemNode(s, it));
-      s.done = items.length < PAGE5 || s.total != null && s.items.length >= s.total;
+      s.done = items.length < PAGE6 || s.total != null && s.items.length >= s.total;
       if (s.total == null) s.total = s.done ? s.items.length : null;
       if (!s.items.length) s.status.replaceChildren(h("p", { class: "lfx-rb__empty lfx-retro-caret" }, "DATEI NICHT GEFUNDEN"));
       else if (s.done) s.status.replaceChildren(h("p", { class: "lfx-rb__end" }, `${s.items.length} DATEI(EN)  \xB7  ENDE DES VERZEICHNISSES`));
@@ -20967,7 +21298,7 @@
   var gen6 = 0;
   var overCard = null;
   var lastHash2 = null;
-  var blocked3 = () => Boolean(
+  var blocked4 = () => Boolean(
     document.hidden || isMenuOpen() || isDialogOpen() || isPlayerVisible(null) || document.getElementById(TERMINAL_ID)
   );
   function loadDetail2(id) {
@@ -21051,7 +21382,7 @@
   }
   function open2(card3) {
     const stored = getStoredItem(card3.dataset.lfxId);
-    if (active6 || blocked3()) return;
+    if (active6 || blocked4()) return;
     if (!stored) {
       const g0 = gen6;
       loadDetail2(card3.dataset.lfxId).then((it) => {
@@ -21154,7 +21485,7 @@
   }
   function scheduleOpen3(card3) {
     clearIntent2();
-    if (blocked3()) return;
+    if (blocked4()) return;
     const timer2 = setTimeout(() => {
       if (!intent3 || intent3.card !== card3) return;
       intent3 = null;
@@ -23884,7 +24215,7 @@
   }
 
   // src/js/features/store/profile.js
-  var PREFS_ID2 = "lenzstore";
+  var PREFS_ID3 = "lenzstore";
   var KEY6 = "profile";
   var DELAYS = [5e3, 3e4, 12e4];
   function createProfile({ uid, name, storage }) {
@@ -23978,7 +24309,7 @@
     function sync5() {
       if (busy3) return busy3;
       let sent = 0;
-      busy3 = updateCustom(PREFS_ID2, KEY6, (raw2) => {
+      busy3 = updateCustom(PREFS_ID3, KEY6, (raw2) => {
         let rem;
         try {
           rem = normalize(raw2 ? JSON.parse(raw2) : null);
@@ -24060,7 +24391,7 @@
   var gen7 = 0;
   var waitTimer9 = null;
   var fadeTimer = null;
-  var inst2 = null;
+  var inst3 = null;
   var ui2 = null;
   var lastKey3 = null;
   var prof = null;
@@ -24072,16 +24403,16 @@
   var backBtn = null;
   var getBridge = () => bridge || (bridge = createCinemaBridge({ readTitle: jellyfinTitle }));
   function isPresenting() {
-    if (!xr.presenting || !inst2 || !inst2.instance) return false;
+    if (!xr.presenting || !inst3 || !inst3.instance) return false;
     try {
-      return typeof inst2.instance.isXr === "function" && Boolean(inst2.instance.isXr());
+      return typeof inst3.instance.isXr === "function" && Boolean(inst3.instance.isXr());
     } catch {
       return false;
     }
   }
-  var isPalast = () => palast.active && Boolean(inst2 && inst2.instance);
+  var isPalast = () => palast.active && Boolean(inst3 && inst3.instance);
   function releaseParked() {
-    const cur3 = inst2;
+    const cur3 = inst3;
     if (!cur3 || !cur3.parked) return;
     cur3.parked = false;
     try {
@@ -24099,7 +24430,7 @@
   function onXr(s) {
     xr.presenting = Boolean(s && s.presenting);
     xr.cinema = xr.presenting && Boolean(s.cinema);
-    if (!xr.presenting && inst2 && inst2.parked) {
+    if (!xr.presenting && inst3 && inst3.parked) {
       releaseParked();
       return;
     }
@@ -24116,7 +24447,7 @@
     else if (bridge && !xr.cinema) bridge.activate(false);
     if (palast.full && !backBtn) backBtn = mountBackButton({ onBack: () => {
       try {
-        inst2.instance.cinema2dSetFull(false);
+        inst3.instance.cinema2dSetFull(false);
       } catch {
       }
     } });
@@ -24124,7 +24455,7 @@
       backBtn.destroy();
       backBtn = null;
     }
-    if (!palast.active && !isPresenting() && inst2 && inst2.parked) releaseParked();
+    if (!palast.active && !isPresenting() && inst3 && inst3.parked) releaseParked();
   }
   function hasWebGL() {
     try {
@@ -24149,15 +24480,15 @@
     }
   };
   function clearDisposeTimer() {
-    if (inst2 && inst2.disposeTimer) {
-      clearTimeout(inst2.disposeTimer);
-      inst2.disposeTimer = null;
+    if (inst3 && inst3.disposeTimer) {
+      clearTimeout(inst3.disposeTimer);
+      inst3.disposeTimer = null;
     }
   }
   function disposeInstance2() {
-    const cur3 = inst2;
+    const cur3 = inst3;
     if (!cur3) return;
-    inst2 = null;
+    inst3 = null;
     clearTimeout(cur3.disposeTimer);
     if (cur3.unsubTheme) cur3.unsubTheme();
     if (cur3.offPlay) cur3.offPlay();
@@ -24207,7 +24538,7 @@
     const searchBtn = hudButton("lfx-store-btn--search", "Suche", "search");
     searchBtn.disabled = true;
     searchBtn.addEventListener("click", () => {
-      if (inst2 && inst2.instance) inst2.instance.openTerminal("");
+      if (inst3 && inst3.instance) inst3.instance.openTerminal("");
     });
     const classicBtn = hudButton("lfx-store-btn--classic", "Klassische Ansicht", "classic");
     classicBtn.addEventListener("click", () => {
@@ -24278,10 +24609,10 @@
     ui2.root.insertBefore(panel, ui2.hud);
   }
   function applyRoute(r) {
-    if (!inst2 || !inst2.instance || !r) return;
+    if (!inst3 || !inst3.instance || !r) return;
     try {
-      if (r.kind === "title" && r.id) inst2.instance.openItem(r.id);
-      else if (r.kind === "search") inst2.instance.openTerminal(r.q || "");
+      if (r.kind === "title" && r.id) inst3.instance.openItem(r.id);
+      else if (r.kind === "search") inst3.instance.openTerminal(r.q || "");
     } catch (e) {
       console.warn("[LenzFlix] store route", e && e.message);
     }
@@ -24365,7 +24696,7 @@
       onProgress: ret2((f, label) => setProgress2(f, label)),
       onReady: ret2(() => {
         if (!ui2) return;
-        if (inst2) inst2.ready = true;
+        if (inst3) inst3.ready = true;
         setProgress2(1);
         ui2.searchBtn.disabled = false;
         ui2.stage.classList.add("is-ready");
@@ -24482,7 +24813,7 @@
       const dropCatalog = () => clearCache("store:catalog:");
       window.addEventListener("lfx:play", dropCatalog);
       entry.offPlay = () => window.removeEventListener("lfx:play", dropCatalog);
-      inst2 = entry;
+      inst3 = entry;
       const cur3 = storeHomeRoute(parseCurrent());
       if (viewKey(cur3) !== viewKey(route)) applyRoute(cur3);
     } catch (e) {
@@ -24490,11 +24821,11 @@
     }
   }
   function rebuild(on) {
-    if (!ui2 || !inst2 || !shown) return;
+    if (!ui2 || !inst3 || !shown) return;
     savePrefs2({ bigCovers: Boolean(on) });
     const g = gen7;
     setTimeout(() => {
-      if (g !== gen7 || !ui2 || !inst2 || !shown) return;
+      if (g !== gen7 || !ui2 || !inst3 || !shown) return;
       disposeInstance2();
       attachLoading();
       ui2.searchBtn.disabled = true;
@@ -24524,7 +24855,7 @@
       ui2.loading.remove();
       ui2.searchBtn.disabled = false;
       stage.classList.add("is-ready");
-      inst2.parked = false;
+      inst3.parked = false;
       clearDisposeTimer();
       if (bridge) bridge.activate(false);
     } catch (e) {
@@ -24532,7 +24863,7 @@
       return false;
     }
     try {
-      if (typeof inst2.instance.leaveCinema === "function") inst2.instance.leaveCinema("home");
+      if (typeof inst3.instance.leaveCinema === "function") inst3.instance.leaveCinema("home");
     } catch (e) {
       console.warn("[LenzFlix] store leaveCinema", e && e.message);
     }
@@ -24545,9 +24876,9 @@
     root5().classList.add(ON_CLASS21);
     shown = true;
     const r = storeHomeRoute(route);
-    if (inst2 && inst2.instance && inst2.uid !== getUserId()) disposeInstance2();
-    if (inst2 && inst2.instance) {
-      if (inst2.parked) {
+    if (inst3 && inst3.instance && inst3.uid !== getUserId()) disposeInstance2();
+    if (inst3 && inst3.instance) {
+      if (inst3.parked) {
         if ((isPresenting() || isPalast()) && reattachParked()) {
           applyRoute(r);
           return;
@@ -24555,15 +24886,15 @@
         releaseParked();
       }
       clearDisposeTimer();
-      if (inst2.ready) {
+      if (inst3.ready) {
         ui2.loading.remove();
         ui2.searchBtn.disabled = false;
         ui2.stage.classList.add("is-ready");
       }
       try {
-        if (!inst2.suspended) inst2.instance.suspend();
-        inst2.suspended = false;
-        inst2.instance.resume(ui2.stage);
+        if (!inst3.suspended) inst3.instance.suspend();
+        inst3.suspended = false;
+        inst3.instance.resume(ui2.stage);
       } catch (e) {
         console.warn("[LenzFlix] store resume", e && e.message);
         disposeInstance2();
@@ -24630,7 +24961,7 @@
         ensure9(route);
         return;
       }
-      if (ui2 && inst2 && shown) applyRoute(storeHomeRoute(route));
+      if (ui2 && inst3 && shown) applyRoute(storeHomeRoute(route));
       else ensure9(route);
     },
     unmount() {
@@ -24638,30 +24969,30 @@
       clearTimeout(waitTimer9);
       waitTimer9 = null;
       lastKey3 = null;
-      if (inst2 && inst2.instance && !inst2.parked) {
+      if (inst3 && inst3.instance && !inst3.parked) {
         let parkedNow = false;
         if ((isPresenting() && xr.cinema || isPalast()) && ui2 && ui2.stage) {
           try {
             parkStage(ui2.stage, { visible: !isPresenting() });
-            inst2.parked = true;
+            inst3.parked = true;
             parkedNow = true;
             clearDisposeTimer();
             getBridge().activate(true);
           } catch (e) {
             console.warn("[LenzFlix] store park", e && e.message);
-            inst2.parked = false;
+            inst3.parked = false;
           }
         }
         if (!parkedNow) {
           try {
-            inst2.instance.suspend();
-            inst2.suspended = true;
+            inst3.instance.suspend();
+            inst3.suspended = true;
           } catch (e) {
             console.warn("[LenzFlix] store suspend", e && e.message);
           }
           clearUltraGuard();
           clearDisposeTimer();
-          inst2.disposeTimer = setTimeout(disposeInstance2, SUSPEND_MS);
+          inst3.disposeTimer = setTimeout(disposeInstance2, SUSPEND_MS);
         }
       }
       teardownUi2();
@@ -24672,14 +25003,14 @@
   // src/js/features/store/bar.js
   var EXCLUDED13 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var profile = null;
-  function blocked4(route) {
+  function blocked5(route) {
     if (EXCLUDED13.test(route.path)) return true;
     if (document.body && document.body.classList.contains("dashboardDocument")) return true;
     return Boolean(document.querySelector("#videoOsdPage:not(.hide)"));
   }
   var bar_default = {
     name: "store-bar",
-    match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && !storeHomeRoute(route) && !blocked4(route),
+    match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && !storeHomeRoute(route) && !blocked5(route),
     mount() {
       const el4 = mountPoint(BAR_ID, { tag: "header", className: "lfx-store-bar" });
       profile = profileButton();
@@ -24704,7 +25035,7 @@
   var storeFeatures = [home_default5, bar_default];
 
   // src/js/features/index.js
-  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, dsbtn_default, osdcenter_default, playerbg_default, home_default, hovercard_default, modal_default, library_default, mylist_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, secretmenu_default, statshint_default, sabback_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];
+  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, dsbtn_default, osdcenter_default, autonext_default, playerbg_default, home_default, hovercard_default, modal_default, library_default, mylist_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, secretmenu_default, statshint_default, sabback_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];
 
   // src/js/main.js
   var WATCH_MS = 3e3;

@@ -1744,6 +1744,42 @@ html:not(.layout-tv) #videoOsdPage .upNextDialog-button.btnStartNow {
   background: #fff;
 }
 
+html:not(.layout-tv) #videoOsdPage .upNextDialog-button.lfx-autonext {
+  position: relative;
+  overflow: hidden;
+}
+
+html:not(.layout-tv) #videoOsdPage .lfx-autonext:not(.is-on) {
+  opacity: .7;
+}
+
+html:not(.layout-tv) #videoOsdPage .lfx-autonext__text {
+  position: relative;
+}
+
+html:not(.layout-tv) #videoOsdPage .lfx-autonext__fill {
+  transform-origin: 0;
+  pointer-events: none;
+  background: rgba(255, 255, 255, .35);
+  width: 100%;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  transform: scaleX(0);
+}
+
+html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+  transition: transform 5s linear;
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+    transition: none;
+  }
+}
+
 html #videoOsdPage, html #videoOsdPage.libraryPage {
   background: none !important;
 }
@@ -3071,6 +3107,41 @@ html.layout-tv .actionSheetMenuItem:focus, html.layout-tv .actionSheetMenuItem.s
 
 html.layout-tv .actionSheetMenuItem:focus .material-icons, html.layout-tv .actionSheetMenuItem:focus .actionSheetItemText, html.layout-tv .actionSheetMenuItem:focus .actionSheetItemAsideText {
   color: #000;
+}
+
+html.layout-tv #videoOsdPage .lfx-autonext {
+  margin-left: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+html.layout-tv #videoOsdPage .lfx-autonext:not(.is-on) {
+  opacity: .7;
+}
+
+html.layout-tv #videoOsdPage .lfx-autonext__text {
+  position: relative;
+}
+
+html.layout-tv #videoOsdPage .lfx-autonext__fill {
+  transform-origin: 0;
+  pointer-events: none;
+  background: rgba(255, 255, 255, .35);
+  width: 100%;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  transform: scaleX(0);
+}
+
+html.layout-tv #videoOsdPage .lfx-autonext:focus .lfx-autonext__fill {
+  background: rgba(0, 0, 0, .25);
+}
+
+html.layout-tv #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+  transition: transform 5s linear;
+  transform: scaleX(1);
 }
 
 @property --lfx-ambient-r {

@@ -47,6 +47,10 @@ const jsEntries = [
   ['src/js/tv/tvmode/entry.js', 'lenztvmode'], // TV-Modus: Engine (lazy, docs/tvmode.md)
 ];
 
+// Auto-Weiter als Extra-Skript für Fernseher (Chromium 53): eigener Entry, Ziel chrome53 (esbuild senkt nur Syntax, keine APIs → Wächter unten).
+const UPNEXT_ENTRY = 'src/js/autonext/standalone.js';
+const upnextOpts = { bundle: true, format: 'iife', target: 'chrome53', logLevel: 'info' };
+
 async function buildJs() {
   const common = { bundle: true, format: 'iife', target: 'es2020', logLevel: 'info' };
   if (watch) {
@@ -54,12 +58,16 @@ async function buildJs() {
       const c = await context({ ...common, entryPoints: [resolve(root, file)], outfile: resolve(dist, `${name}.js`) });
       await c.watch();
     }
+    const u = await context({ ...upnextOpts, entryPoints: [resolve(root, UPNEXT_ENTRY)], outfile: resolve(dist, 'lenzupnext.js') });
+    await u.watch();
     return;
   }
   for (const [file, name] of jsEntries) {
     await build({ ...common, entryPoints: [resolve(root, file)], outfile: resolve(dist, `${name}.js`) });
     await build({ ...common, entryPoints: [resolve(root, file)], minify: true, outfile: resolve(dist, `${name}.min.js`) });
   }
+  await build({ ...upnextOpts, entryPoints: [resolve(root, UPNEXT_ENTRY)], outfile: resolve(dist, 'lenzupnext.js') });
+  await build({ ...upnextOpts, entryPoints: [resolve(root, UPNEXT_ENTRY)], minify: true, outfile: resolve(dist, 'lenzupnext.min.js') });
 }
 
 // Wächter: das Hauptbundle darf three.js nie enthalten (3D nur im lazy Bundle).
@@ -107,6 +115,21 @@ function checkStoreBundle() {
   if (code.length > STORE_MIN_BUDGET) console.warn(`WARNUNG: lenzstore.min.js ist ${code.length} B (Budget ${STORE_MIN_BUDGET} B)`);
 }
 
+// Wächter: lenzupnext.min.js läuft auf Chromium 53 → muss als ES2016-Skript parsen und darf keine neueren APIs enthalten.
+const UPNEXT_FORBIDDEN = ['.append(', '.prepend(', '.replaceWith(', 'Object.entries', 'Object.values', 'Object.fromEntries', '.finally(', 'padStart', 'padEnd', '.flat(', '.flatMap(', 'globalThis'];
+async function checkUpnextBundle() {
+  const code = readFileSync(resolve(dist, 'lenzupnext.min.js'), 'utf8');
+  const { parse } = await import('espree');
+  try {
+    parse(code, { ecmaVersion: 2016, sourceType: 'script' });
+  } catch (e) {
+    throw new Error(`dist/lenzupnext.min.js ist kein ES2016-Skript (Chromium 53): ${e.message}`, { cause: e });
+  }
+  for (const pat of UPNEXT_FORBIDDEN) {
+    if (code.includes(pat)) throw new Error(`dist/lenzupnext.min.js enthält "${pat}" – für Chromium 53 (LG webOS 4) nicht verfügbar`);
+  }
+}
+
 mkdirSync(dist, { recursive: true });
 await buildCss();
 await buildJs();
@@ -137,5 +160,6 @@ if (watch) {
   checkMainBundle();
   checkTvModeBundle();
   checkStoreBundle();
+  await checkUpnextBundle();
   console.log(`built dist/ (${readFileSync(resolve(dist, 'lenzflix.min.css')).length} B css min)`);
 }

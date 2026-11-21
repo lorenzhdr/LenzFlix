@@ -310,6 +310,37 @@ html:not(.layout-tv) #videoOsdPage .upNextDialog-button.btnStartNow {
   background: #fff;
   color: #000;
 }
+/* Auto-Weiter-Knopf (features/autonext.js): Füllung läuft in 5 s von links nach rechts */
+html:not(.layout-tv) #videoOsdPage .upNextDialog-button.lfx-autonext {
+  position: relative;
+  overflow: hidden;
+}
+html:not(.layout-tv) #videoOsdPage .lfx-autonext:not(.is-on) {
+  opacity: 0.7;
+}
+html:not(.layout-tv) #videoOsdPage .lfx-autonext__text {
+  position: relative;
+}
+html:not(.layout-tv) #videoOsdPage .lfx-autonext__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: scaleX(0);
+  transform-origin: left center;
+  pointer-events: none;
+}
+html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+  transform: scaleX(1);
+  transition: transform 5s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+    transition: none;
+  }
+}
 
 /* Live-Fix: #videoOsdPage trägt .libraryPage – generische Seitenhintergründe (library.css, Theme)
    dürfen das Video nicht verdecken. */

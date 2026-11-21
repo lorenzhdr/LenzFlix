@@ -6,6 +6,7 @@ import mobilenav from './mobilenav.js';
 import tvbtn from './tvbtn.js';
 import dsbtn from './dsbtn.js';
 import osdcenter from './osdcenter.js';
+import autonext from './autonext.js';
 import playerbg from './playerbg.js';
 import home from './home.js';
 import hovercard from './hovercard.js';
@@ -23,4 +24,4 @@ import { primeFeatures } from './prime/index.js';
 import { retroFeatures } from './retro/index.js';
 import { storeFeatures } from './store/index.js';
 
-export const features = [themeroute, nav, mobilenav, tvbtn, dsbtn, osdcenter, playerbg, home, hovercard, modal, library, mylist, newpopular, ...tvmodeFeatures, contextmenu, secretmenu, statshint, sabback, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];
+export const features = [themeroute, nav, mobilenav, tvbtn, dsbtn, osdcenter, autonext, playerbg, home, hovercard, modal, library, mylist, newpopular, ...tvmodeFeatures, contextmenu, secretmenu, statshint, sabback, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];
