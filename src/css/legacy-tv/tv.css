@@ -498,17 +498,11 @@ html.layout-tv .actionSheetMenuItem:focus .actionSheetItemAsideText {
   color: #000;
 }
 
-/* ---------- Auto-Weiter-Knopf im „Nächste Folge“-Overlay (features/autonext.js, auch Extra-Skript lenzupnext.js) ---------- */
-html.layout-tv #videoOsdPage .lfx-autonext {
+/* ---------- Auto-Weiter: „Jetzt starten“ füllt sich im „Nächste Folge“-Overlay (features/autonext.js, auch Extra-Skript lenzupnext.js) ---------- */
+html.layout-tv #videoOsdPage .btnStartNow.lfx-autonext-host {
   position: relative;
   overflow: hidden;
-  margin-left: 12px;
-}
-html.layout-tv #videoOsdPage .lfx-autonext:not(.is-on) {
-  opacity: 0.7;
-}
-html.layout-tv #videoOsdPage .lfx-autonext__text {
-  position: relative;
+  isolation: isolate;
 }
 html.layout-tv #videoOsdPage .lfx-autonext__fill {
   position: absolute;
@@ -516,15 +510,16 @@ html.layout-tv #videoOsdPage .lfx-autonext__fill {
   top: 0;
   bottom: 0;
   width: 100%;
+  z-index: -1;
   background: rgba(255, 255, 255, 0.35);
   transform: scaleX(0);
   transform-origin: left center;
   pointer-events: none;
 }
-html.layout-tv #videoOsdPage .lfx-autonext:focus .lfx-autonext__fill {
+html.layout-tv #videoOsdPage .btnStartNow:focus .lfx-autonext__fill {
   background: rgba(0, 0, 0, 0.25);
 }
-html.layout-tv #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+html.layout-tv #videoOsdPage .lfx-autonext-host.is-running .lfx-autonext__fill {
   transform: scaleX(1);
   transition: transform 5s linear;
 }

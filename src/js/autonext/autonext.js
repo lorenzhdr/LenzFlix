@@ -1,13 +1,15 @@
-// LenzFlix Auto-Weiter: dritter Knopf im „Nächste Folge“-Overlay von Jellyfins Video-Player. Ist er an (Standard), startet
-// 5 s nach Erscheinen des Overlays die nächste Folge (Proxy-Klick auf .btnStartNow). Dauer-Schalter pro Konto in den
-// DisplayPreferences (Id 'lenzflix-player', Client 'lenzflix', CustomPrefs.autoNext = '1'|'0').
+// LenzFlix Auto-Weiter: Jellyfins „Jetzt starten“-Knopf im „Nächste Folge“-Overlay füllt sich über 5 s, danach Proxy-Klick darauf.
+// Der Text des Knopfs bleibt unverändert; die Füllung ist ein Span (.lfx-autonext__fill) als erstes Kind von .btnStartNow.
+// Ein/Aus nur über das Geheimmenü (getAutoNextEnabled/loadAutoNextEnabled/setAutoNextEnabled), pro Konto in den
+// DisplayPreferences (Id 'lenzflix-player', Client 'lenzflix', CustomPrefs.autoNext = '1'|'0'), lokaler Spiegel lfx.autonext.<uid>.
 // Eigenständig: KEINE Importe (Hauptbundle und Extra-Skript lenzupnext.js tragen denselben Code; wer zuerst startet, besitzt
 // über window.__lfxAutoNext). Chromium-53-tauglich (LG webOS 4): keine neueren APIs (append/entries/finally/padStart/async …).
 // Aus im Design VIDEOTHEK (Klasse lfx-theme-store / #lfx-store-park): dort nutzt das 3D-Kino denselben Player.
 
-export const AUTONEXT_VERSION = '1';
+export const AUTONEXT_VERSION = '2';
 export const AUTONEXT_DELAY_MS = 5000;
 export const AUTONEXT_TICK_MS = 400;
+export const AUTONEXT_EVENT = 'lfx:autonext';
 const PREFS_ID = 'lenzflix-player';
 const PREFS_CLIENT = 'lenzflix';
 const PREFS_KEY = 'autoNext';
@@ -15,10 +17,13 @@ const MIRROR = 'lfx.autonext.';
 const PAGE = '[id="videoOsdPage"]:not(.hide)';
 // „Verbergen“ setzt erst upNextDialog-hidden (Ausblend-Transition), danach .hide → beides zählt als versteckt.
 const UP = '.upNextContainer:not(.hide):not(.upNextDialog-hidden)';
-const BTN = 'lfx-autonext';
+const FILL = 'lfx-autonext__fill';
+const HOST = 'lfx-autonext-host';
 const RETRY_MS = 30000;
 
 let inst = null;
+let evSeq = 0; // zählt setAutoNextEnabled-Aufrufe: ein Ereignis hat Vorrang vor einem gleichzeitig laufenden GET
+let writeChain = Promise.resolve();
 
 function blocked() {
   return document.documentElement.classList.contains('lfx-theme-store') || Boolean(document.getElementById('lfx-store-park'));
@@ -30,89 +35,154 @@ function warn(e) {
   } catch { /* ignorieren */ }
 }
 
+const api = () => window.ApiClient || null;
+function uidNow() {
+  try {
+    const c = api();
+    return c && typeof c.getCurrentUserId === 'function' ? c.getCurrentUserId() || null : null;
+  } catch {
+    return null;
+  }
+}
+const mirrorKey = (uid) => MIRROR + (uid || 'anon');
+function readMirror(uid) {
+  try {
+    const v = window.localStorage.getItem(mirrorKey(uid));
+    return v === '0' ? false : v === '1' ? true : null;
+  } catch {
+    return null;
+  }
+}
+function writeMirror(uid, on) {
+  try {
+    window.localStorage.setItem(mirrorKey(uid), on ? '1' : '0');
+  } catch { /* ignorieren */ }
+}
+
+/** Lokaler Spiegel (fehlend = an). */
+export function getAutoNextEnabled() {
+  const m = readMirror(uidNow());
+  return m === null ? true : m;
+}
+
+/** Liest den Serverwert; null, wenn kein Client/Benutzer verfügbar (kein Fehler). Lehnt bei Serverfehlern ab. */
+function readServer() {
+  const c = api();
+  const uid = uidNow();
+  if (!c || !uid || typeof c.getDisplayPreferences !== 'function') return null;
+  const seq = evSeq;
+  let p;
+  try {
+    p = Promise.resolve(c.getDisplayPreferences(PREFS_ID, uid, PREFS_CLIENT));
+  } catch (err) {
+    p = Promise.reject(err);
+  }
+  return p.then((prefs) => {
+    const cp = prefs && prefs.CustomPrefs ? prefs.CustomPrefs : null;
+    const on = !cp || cp[PREFS_KEY] !== '0';
+    if (seq !== evSeq) return getAutoNextEnabled(); // inzwischen gesetzter Wert (Ereignis) hat Vorrang
+    writeMirror(uid, on);
+    return on;
+  });
+}
+
+/** Serverwert laden (und Spiegel aktualisieren); ohne ApiClient/Benutzer oder bei Fehler der Spiegelwert. */
+export function loadAutoNextEnabled() {
+  const p = readServer();
+  if (!p) return Promise.resolve(getAutoNextEnabled());
+  return p.then((on) => on, (e) => {
+    warn(e);
+    return getAutoNextEnabled();
+  });
+}
+
+/** Setzt Ein/Aus: Spiegel, sofortiges Ereignis lfx:autonext, dann GET → autoNext ändern → POST. Resolved auch bei Fehlern. */
+export function setAutoNextEnabled(on) {
+  const v = Boolean(on);
+  evSeq++;
+  writeMirror(uidNow(), v);
+  try {
+    window.dispatchEvent(new CustomEvent(AUTONEXT_EVENT, { detail: { on: v } }));
+  } catch (e) {
+    warn(e);
+  }
+  const c = api();
+  const uid = uidNow();
+  if (!c || !uid || typeof c.getDisplayPreferences !== 'function' || typeof c.updateDisplayPreferences !== 'function') {
+    return Promise.resolve();
+  }
+  const job = () => {
+    let p;
+    try {
+      p = Promise.resolve(c.getDisplayPreferences(PREFS_ID, uid, PREFS_CLIENT));
+    } catch (err) {
+      p = Promise.reject(err);
+    }
+    return p.then((prefs) => {
+      const body = prefs || {};
+      const next = {};
+      if (body.CustomPrefs) for (const k in body.CustomPrefs) next[k] = body.CustomPrefs[k];
+      next[PREFS_KEY] = v ? '1' : '0';
+      body.CustomPrefs = next;
+      if (!body.Id) body.Id = PREFS_ID;
+      return c.updateDisplayPreferences(PREFS_ID, body, uid, PREFS_CLIENT);
+    }).then(() => undefined, (e) => {
+      warn(e);
+    });
+  };
+  writeChain = writeChain.then(job, job);
+  return writeChain;
+}
+
 function create() {
   let timer = 0;
   let alive = true;
-  let enabled = true;
-  let userTouched = false;
+  let enabled = getAutoNextEnabled();
   let pageWasVisible = false;
   let needLoad = true;
-  let dirty = false;
   let busy = false;
   let retryAt = 0;
-  let mirrorUid = null;
   let curStart = null; // aktuelles .btnStartNow = aktuelles Erscheinen des Overlays
   let run = null; // { deadline, startTime, video }
   let pending = false; // Erscheinen erkannt, Lauf wartet noch auf laufende Wiedergabe
-
-  const api = () => window.ApiClient || null;
-  const uidNow = () => {
-    try {
-      const c = api();
-      return c && typeof c.getCurrentUserId === 'function' ? c.getCurrentUserId() || null : null;
-    } catch {
-      return null;
-    }
-  };
-  const mirrorKey = (uid) => MIRROR + (uid || 'anon');
-  function readMirror(uid) {
-    try {
-      const v = window.localStorage.getItem(mirrorKey(uid));
-      return v === '0' ? false : v === '1' ? true : null;
-    } catch {
-      return null;
-    }
-  }
-  function writeMirror() {
-    try {
-      window.localStorage.setItem(mirrorKey(uidNow()), enabled ? '1' : '0');
-    } catch { /* ignorieren */ }
-  }
   const activePage = () => document.querySelector(PAGE);
 
-  // ---------------------------------------------------------------- Knopf
-  function label() {
-    return enabled ? 'Auto-Weiter: An' : 'Auto-Weiter: Aus';
-  }
-  function paint(btn) {
-    btn.classList.toggle('is-on', enabled);
-    btn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    const text = btn.querySelector('.lfx-autonext__text');
-    if (!text) return;
-    let s = label();
-    if (run) s = 'Weiter in ' + Math.max(1, Math.ceil((run.deadline - Date.now()) / 1000));
-    if (text.textContent !== s) text.textContent = s;
-  }
-  function paintAll() {
-    const list = document.querySelectorAll('.' + BTN);
-    for (let i = 0; i < list.length; i++) paint(list[i]);
-  }
-  function makeBtn() {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'raised raised-mini emby-button upNextDialog-button ' + BTN;
-    const fill = document.createElement('span');
-    fill.className = 'lfx-autonext__fill';
-    fill.setAttribute('aria-hidden', 'true');
-    const text = document.createElement('span');
-    text.className = 'lfx-autonext__text';
-    btn.appendChild(fill);
-    btn.appendChild(text);
-    btn.addEventListener('click', onBtnClick);
-    return btn;
-  }
-  function ensureBtn(start) {
-    const bar = start.parentNode;
-    if (!bar) return null;
-    let btn = bar.querySelector('.' + BTN);
-    if (!btn) {
-      btn = makeBtn();
-      const hide = bar.querySelector('.btnHide');
-      bar.insertBefore(btn, hide ? hide.nextSibling : null);
+  // ---------------------------------------------------------------- Füllung
+  function fillOf(btn) {
+    for (let n = btn.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 1 && n.classList.contains(FILL)) return n;
     }
-    return btn;
+    return null;
   }
-  const curBtn = () => (curStart && curStart.parentNode ? curStart.parentNode.querySelector('.' + BTN) : null);
+  function ensureFill(btn) {
+    btn.classList.add(HOST);
+    if (fillOf(btn)) return;
+    const fill = document.createElement('span');
+    fill.className = FILL;
+    fill.setAttribute('aria-hidden', 'true');
+    btn.insertBefore(fill, btn.firstChild);
+  }
+  function removeFill(btn) {
+    btn.classList.remove('is-running');
+    btn.classList.remove(HOST);
+    let f = fillOf(btn);
+    while (f) {
+      btn.removeChild(f);
+      f = fillOf(btn);
+    }
+  }
+  function removeAllFills() {
+    const list = document.querySelectorAll('.' + HOST + ', .' + FILL);
+    for (let i = 0; i < list.length; i++) {
+      const el = list[i];
+      if (el.classList.contains(FILL)) {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      } else {
+        el.classList.remove('is-running');
+        el.classList.remove(HOST);
+      }
+    }
+  }
 
   // ---------------------------------------------------------------- Lauf
   function videoEl() {
@@ -134,14 +204,10 @@ function create() {
   function endRun() {
     unbindVideo();
     run = null;
-    const btn = curBtn();
-    if (btn) {
-      btn.classList.remove('is-running');
-      paint(btn);
-    }
+    if (curStart) curStart.classList.remove('is-running');
   }
   function startRun() {
-    const btn = curBtn();
+    const btn = curStart;
     if (!btn || !enabled || blocked()) return;
     if (run) endRun();
     const video = videoEl();
@@ -151,8 +217,8 @@ function create() {
       video.addEventListener('emptied', onVideoAbort);
       video.addEventListener('seeking', onSeeking);
     }
+    ensureFill(btn);
     btn.classList.remove('is-running');
-    paint(btn);
     void btn.offsetWidth; // Reflow: die CSS-Transition startet sicher bei scaleX(0)
     btn.classList.add('is-running');
   }
@@ -172,83 +238,47 @@ function create() {
     sb.click();
   }
 
-  function onBtnClick(ev) {
-    ev.stopPropagation();
-    ev.preventDefault();
-    userTouched = true;
-    if (enabled) {
-      enabled = false;
+  /** Schalter aus dem Geheimmenü (Ereignis lfx:autonext) – sofort übernehmen. */
+  function onToggle(ev) {
+    const on = Boolean(ev && ev.detail && ev.detail.on);
+    if (on === enabled) return;
+    enabled = on;
+    if (!on) {
       pending = false;
       endRun();
-    } else {
-      enabled = true;
-      if (curStart && !blocked()) {
-        pending = true;
-        tryStart();
-      }
+      if (curStart) removeFill(curStart);
+    } else if (curStart && !blocked()) {
+      ensureFill(curStart);
+      pending = true;
+      tryStart();
     }
-    writeMirror();
-    dirty = true;
-    retryAt = 0;
-    paintAll();
-    sync();
   }
 
-  // ---------------------------------------------------------------- Speicher
+  // Ereignisse zählen auch instanzlokal: setzt die andere Bundle-Kopie (Geheimmenü im Hauptbundle, Besitzer ist lenzupnext.js),
+  // sieht diese Kopie deren evSeq nicht.
+  let seenEvents = 0;
+  function onEvent(ev) {
+    seenEvents++;
+    onToggle(ev);
+  }
+
+  // ---------------------------------------------------------------- Laden
   function sync() {
-    if (!alive || busy || Date.now() < retryAt) return;
-    const c = api();
-    const uid = uidNow();
-    if (!c || !uid) return;
-    if (mirrorUid !== uid) {
-      mirrorUid = uid;
-      if (!userTouched) {
-        const m = readMirror(uid);
-        if (m !== null && m !== enabled) {
-          enabled = m;
-          paintAll();
-        }
-      }
-    }
-    if (!dirty && !needLoad) return;
-    if (typeof c.getDisplayPreferences !== 'function') return;
-    const writing = dirty;
+    if (!alive || busy || !needLoad || Date.now() < retryAt) return;
+    const seq = evSeq;
+    const seen = seenEvents;
+    const p = readServer();
+    if (!p) return;
     busy = true;
-    let p;
-    try {
-      p = Promise.resolve(c.getDisplayPreferences(PREFS_ID, uid, PREFS_CLIENT));
-    } catch (err) {
-      p = Promise.reject(err);
-    }
-    p.then((prefs) => {
-      if (!alive) return null;
-      const cp = prefs && prefs.CustomPrefs ? prefs.CustomPrefs : null;
-      if (!writing && !dirty) {
-        // Nur lesen; hat der Nutzer inzwischen gewählt, gewinnt seine Wahl
-        if (!userTouched && cp) {
-          enabled = cp[PREFS_KEY] !== '0';
-          writeMirror();
-          paintAll();
-        }
-        needLoad = false;
-        return null;
-      }
-      if (typeof c.updateDisplayPreferences !== 'function') return null;
-      const body = prefs || {};
-      const next = {};
-      if (body.CustomPrefs) for (const k in body.CustomPrefs) next[k] = body.CustomPrefs[k];
-      next[PREFS_KEY] = enabled ? '1' : '0';
-      body.CustomPrefs = next;
-      if (!body.Id) body.Id = PREFS_ID;
-      dirty = false;
-      needLoad = false;
-      return Promise.resolve(c.updateDisplayPreferences(PREFS_ID, body, uid, PREFS_CLIENT));
-    }).then(() => {
+    p.then((on) => {
       busy = false;
+      if (!alive) return;
+      needLoad = false;
+      if (seq !== evSeq || seen !== seenEvents) return; // Ereignis war schneller
+      onToggle({ detail: { on } });
     }, (e) => {
       busy = false;
       if (!alive) return;
-      if (writing) dirty = true;
       retryAt = Date.now() + RETRY_MS;
       warn(e);
     });
@@ -261,8 +291,7 @@ function create() {
       endRun();
       pending = false;
       curStart = null;
-      const gone = document.querySelectorAll('.' + BTN);
-      for (let i = 0; i < gone.length; i++) if (gone[i].parentNode) gone[i].parentNode.removeChild(gone[i]);
+      removeAllFills();
       pageWasVisible = false;
       return;
     }
@@ -282,41 +311,30 @@ function create() {
     if (fresh) {
       if (run) endRun();
       curStart = start;
-    }
-    const btn = ensureBtn(start);
-    if (!btn) return;
-    if (fresh) {
-      paint(btn);
       pending = enabled;
     }
+    if (enabled) ensureFill(start);
+    else if (fillOf(start) || start.classList.contains(HOST)) removeFill(start);
     tryStart();
-    if (!run) {
-      paint(btn);
-      return;
-    }
+    if (!run) return;
     if (run.video && run.video.currentTime < run.startTime - 1) {
       endRun();
       return;
     }
     if (Date.now() >= run.deadline) fire();
-    else paint(btn);
   }
 
+  window.addEventListener(AUTONEXT_EVENT, onEvent);
   timer = window.setInterval(tick, AUTONEXT_TICK_MS);
-  const mirror = readMirror(uidNow());
-  if (mirror !== null) enabled = mirror;
   tick();
 
   return function destroy() {
     if (!alive) return;
     alive = false;
     window.clearInterval(timer);
+    window.removeEventListener(AUTONEXT_EVENT, onEvent);
     endRun();
-    const list = document.querySelectorAll('.' + BTN);
-    for (let i = 0; i < list.length; i++) {
-      list[i].removeEventListener('click', onBtnClick);
-      if (list[i].parentNode) list[i].parentNode.removeChild(list[i]);
-    }
+    removeAllFills();
     curStart = null;
     if (inst === destroy) inst = null;
     if (window.__lfxAutoNext && window.__lfxAutoNext.destroy === destroy) {

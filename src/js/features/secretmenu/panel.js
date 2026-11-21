@@ -16,6 +16,7 @@ import {
   isZapStatsOn, setZapStats, isZapWarmOn, setZapWarm, isForceHlsOn, setForceHls,
 } from '../tvdata/zapflag.js';
 import { clearCatalogCache } from '../tvdata/data.js';
+import { getAutoNextEnabled, loadAutoNextEnabled, setAutoNextEnabled } from '../../autonext/autonext.js';
 
 const PANEL_ID = 'lfx-secret';
 const POSTER_BASE = 300;
@@ -91,6 +92,19 @@ function imageSection(offs) {
     note('Gilt für neu geladene Bilder, in allen Designs außer VIDEOTHEK LENZ.'),
   );
   return section('Bildgrößen', kids);
+}
+
+function playbackSection() {
+  const b = switchButton(
+    { key: 'autonext', label: 'Auto-Weiter nach 5 s', checked: getAutoNextEnabled(), onToggle: (on) => { setAutoNextEnabled(on); } },
+    { className: 'lfx-secret__switch', role: 'switch' },
+  );
+  loadAutoNextEnabled().then((on) => { if (state && b.isConnected) setSwitchState(b, on); }, () => {});
+  return section('Wiedergabe', [
+    b,
+    note('Gilt für dein Konto auf allen Geräten, auch am Fernseher.'),
+    note('Abbrechen im Overlay mit „Verbergen“, Pause oder Zurückspulen.'),
+  ]);
 }
 
 function tvSection() {
@@ -176,7 +190,7 @@ export function openSecretMenu() {
   const closeBtn = h('button', { type: 'button', class: 'lfx-secret__close', 'aria-label': 'Schließen', onclick: close }, '✕');
   const panel = h('div', { class: 'lfx-secret__panel', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': title.id, tabindex: '-1' }, [
     h('div', { class: 'lfx-secret__head' }, [title, closeBtn]),
-    h('div', { class: 'lfx-secret__body' }, [imageSection(offs), tvSection(), saverSection(offs), infoSection()]),
+    h('div', { class: 'lfx-secret__body' }, [imageSection(offs), playbackSection(), tvSection(), saverSection(offs), infoSection()]),
   ]);
   const root = h('div', { id: PANEL_ID, class: 'lfx-secret' }, [panel]);
   root.addEventListener('mousedown', (e) => { if (e.target === root) close(); });

@@ -1756,23 +1756,17 @@ html:not(.layout-tv) #videoOsdPage .upNextDialog-button.btnStartNow {
   background: #fff;
 }
 
-html:not(.layout-tv) #videoOsdPage .upNextDialog-button.lfx-autonext {
+html:not(.layout-tv) #videoOsdPage .btnStartNow.lfx-autonext-host {
+  isolation: isolate;
   position: relative;
   overflow: hidden;
 }
 
-html:not(.layout-tv) #videoOsdPage .lfx-autonext:not(.is-on) {
-  opacity: .7;
-}
-
-html:not(.layout-tv) #videoOsdPage .lfx-autonext__text {
-  position: relative;
-}
-
 html:not(.layout-tv) #videoOsdPage .lfx-autonext__fill {
+  z-index: -1;
   transform-origin: 0;
   pointer-events: none;
-  background: rgba(255, 255, 255, .35);
+  background: rgba(0, 0, 0, .18);
   width: 100%;
   position: absolute;
   top: 0;
@@ -1781,13 +1775,13 @@ html:not(.layout-tv) #videoOsdPage .lfx-autonext__fill {
   transform: scaleX(0);
 }
 
-html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+html:not(.layout-tv) #videoOsdPage .lfx-autonext-host.is-running .lfx-autonext__fill {
   transition: transform 5s linear;
   transform: scaleX(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+  html:not(.layout-tv) #videoOsdPage .lfx-autonext-host.is-running .lfx-autonext__fill {
     transition: none;
   }
 }
@@ -3121,21 +3115,14 @@ html.layout-tv .actionSheetMenuItem:focus .material-icons, html.layout-tv .actio
   color: #000;
 }
 
-html.layout-tv #videoOsdPage .lfx-autonext {
-  margin-left: 12px;
+html.layout-tv #videoOsdPage .btnStartNow.lfx-autonext-host {
+  isolation: isolate;
   position: relative;
   overflow: hidden;
 }
 
-html.layout-tv #videoOsdPage .lfx-autonext:not(.is-on) {
-  opacity: .7;
-}
-
-html.layout-tv #videoOsdPage .lfx-autonext__text {
-  position: relative;
-}
-
 html.layout-tv #videoOsdPage .lfx-autonext__fill {
+  z-index: -1;
   transform-origin: 0;
   pointer-events: none;
   background: rgba(255, 255, 255, .35);
@@ -3147,11 +3134,11 @@ html.layout-tv #videoOsdPage .lfx-autonext__fill {
   transform: scaleX(0);
 }
 
-html.layout-tv #videoOsdPage .lfx-autonext:focus .lfx-autonext__fill {
+html.layout-tv #videoOsdPage .btnStartNow:focus .lfx-autonext__fill {
   background: rgba(0, 0, 0, .25);
 }
 
-html.layout-tv #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+html.layout-tv #videoOsdPage .lfx-autonext-host.is-running .lfx-autonext__fill {
   transition: transform 5s linear;
   transform: scaleX(1);
 }

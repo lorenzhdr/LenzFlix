@@ -320,16 +320,11 @@ html:not(.layout-tv) #videoOsdPage .upNextDialog-button.btnStartNow {
   background: #fff;
   color: #000;
 }
-/* Auto-Weiter-Knopf (features/autonext.js): Füllung läuft in 5 s von links nach rechts */
-html:not(.layout-tv) #videoOsdPage .upNextDialog-button.lfx-autonext {
+/* Auto-Weiter (features/autonext.js): Jellyfins „Jetzt starten“-Knopf füllt sich in 5 s von links nach rechts */
+html:not(.layout-tv) #videoOsdPage .btnStartNow.lfx-autonext-host {
   position: relative;
   overflow: hidden;
-}
-html:not(.layout-tv) #videoOsdPage .lfx-autonext:not(.is-on) {
-  opacity: 0.7;
-}
-html:not(.layout-tv) #videoOsdPage .lfx-autonext__text {
-  position: relative;
+  isolation: isolate;
 }
 html:not(.layout-tv) #videoOsdPage .lfx-autonext__fill {
   position: absolute;
@@ -337,17 +332,18 @@ html:not(.layout-tv) #videoOsdPage .lfx-autonext__fill {
   top: 0;
   bottom: 0;
   width: 100%;
-  background: rgba(255, 255, 255, 0.35);
+  z-index: -1;
+  background: rgba(0, 0, 0, 0.18);
   transform: scaleX(0);
   transform-origin: left center;
   pointer-events: none;
 }
-html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+html:not(.layout-tv) #videoOsdPage .lfx-autonext-host.is-running .lfx-autonext__fill {
   transform: scaleX(1);
   transition: transform 5s linear;
 }
 @media (prefers-reduced-motion: reduce) {
-  html:not(.layout-tv) #videoOsdPage .lfx-autonext.is-running .lfx-autonext__fill {
+  html:not(.layout-tv) #videoOsdPage .lfx-autonext-host.is-running .lfx-autonext__fill {
     transition: none;
   }
 }

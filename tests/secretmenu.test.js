@@ -128,6 +128,30 @@ describe('Geheimmenü', () => {
       expect(document.querySelector('button[data-key="trailer"]').getAttribute('aria-checked')).toBe('true');
     });
 
+    it('Wiedergabe: Auto-Weiter-Schalter (Startwert vom Server, Toggle schreibt)', async () => {
+      const get = vi.fn(() => Promise.resolve({ Id: 'lenzflix-player', CustomPrefs: { autoNext: '0', other: 'x' } }));
+      const upd = vi.fn(() => Promise.resolve());
+      window.ApiClient = { getCurrentUserId: () => 'u1', getDisplayPreferences: get, updateDisplayPreferences: upd };
+      closeSecretMenu();
+      resetSecretClicks();
+      for (let i = 0; i < 5; i++) click('logo');
+      expect(isSecretMenuOpen()).toBe(true);
+      const heads = [...document.querySelectorAll('.lfx-secret__h')].map((e) => e.textContent);
+      expect(heads.indexOf('Wiedergabe')).toBeGreaterThanOrEqual(0);
+      expect(heads.indexOf('Wiedergabe')).toBe(heads.indexOf('TV (Test)') - 1);
+      const sw = document.querySelector('button[data-key="autonext"]');
+      expect(sw.getAttribute('role')).toBe('switch');
+      expect(sw.getAttribute('aria-checked')).toBe('true'); // Spiegel fehlend = an
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      expect(sw.getAttribute('aria-checked')).toBe('false'); // Server sagt aus
+      sw.click();
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      expect(sw.getAttribute('aria-checked')).toBe('true');
+      expect(upd).toHaveBeenCalledTimes(1);
+      expect(upd.mock.calls[0][1].CustomPrefs).toEqual({ other: 'x', autoNext: '1' });
+      delete window.ApiClient;
+    });
+
     it('TV-Schalter schreiben in den Speicher', () => {
       document.querySelector('button[data-key="zapstats"]').click();
       expect(Object.values(localStorage).length).toBeGreaterThan(0);

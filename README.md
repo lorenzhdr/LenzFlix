@@ -19,7 +19,7 @@ Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkl
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.css");
 ```
 
 - Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,17 +29,17 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
 **Auto-Weiter auf älteren Fernsehern (optional):** Das Hauptskript läuft auf älteren Fernsehern (z. B. Chromium 53, LG webOS 4) nicht. Damit dort trotzdem „Auto-Weiter“ (siehe „Bedienung“) funktioniert, gibt es das kleine Zusatzskript `dist/lenzupnext.min.js`. Es kommt als **eigener** JavaScript-Injector-Eintrag mit externer URL, nicht als Inline-Inhalt:
 
 ```
-https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.0/dist/lenzupnext.min.js
+https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzupnext.min.js
 ```
 
-Inline-Einträge landen im Plugin in einer gemeinsamen Datei; passt darin etwas nicht zum alten Browser, fällt die ganze Datei aus. Auf PC und Handy ist der Eintrag unnötig, dort steckt Auto-Weiter im Hauptskript. Sind beide eingetragen, erscheint trotzdem nur ein Knopf.
+Inline-Einträge landen im Plugin in einer gemeinsamen Datei; passt darin etwas nicht zum alten Browser, fällt die ganze Datei aus. Auf PC und Handy ist der Eintrag unnötig, dort steckt Auto-Weiter im Hauptskript. Sind beide eingetragen, läuft Auto-Weiter trotzdem nur einmal.
 
 ### 3. Konfiguration (optional)
 
@@ -105,7 +105,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.css");
 :root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -208,7 +208,7 @@ Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (h
 - **Detail-Modal:** öffnet oben; bei Episoden-Karten steht die Folgenliste auf der markierten Folge.
 - **Daumen (Gefällt mir):** aktiv gefüllt in Rot.
 - **Gesehen-Button (Detail-Modal):** eckiger Button mit Auge, aktiv = weiß. Im Kopf bei Filmen und Folgen direkt, bei Serien für die ganze Serie (mit Rückfrage). In jeder Folgenzeile für die einzelne Folge und im Folgen-Kopf als ein Block mit der Staffel-Auswahl (links daneben, gemeinsame Kontur) für die ganze Staffel (mit Rückfrage). Auch im Hover-Popup unten rechts im Bild. Die Startseite zeigt die Änderung nach dem nächsten Laden.
-- **Auto-Weiter:** Im Jellyfin-Overlay „Nächste Folge“ gibt es einen dritten Knopf „Auto-Weiter: An/Aus“ (Standard: An). Ist er an, startet die nächste Folge 5 s nach Erscheinen des Overlays; der Knopf füllt sich dabei und zeigt „Weiter in N“. Abbruch für diese Folge: „Verbergen“, Pause, Zurückspulen oder ein Druck auf den Knopf (der schaltet Auto-Weiter dauerhaft aus). Es springt auch, wenn Jellyfins eigene Autoplay-Einstellung aus ist. Die Wahl gilt pro Jellyfin-Konto. In VIDEOTHEK LENZ (3D-Kino) ist die Funktion aus. Für ältere Fernseher siehe „JavaScript (optional)“.
+- **Auto-Weiter:** Im Jellyfin-Overlay „Nächste Folge“ füllt sich der Knopf „Jetzt starten“ über 5 s und startet dann die nächste Folge (Standard: An, gilt pro Jellyfin-Konto und auf allen Geräten). Abbruch für diese Folge: „Verbergen“, Pause oder Zurückspulen. Es springt auch, wenn Jellyfins eigene Autoplay-Einstellung aus ist. In VIDEOTHEK LENZ (3D-Kino) ist die Funktion aus. Für ältere Fernseher siehe „JavaScript (optional)“.
 - **Neu und beliebt:** eigene Ansicht unter `#/home?lfx=new`.
 - Handy (< 800 px): Logo, Filter-Pills und Mehr-Overlay im App-Stil.
 
@@ -229,7 +229,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;
