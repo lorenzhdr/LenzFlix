@@ -43,6 +43,8 @@ import { resetChartsWarning } from '../src/js/core/charts.js';
 
 const NOW = Date.parse('2026-11-08T12:00:00Z');
 const daysAgo = (d) => new Date(NOW - d * 86400000).toISOString();
+// render() rechnet mit der echten Uhr (Date.now()): Testdaten dafür relativ zu jetzt, sonst laufen sie nach 14 Tagen aus dem Neu-Fenster.
+const daysAgoNow = (d) => new Date(Date.now() - d * 86400000).toISOString();
 
 describe('badgeFor', () => {
   it('Film: neu < 14 Tage', () => {
@@ -145,7 +147,7 @@ describe('createCard Poster', () => {
 });
 
 describe('render', () => {
-  const mk = (id, type = 'Movie', extra = {}) => ({ Id: id, Type: type, Name: id, ImageTags: { Thumb: 't' }, DateCreated: daysAgo(1), ...extra });
+  const mk = (id, type = 'Movie', extra = {}) => ({ Id: id, Type: type, Name: id, ImageTags: { Thumb: 't' }, DateCreated: daysAgoNow(1), ...extra });
   beforeEach(() => {
     resetSourceCache();
     clearCache();
@@ -203,7 +205,7 @@ describe('render', () => {
     let finish;
     const episodes = new Promise((r) => { finish = r; });
     const params = [];
-    api.getResume.mockResolvedValue({ Items: [mk('s1', 'Series', { DateCreated: daysAgo(100) })] });
+    api.getResume.mockResolvedValue({ Items: [mk('s1', 'Series', { DateCreated: daysAgoNow(100) })] });
     api.getItems.mockImplementation(async (p) => {
       if (p.IncludeItemTypes === 'Episode' && !p.Genres && p.Limit !== 1) { params.push(p); return episodes; }
       if (p.IncludeItemTypes === 'Episode') return { Items: [] };
@@ -217,7 +219,7 @@ describe('render', () => {
     expect(card.querySelector('.lfx-badge')).toBeNull();
     await vi.waitFor(() => expect(params).toHaveLength(1));
     expect(params[0].Limit).toBe(200);
-    finish({ Items: [{ SeriesId: 's1', DateCreated: daysAgo(1), PremiereDate: daysAgo(5) }] });
+    finish({ Items: [{ SeriesId: 's1', DateCreated: daysAgoNow(1), PremiereDate: daysAgoNow(5) }] });
     await vi.waitFor(() => expect(card.querySelector('.lfx-badge')?.textContent).toBe('Neue Folgen'));
     cleanup();
   });
@@ -283,7 +285,7 @@ describe('render', () => {
 });
 
 describe('Chart-Zeilen auf der Startseite', () => {
-  const mk = (id, type = 'Movie') => ({ Id: id, Type: type, Name: id, ImageTags: { Thumb: 't' }, DateCreated: daysAgo(1) });
+  const mk = (id, type = 'Movie') => ({ Id: id, Type: type, Name: id, ImageTags: { Thumb: 't' }, DateCreated: daysAgoNow(1) });
   const entries = (p, n) => Array.from({ length: n }, (_, i) => ({ id: `${p}${i}`, viewers: 5, plays: 5 }));
   const run = async (charts) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(charts
