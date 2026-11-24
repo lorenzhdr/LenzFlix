@@ -2618,7 +2618,9 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-more:disabled {
 
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info {
     flex: none;
-    margin-left: 6px;
+    width: 28px;
+    height: 28px;
+    margin-left: -10px;
   }
 
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-shelf {

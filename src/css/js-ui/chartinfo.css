@@ -115,7 +115,7 @@ html.lfx-js:not(.layout-tv) .lfx-chartinfo__bar {
   line-height: 18px;
 }
 html.lfx-js:not(.layout-tv) .lfx-chartinfo__bar-l {
-  flex: 0 0 96px;
+  flex: 0 0 8em; /* em statt px: auch breite Schriften (LENZ//84) passen, Balken bleiben bündig */
   color: var(--lfx-text-body);
   white-space: nowrap;
 }

@@ -5975,7 +5975,7 @@ html.lfx-js:not(.layout-tv) .lfx-chartinfo__bar {
 html.lfx-js:not(.layout-tv) .lfx-chartinfo__bar-l {
   color: var(--lfx-text-body);
   white-space: nowrap;
-  flex: 0 0 96px;
+  flex: 0 0 8em;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-chartinfo__track {

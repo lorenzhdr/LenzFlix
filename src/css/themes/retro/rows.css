@@ -160,7 +160,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-more:disabled { opacity: 
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-rows { padding-top: 20px; gap: 26px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 24px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__more { font-size: 17px; }
-  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info { flex: none; margin-left: 6px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info { flex: none; width: 28px; height: 28px; margin-left: -10px; } /* -10px gleicht den Kopf-gap aus: mehr Platz für den Titel */
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-shelf { padding-left: 14px; padding-right: 14px; scroll-padding: 0 14px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__head { padding: 0 14px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row:not(.lfx-retro-row--wide) .lfx-retro-skel { flex-basis: 128px; height: 192px; }
