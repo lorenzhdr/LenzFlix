@@ -100,7 +100,11 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 25.11.2026 (1.21.0 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
+Stand 25.11.2026 (1.21.1 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
+- **1.21.1 (Tag `v1.21.1` auf b4e5698):** Handy-Feinschliff nach der Headless-Prüfung bei 375 px.
+  - Die Balken-Beschriftung im Info-Kästchen hat jetzt `8em` statt px und steht damit auch in der LENZ//84-Schrift bündig.
+  - Der LENZ//84-Info-Knopf ist am Handy 28 px groß mit `margin-left:-10px`, der Titel wird dadurch weniger gekürzt.
+  - jsDelivr: 9/10 Dateien byte-gleich. `lenzflix.min.css` liefert jsDelivr auch nach Purge als eigene clean-css-Fassung (Zählung von `chartinfo`, `:has(`, `!important`, `dvh` und `env(` gleich, wie bei 1.19.0).
 - **1.21.0 Chart-Ranking + Info-Knopf (Tag `v1.21.0` auf ca379fa, `main` vorgespult, jsDelivr 10/10 byte-gleich; Worker deployt, Version a2c42d50; Arbeitsdateien `.tmp/v1210/`):**
   - **Worker** (Vertrag `docs/charts-api.md`):
     - Filme zählen ab 800 s (`MIN_SECONDS_MOVIE`), Folgen ab 300 s.
@@ -119,7 +123,7 @@ Stand 25.11.2026 (1.21.0 veröffentlicht). Bei jedem Release aktualisieren, knap
     - Handy nur per Headless (375 px, flix und retro). Das Claude-Fenster ist maximiert, `resize_window` wirkt nicht.
     - Echte `/charts` nach dem Cron: `rules` da, Film-Score ≤ viewers, `all` nach viewers sortiert.
   - **Offen:**
-    - Der Server lädt per Injector/Custom-CSS noch `@v1.20.1`. Der Nutzer muss auf `@v1.21.0` umstellen (CSS-Import, `lenzflix.min.js`, `lenzupnext.min.js`).
+    - Der Server lädt per Injector/Custom-CSS noch `@v1.20.1`. Der Nutzer muss auf `@v1.21.0` umstellen (CSS-Import, `lenzflix.min.js`, `lenzupnext.min.js`) – Ziel inzwischen `@v1.21.1`.
     - Echtes iPhone.
     - Beobachten, ob die 7-Tage-Halbwertszeit Filme zu sprunghaft macht: Ein frischer Einzelabruf schlägt zwei Zuschauer von vor 2 Wochen.
 - **1.20.1 Auto-Weiter umgebaut (Nutzerwunsch nach TV-Test 1.20.0):** kein eigener Knopf mehr – Jellyfins „Jetzt starten“ füllt sich (Span `.lfx-autonext__fill` als erstes Kind, Klassen `lfx-autonext-host`/`is-running`, Knopf `isolation:isolate`, Füllung `z-index:-1`; Text unverändert). Ein/Aus nur im LENZFLIX-Geheimmenü (Abschnitt „Wiedergabe“, `setAutoNextEnabled` → Spiegel + Event `lfx:autonext` + GET→POST); Instanzen schreiben nicht mehr, laden den Serverwert bei jedem Player-Aufruf (so erreicht es den TV). Aus = Overlay wie Original. Abbrüche unverändert (Verbergen, Pause, Zurückspulen). Live geprüft (Desktop): Geheimmenü-Schalter speichert `autoNext` 0/1 und behält andere CustomPrefs, Aus = 2 Knöpfe ohne Füllung und kein Sprung, An per Ereignis bei offenem Overlay → Sprung nach 5,3 s, Sprung nach 5,0 s, Pause/Zurückspulen/Verbergen brechen ab; Füllung per Computed Style (Screenshots im Claude-Tab hingen). Konto am Ende auf An, Testfolgen S4E13–19 ungesehen. `AUTONEXT_VERSION` '2'. Offen: TV-Test 1.20.1 (Füllung im fokussierten „Jetzt starten“).
