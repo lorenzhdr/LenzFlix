@@ -100,7 +100,28 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 21.11.2026 (1.20.1 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
+Stand 25.11.2026 (1.21.0 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
+- **1.21.0 Chart-Ranking + Info-Knopf (Tag `v1.21.0` auf ca379fa, `main` vorgespult, jsDelivr 10/10 byte-gleich; Worker deployt, Version a2c42d50; Arbeitsdateien `.tmp/v1210/`):**
+  - **Worker** (Vertrag `docs/charts-api.md`):
+    - Filme zählen ab 800 s (`MIN_SECONDS_MOVIE`), Folgen ab 300 s.
+    - Spalte `age` in ganzen Sekunden per `strftime('%s',…)`, weil `julianday` im Plugin unbelegt ist. Ohne gültiges `age` wirft der Lauf, und das alte KV bleibt.
+    - Gewicht 0,5^(Tage/7). Filme: Σ Gewicht je Person. Serien: Σ log₂(1 + gewichtete Folgen) je Person.
+    - `movies` und `series` sortieren nach `score`. `all` bleibt nach viewers/plays/seconds sortiert.
+    - Die Antwort hat zusätzlich `rules` und `score`, `version` bleibt 1.
+  - **Theme** (Vertrag `docs/js-contracts.md` „Chart-Info-Knopf (1.21.0)“):
+    - Info-Knopf `shared/chartinfo.js` (`chartInfoButton`, `syncChartInfo`) mit Kästchen über `core/sheet.js` (Desktop am Knopf, Handy als Blatt).
+    - Kennzeichen `def.chart` nur, wenn `rules` da ist. Es wird im `wrapRow`-Snapshot mitgeführt und immer überschrieben.
+    - Orte: flix-Startseite, Serien/Filme-Seiten, „Neu und beliebt“ (alle Designs), plus/prime/retro-Startseite.
+    - Hauptbundle-Budget 540 KiB (532.665 B).
+  - **Geprüft:**
+    - 4950 Root-Tests, 541 Worker-Tests, Lint 0, TV/Store/Upnext byte-gleich.
+    - Live im Claude-Tab über den Tunnel: alle 4 Designs und alle Orte am Desktop.
+    - Handy nur per Headless (375 px, flix und retro). Das Claude-Fenster ist maximiert, `resize_window` wirkt nicht.
+    - Echte `/charts` nach dem Cron: `rules` da, Film-Score ≤ viewers, `all` nach viewers sortiert.
+  - **Offen:**
+    - Der Server lädt per Injector/Custom-CSS noch `@v1.20.1`. Der Nutzer muss auf `@v1.21.0` umstellen (CSS-Import, `lenzflix.min.js`, `lenzupnext.min.js`).
+    - Echtes iPhone.
+    - Beobachten, ob die 7-Tage-Halbwertszeit Filme zu sprunghaft macht: Ein frischer Einzelabruf schlägt zwei Zuschauer von vor 2 Wochen.
 - **1.20.1 Auto-Weiter umgebaut (Nutzerwunsch nach TV-Test 1.20.0):** kein eigener Knopf mehr – Jellyfins „Jetzt starten“ füllt sich (Span `.lfx-autonext__fill` als erstes Kind, Klassen `lfx-autonext-host`/`is-running`, Knopf `isolation:isolate`, Füllung `z-index:-1`; Text unverändert). Ein/Aus nur im LENZFLIX-Geheimmenü (Abschnitt „Wiedergabe“, `setAutoNextEnabled` → Spiegel + Event `lfx:autonext` + GET→POST); Instanzen schreiben nicht mehr, laden den Serverwert bei jedem Player-Aufruf (so erreicht es den TV). Aus = Overlay wie Original. Abbrüche unverändert (Verbergen, Pause, Zurückspulen). Live geprüft (Desktop): Geheimmenü-Schalter speichert `autoNext` 0/1 und behält andere CustomPrefs, Aus = 2 Knöpfe ohne Füllung und kein Sprung, An per Ereignis bei offenem Overlay → Sprung nach 5,3 s, Sprung nach 5,0 s, Pause/Zurückspulen/Verbergen brechen ab; Füllung per Computed Style (Screenshots im Claude-Tab hingen). Konto am Ende auf An, Testfolgen S4E13–19 ungesehen. `AUTONEXT_VERSION` '2'. Offen: TV-Test 1.20.1 (Füllung im fokussierten „Jetzt starten“).
 - **1.20.0 Auto-Weiter (Vertrag `docs/js-contracts.md` „Auto-Weiter (1.20.0)“, Markup `docs/dom-map.md` Up-Next):** dritter Knopf „Auto-Weiter: An/Aus“ im Jellyfin-Overlay „Nächste Folge“, Standard An, pro Konto (DisplayPreferences `lenzflix-player`/Client `lenzflix`, `CustomPrefs.autoNext`, lokal `lfx.autonext.<uid>`); 5 s nach Erscheinen Proxy-Klick auf `.btnStartNow`; Abbruch Verbergen/Pause/Zurückspulen/Knopf; Video beim Erscheinen pausiert → wartet bis Wiedergabe; nie in VIDEOTHEK (`lfx-theme-store`, `#lfx-store-park`). Kern `src/js/autonext/` ohne Importe, zwei Wege: Feature `autonext` im Hauptbundle und Extra-Skript `dist/lenzupnext(.min).js` (esbuild `chrome53`, Wächter `checkUpnextBundle`: espree ES2016 + verbotene APIs) für LG webOS 4 als eigener JS-Injector-Eintrag mit externer URL; Besitzer-Marker `window.__lfxAutoNext`. Falle: Jellyfins Knopfreihe ist `nowrap` und so breit wie ihr Inhalt → `modern/player.css` bricht am Handy um. Live geprüft (Desktop-Chrome, eigener Branch/Worktree): 2 Sprünge nach je ~5,1 s, alle Abbrüche, Speichern Server+lokal, Klick ohne Pause/OSD, Extra-Skript allein und doppelt (1 Knopf), Handy-Umbruch per Breiten-Emulation; Testfolgen danach auf ungesehen zurückgesetzt. Geprüft: 4903 Tests, Lint 0, TV-/Store-Hashes gleich, Hauptbundle ~528 KB, `lenzupnext.min.js` ~4,8 KB. TV-Test am LG (webOS 4) nach Release vom Nutzer bestätigt: Knopf erscheint, Sprung nach 5 s (Extra-Skript als eigener Injector-Eintrag). Offen: Fokus/Bedienung per Fernbedienung und Optik am TV nicht ausdrücklich rückgemeldet, echtes iPhone. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md`, `docs/mp-api.md` und `docs/js-contracts.md`.
 - **Desktop-App verworfen (22.11.2026):** nativer Client samt Submodul `Anwendung/` und Repo entfernt, es wird nur das Web-Theme weitergeführt.
