@@ -35,7 +35,8 @@ Vertrag: [`../docs/charts-api.md`](../docs/charts-api.md).
    ```
 
 Konfiguration (Vars in `wrangler.jsonc`): `JELLYFIN_URL`, `ALLOWED_ORIGIN`, `WINDOW_DAYS` (1–365, Default 30),
-`MIN_SECONDS` (0–3600, Default 300). Ungültige Werte fallen auf den Default zurück.
+`MIN_SECONDS` (Folgen, 0–3600, Default 300), `MIN_SECONDS_MOVIE` (Filme, 0–3600, Default 800). Ungültige Werte fallen auf den Default zurück.
+Die Charts werden nach Aktualität gewichtet (Halbwertszeit 7 Tage, Serien mit log2-Dämpfung je Person); Regeln: [`../docs/charts-api.md`](../docs/charts-api.md).
 
 ## Mehrspieler (VIDEOTHEK LENZ, ab 1.16.0)
 

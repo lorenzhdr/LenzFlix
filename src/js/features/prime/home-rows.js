@@ -6,6 +6,7 @@ import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { getNewContentInfo } from '../../shared/newcontent.js';
 import { cardBadge, getTrendInfo } from '../../shared/trend.js';
+import { syncChartInfo } from '../../shared/chartinfo.js';
 import { startRowPrefetch } from '../rows/prefetch.js';
 import { attachScroller } from '../rows/scroller.js';
 import { createPrimeCard } from './card.js';
@@ -112,6 +113,8 @@ export function createRows(slot, { posterId = null, moreHref = () => null, prefe
     track.before(prev);
     track.after(next);
     rowEl.querySelector('.lfx-prime-row__title').textContent = def.title || '';
+    const head = rowEl.querySelector('.lfx-prime-row__head');
+    syncChartInfo(head, def.chart, { className: 'lfx-prime-row__info', before: head.querySelector('.lfx-prime-row__more') });
     rowEl.classList.remove('is-loading');
     disposers.push(attachScroller({ track, prev, next, indicator: null }));
   }

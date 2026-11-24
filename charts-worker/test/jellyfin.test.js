@@ -11,7 +11,7 @@ describe('parseCustomQuery', () => {
       results: [['abc', 'Movie', 'u1', '3', '1800']],
       message: '',
     });
-    expect(rows).toEqual([{ itemId: 'abc', itemType: 'Movie', userId: 'u1', plays: 3, secs: 1800 }]);
+    expect(rows).toEqual([{ itemId: 'abc', itemType: 'Movie', userId: 'u1', plays: 3, secs: 1800, age: undefined }]);
   });
 
   it('liefert [] bei leeren/kaputten Antworten', () => {
@@ -24,6 +24,25 @@ describe('parseCustomQuery', () => {
     const [r] = parseCustomQuery({ colums: ['ItemId', 'ItemType', 'UserId', 'plays', 'secs'], results: [['a', 'Movie', 'u', 'x', null]] });
     expect(r.plays).toBe(0);
     expect(r.secs).toBe(0);
+  });
+});
+
+describe('parseCustomQuery: age', () => {
+  const cols = ['ItemId', 'ItemType', 'UserId', 'plays', 'secs', 'age'];
+  it('parst age als Zahl', () => {
+    const [r] = parseCustomQuery({ colums: cols, results: [['a', 'Movie', 'u', '1', '900', '86400']] });
+    expect(r.age).toBe(86400);
+  });
+  it('fehlende Spalte -> undefined', () => {
+    const [r] = parseCustomQuery({ colums: cols.slice(0, 5), results: [['a', 'Movie', 'u', '1', '900']] });
+    expect(r.age).toBeUndefined();
+  });
+  it('ungültige Zelle -> null', () => {
+    const rows = parseCustomQuery({
+      colums: cols,
+      results: [['a', 'Movie', 'u', '1', '900', 'x'], ['b', 'Movie', 'u', '1', '900', null], ['c', 'Movie', 'u', '1', '900', '']],
+    });
+    expect(rows.map((r) => r.age)).toEqual([null, null, null]);
   });
 });
 

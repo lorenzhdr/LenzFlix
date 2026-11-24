@@ -75,7 +75,8 @@ async function buildJs() {
 // 1.13.0: 440 → 496 KiB (Serien-/Filme-Seite, Meine Liste, Geheimmenü).
 // 1.16.2: 496 → 500 KiB (Tab-Text, Tab-Icons und Browserleiste je Design).
 // 1.17.0: 500 → 520 KiB (Konto-Profil der eigenen Figur; Nutzer-OK).
-const MAIN_MIN_BUDGET = 520 * 1024;
+// 1.21.0: 520 → 540 KiB (Chart-Info-Knopf; Nutzer-OK).
+const MAIN_MIN_BUDGET = 540 * 1024;
 function checkMainBundle() {
   const code = readFileSync(resolve(dist, 'lenzflix.min.js'), 'utf8');
   if (/WebGLRenderer|THREE\.REVISION|three\.module/.test(code)) {

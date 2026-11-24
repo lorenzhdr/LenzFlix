@@ -10,19 +10,27 @@ mit einem Admin-API-Key und liefert sie nur an eingeloggte Jellyfin-Nutzer aus.
   - Body: `{"CustomQueryString":"<SQL>","ReplaceUserId":false}`
   - Antwort: `{"colums":[...], "results":[[...string...]], "message":"..."}` (Key heißt wirklich `colums`; alle Zellen sind Strings)
 - Tabelle `PlaybackActivity(DateCreated DATETIME, UserId TEXT, ItemId TEXT, ItemType TEXT, ItemName TEXT, PlaybackMethod TEXT, ClientName TEXT, DeviceName TEXT, PlayDuration INT)`; `UserList(UserId)` = ignorierte Benutzer. IDs = GUID ohne Bindestriche. `DateCreated` = lokale Serverzeit.
-- **Nur feste, im Code hinterlegte SELECT-Abfragen** (keine Nutzereingaben im SQL!). Variabel sind nur zwei Integer aus der Worker-Konfiguration: `WINDOW_DAYS` (1–365) und `MIN_SECONDS` (0–3600), beide validiert, sonst Default.
-- Abfrage (distinct Paare Item×Benutzer im Fenster, Mindestdauer 300 s):
+- **Nur feste, im Code hinterlegte SELECT-Abfragen** (keine Nutzereingaben im SQL!). Variabel sind nur drei Integer aus der Worker-Konfiguration: `WINDOW_DAYS` (1–365), `MIN_SECONDS` (0–3600, Folgen, Default 300) und `MIN_SECONDS_MOVIE` (0–3600, Filme, Default 800), alle validiert, sonst Default.
+- Abfrage (je Paar Item×Benutzer im Fenster; Filme zählen ab 800 s, Folgen ab 300 s Wiedergabe je Zeile/Sitzung; `age` = Alter des letzten Abrufs in ganzen Sekunden, `DateCreated` ist lokale Serverzeit wie `'now','localtime'`):
   ```sql
-  SELECT ItemId, ItemType, UserId, COUNT(*) AS plays, SUM(PlayDuration) AS secs
+  SELECT ItemId, ItemType, UserId, COUNT(*) AS plays, SUM(PlayDuration) AS secs,
+         (strftime('%s','now','localtime') - strftime('%s', substr(MAX(DateCreated),1,19))) AS age
   FROM PlaybackActivity
-  WHERE ItemType IN ('Movie','Episode')
-    AND PlayDuration >= 300
+  WHERE ((ItemType = 'Movie' AND PlayDuration >= 800)
+      OR (ItemType = 'Episode' AND PlayDuration >= 300))
     AND DateCreated >= datetime('now','localtime','-30 days')
     AND UserId NOT IN (SELECT UserId FROM UserList)
   GROUP BY ItemId, UserId
   ```
-- Episoden → Serie: `GET {JELLYFIN_URL}/Items?Ids=<id1,id2,…>&Fields=SeriesId&EnableImages=false` (API-Key, in Blöcken à 100 IDs). Episoden ohne auflösbare SeriesId werden verworfen; gelöschte Items ebenso. Der Cron löst höchstens 2000 Episoden auf (stärkste zuerst: Zuschauer, dann Sekunden) = 20 Blöcke, mit Abfrage und `/Users` etwa 22 Subrequests je Lauf (Free-Plan-Limit 50). Serien, die nur über seltene Episoden jenseits der 2000 vorkommen, können in den Charts fehlen.
-- Aggregation: Filme pro ItemId, Serien pro SeriesId. `viewers` = Anzahl verschiedener UserIds, `plays` = Summe Wiedergaben, `seconds` = Summe Dauer. Sortierung: viewers desc, plays desc, seconds desc.
+- **Fehlerfall ohne `age`:** Hat die Antwort Zeilen, aber keine einzige mit gültigem `age` (Spalte fehlt oder alle Zellen nicht als Zahl lesbar), wirft `computeCharts` (`charts: age column missing`). Der Cron behält dann das alte KV-Ergebnis, `POST /refresh` antwortet `502 {"error":"refresh-failed"}`. Eine leere Antwort ist kein Fehler.
+- Episoden → Serie: `GET {JELLYFIN_URL}/Items?Ids=<id1,id2,…>&Fields=SeriesId&EnableImages=false` (API-Key, in Blöcken à 100 IDs). Episoden ohne auflösbare SeriesId werden verworfen; gelöschte Items ebenso. Der Cron löst höchstens 2000 Episoden auf (stärkste zuerst: Zuschauer, dann Sekunden) = 20 Blöcke, mit Abfrage und `/Users` etwa 22 Subrequests je Lauf (Free-Plan-Limit 50). Serien, die nur über seltene Episoden jenseits der 2000 vorkommen, können in den Charts fehlen; dabei fallen Folgen mit nur einer Person zuerst weg (betrifft erst mehr als 2000 verschiedene Folgen in 30 Tagen).
+- Aggregation: Filme pro ItemId, Serien pro SeriesId. `viewers` = Anzahl verschiedener UserIds, `plays` = Summe Wiedergaben, `seconds` = Summe Dauer.
+  - **Aktualität:** Gewicht je Zeile (Item×Person) `w = 0.5 ** (ageDays / 7)` (Halbwertszeit 7 Tage, `ageDays` = Alter des letzten Abrufs). Ungültiges oder fehlendes `age` zählt als `w = 1`, negatives Alter wird auf 0 geklemmt (also `w = 1`).
+  - **Filme:** `score = Σ w` über Personen (jede Person höchstens 1 Punkt, daher `score ≤ viewers`).
+  - **Serien:** je Person `W = Σ w` über ihre Folgen der Serie, `score = Σ log2(1 + W)` über Personen. Eine Person mit 1/3/7/15 frischen Folgen bringt 1/2/3/4 Punkte.
+  - `score` wird auf 3 Nachkommastellen gerundet.
+  - **Sortierung `movies`/`series`:** `score` desc, `viewers` desc, `plays` desc, `seconds` desc, `id` asc (deterministisch).
+  - **`all`** (Mischliste aus den vollständigen Film- und Serienlisten) bleibt bei der alten Regel ohne Aktualität: `viewers` desc, `plays` desc, `seconds` desc, Einträge ohne `score`. Die 800-s-Schwelle für Filme gilt wegen der gemeinsamen SQL auch dort.
 
 ## Speicherung
 - Cron (stündlich, `0 * * * *`) schreibt das Ergebnis als JSON in KV-Namespace `CHARTS`, Key `charts:v1`.
@@ -39,20 +47,21 @@ mit einem Admin-API-Key und liefert sie nur an eingeloggte Jellyfin-Nutzer aus.
         "version": 1,
         "generatedAt": "2026-11-08T19:00:00Z",
         "windowDays": 30,
-        "metric": "viewers",
-        "movies": [{ "id": "…", "viewers": 3, "plays": 5, "seconds": 18000 }],
-        "series": [{ "id": "…", "viewers": 2, "plays": 14, "seconds": 36000 }],
+        "metric": "score",
+        "rules": { "halfLifeDays": 7, "minSecondsMovie": 800, "minSecondsEpisode": 300 },
+        "movies": [{ "id": "…", "viewers": 3, "plays": 5, "seconds": 18000, "score": 2.375 }],
+        "series": [{ "id": "…", "viewers": 2, "plays": 14, "seconds": 36000, "score": 3.17 }],
         "all":    [{ "id": "…", "type": "Movie|Series", "viewers": 3, "plays": 5, "seconds": 18000 }]
       }
       ```
-      `movies`/`series` je max. 50, `all` max. 50 (gemischt, gleiche Sortierung).
+      `movies`/`series` je max. 50 (nach `score`), `all` max. 50 (gemischt, nach `viewers`, ohne `score`). `rules` nennt die tatsächlich wirksamen (validierten) Werte.
     - `401` ohne/ungültiges Token, `503` `{"error":"no-data"}` wenn noch kein Cron-Lauf, `502` wenn Jellyfin für die Token-Prüfung nicht erreichbar.
   - `Cache-Control: private, max-age=300`.
 - CORS: `Access-Control-Allow-Origin` = exakt `ALLOWED_ORIGIN` (Var, z. B. `https://jellyfin.example.com`), `Access-Control-Allow-Headers: X-Emby-Token`, `Access-Control-Allow-Methods: GET, OPTIONS`, `Vary: Origin`. Preflight `OPTIONS` → 204.
 - `GET /health` → `{"ok":true,"generatedAt":…}` ohne Auth (keine Item-Daten).
 
 ## Worker-Konfiguration
-- Vars: `JELLYFIN_URL` (z. B. `https://jellyfin.example.com`), `ALLOWED_ORIGIN`, `WINDOW_DAYS` (Default 30), `MIN_SECONDS` (Default 300).
+- Vars: `JELLYFIN_URL` (z. B. `https://jellyfin.example.com`), `ALLOWED_ORIGIN`, `WINDOW_DAYS` (Default 30), `MIN_SECONDS` (Folgen, Default 300), `MIN_SECONDS_MOVIE` (Filme, Default 800).
 - Secrets (setzt der Betreiber selbst per `wrangler secret put`): `JELLYFIN_API_KEY`, optional `REFRESH_SECRET`.
 - Route: Custom Domain `charts.example.com` (Zone liegt bei Cloudflare).
 

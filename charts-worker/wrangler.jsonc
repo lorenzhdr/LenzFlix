@@ -20,6 +20,7 @@
     "ALLOWED_ORIGIN": "https://jellyfin.example.com",
     "WINDOW_DAYS": "30",
     "MIN_SECONDS": "300",
+    "MIN_SECONDS_MOVIE": "800",
     "MP_MAX_CONN": "16",
     "MP_DAILY_REQ": "80000",
     "MP_DEV_ORIGINS": "",

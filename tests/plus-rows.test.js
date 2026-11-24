@@ -112,3 +112,57 @@ describe('renderRows', () => {
     warn.mockRestore();
   });
 });
+
+describe('Chart-Info-Knopf (LENZ+)', () => {
+  const CHART = { kind: 'series', rules: { halfLifeDays: 7, minSecondsMovie: 800, minSecondsEpisode: 300 }, windowDays: 30 };
+  let slot;
+  beforeEach(() => {
+    clearCache();
+    slot = document.createElement('div');
+    document.body.append(slot);
+    delete globalThis.IntersectionObserver;
+    api.getItems.mockResolvedValue({ Items: [] });
+  });
+  afterEach(() => { document.body.innerHTML = ''; });
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  const show = async (chart) => {
+    const cleanup = renderRows(slot, async () => [{ id: 't', title: 'Top 10 Serien', kind: 'poster', chart, load: async () => [movie, { ...movie, Id: 'm2' }] }]);
+    await flush(); await flush(); await flush();
+    return cleanup;
+  };
+
+  it('Knopf direkt hinter dem Titel-h2, Zeile trägt lfx-plus-row--chart, Klick öffnet das Kästchen', async () => {
+    const cleanup = await show(CHART);
+    const row = slot.querySelector('.lfx-plus-row');
+    const btn = row.querySelector('.lfx-chartinfo-btn');
+    expect(btn).not.toBeNull();
+    expect(btn.parentNode).toBe(row);
+    expect(btn.previousElementSibling.classList.contains('lfx-plus-row__title')).toBe(true);
+    expect(btn.classList.contains('lfx-plus-row__info')).toBe(true);
+    expect(btn.classList.contains('lfx-card')).toBe(false);
+    expect(row.classList.contains('lfx-plus-row--chart')).toBe(true);
+    btn.click();
+    expect(document.querySelector('.lfx-chartinfo-sheet').textContent).toContain('So entsteht die Liste');
+    document.querySelector('.lfx-chartinfo__close').click();
+    cleanup();
+  });
+
+  it('ohne chart (null): kein Knopf, keine Klasse', async () => {
+    const cleanup = await show(null);
+    const row = slot.querySelector('.lfx-plus-row');
+    expect(row).not.toBeNull();
+    expect(row.querySelector('.lfx-chartinfo-btn')).toBeNull();
+    expect(row.classList.contains('lfx-plus-row--chart')).toBe(false);
+    cleanup();
+  });
+
+  it('erneutes Füllen ohne chart entfernt Knopf und Klasse', async () => {
+    const cleanup = await show(CHART);
+    expect(slot.querySelector('.lfx-chartinfo-btn')).not.toBeNull();
+    cleanup();
+    const again = await show(null);
+    expect(slot.querySelector('.lfx-chartinfo-btn')).toBeNull();
+    expect(slot.querySelector('.lfx-plus-row--chart')).toBeNull();
+    again();
+  });
+});

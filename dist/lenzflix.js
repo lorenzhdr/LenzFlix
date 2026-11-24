@@ -420,7 +420,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.20.1";
+  var VERSION = "1.21.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -1871,9 +1871,9 @@
     observeTitle();
     modalOpen = rootEl().classList.contains(MODAL_CLASS);
     htmlObs = new MutationObserver(() => {
-      const open3 = rootEl().classList.contains(MODAL_CLASS);
-      if (open3 === modalOpen) return;
-      modalOpen = open3;
+      const open4 = rootEl().classList.contains(MODAL_CLASS);
+      if (open4 === modalOpen) return;
+      modalOpen = open4;
       update();
       followUp();
     });
@@ -4000,14 +4000,14 @@
     toolbar: null,
     clickAt: 0
   };
-  function setMenu(open3) {
-    state2.menuOpen = open3;
-    if (!open3) state2.hoverOpenedAt = 0;
+  function setMenu(open4) {
+    state2.menuOpen = open4;
+    if (!open4) state2.hoverOpenedAt = 0;
     const wrap = state2.nav && state2.nav.querySelector(".lfx-nav__more");
     if (!wrap) return;
-    wrap.classList.toggle("is-open", open3);
+    wrap.classList.toggle("is-open", open4);
     const btn3 = wrap.querySelector(".lfx-nav__more-btn");
-    if (btn3) btn3.setAttribute("aria-expanded", String(open3));
+    if (btn3) btn3.setAttribute("aria-expanded", String(open4));
   }
   function applyActive() {
     if (!state2.nav || !state2.route) return;
@@ -4387,6 +4387,11 @@
       { id: "top10-movies", title: `Top 10 Filme auf ${brandName()}`, key: "movies" }
     ];
   }
+  function chartMeta(charts, kind2) {
+    const rules = charts && charts.rules;
+    if (!rules || typeof rules !== "object") return null;
+    return { kind: kind2, rules, windowDays: charts.windowDays };
+  }
   async function buildChartDefs() {
     try {
       const charts = await getCharts();
@@ -4396,7 +4401,7 @@
       const defs = [];
       specs.forEach((s, i) => {
         const list = lists[i];
-        if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: "top10", load: () => list });
+        if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: "top10", chart: chartMeta(charts, s.key), load: () => list });
       });
       return defs;
     } catch (e) {
@@ -4414,11 +4419,15 @@
       d.noCache = false;
       const snap = await cached(
         key,
-        async () => ({ items: await orig2(d), id: d.id, title: d.title, noCache: !!d.noCache }),
+        async () => {
+          const items = await orig2(d);
+          return { items, id: d.id, title: d.title, chart: d.chart ?? null, noCache: !!d.noCache };
+        },
         (s) => s.noCache ? 0 : HOME_TTL
       );
       d.id = snap.id;
       d.title = snap.title;
+      d.chart = snap.chart ?? null;
       return snap.items;
     };
     return def;
@@ -4465,7 +4474,7 @@
       SortOrder: "Descending",
       Limit: 10
     }).then(selectTop10);
-    const fallbackDef = () => ({ id: "top10", title: `Top 10: Neu auf ${brandName()}`, kind: "top10", load: newTop10 });
+    const fallbackDef = () => ({ id: "top10", title: `Top 10: Neu auf ${brandName()}`, kind: "top10", chart: null, load: newTop10 });
     if (deferCharts) {
       if (!getChartsUrl()) defs.push(fallbackDef());
       else {
@@ -4480,8 +4489,10 @@
               const found = await chartDefs;
               if (found.length) {
                 const hit = found.find((d) => d.id === s.id);
+                def.chart = hit ? hit.chart ?? null : null;
                 return hit ? hit.load() : [];
               }
+              def.chart = null;
               if (i !== 0) return [];
               const fb = fallbackDef();
               def.id = fb.id;
@@ -4708,12 +4719,16 @@
       title: chartTitle || `Top 10 auf ${brandName()}`,
       kind: "top10",
       async load(def) {
+        def.chart = null;
         try {
           const charts = await getCharts();
           if (charts && (charts[chartKey] || []).length) {
             const list = await resolveChartItems(charts[chartKey], { limit: 10 });
             const own2 = list.filter((it) => it.Type === type);
-            if (own2.length >= MIN_CHART_ROW) return own2;
+            if (own2.length >= MIN_CHART_ROW) {
+              def.chart = chartMeta(charts, chartKey);
+              return own2;
+            }
           }
         } catch (e) {
           console.warn("[LenzFlix] Top 10 nicht aufgebaut", e && e.message);
@@ -5164,6 +5179,9 @@
   );
   var ICON_DATASAVER = svg(
     '<path d="M3 15a9 9 0 0 1 18 0h-2a7 7 0 0 0-14 0z"/><circle cx="12" cy="15" r="1.9"/><path d="M6.4 11.6l6.05 2.6-.9 1.6z"/><path d="M11 4.2h2v2.2h-2z"/>'
+  );
+  var ICON_INFO = svg(
+    '<path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16z"/><circle cx="12" cy="7.6" r="1.35"/><path d="M11 10.8h2v6.4h-2z"/>'
   );
 
   // src/js/features/tvbtn.js
@@ -6690,10 +6708,10 @@
           }
         }
       }, [h("span", {}, current6 && current6.Name || "Staffel"), icon("chevron")]);
-      const toggle = (open3) => {
-        list.hidden = !open3;
-        btn3.setAttribute("aria-expanded", String(open3));
-        if (open3) (list.querySelector('[aria-selected="true"]') || list.querySelector("button"))?.focus({ preventScroll: true });
+      const toggle = (open4) => {
+        list.hidden = !open4;
+        btn3.setAttribute("aria-expanded", String(open4));
+        if (open4) (list.querySelector('[aria-selected="true"]') || list.querySelector("button"))?.focus({ preventScroll: true });
       };
       list.addEventListener("keydown", (e) => {
         const o = [...list.querySelectorAll("button")];
@@ -6758,18 +6776,18 @@
       }
     });
     setFavState(fav, Boolean(item.UserData && item.UserData.IsFavorite));
-    const open3 = () => H.openItem(item.Id);
+    const open4 = () => H.openItem(item.Id);
     return h("div", {
       class: "lfx-modal__card",
       role: "button",
       tabindex: "0",
       "data-id": item.Id,
       "aria-label": item.Name || "",
-      onclick: open3,
+      onclick: open4,
       onkeydown: (e) => {
         if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
           e.preventDefault();
-          open3();
+          open4();
         }
       }
     }, [
@@ -6870,17 +6888,17 @@
       location.hash = titleHref(id);
       return Promise.resolve();
     }
-    const hint = typeof itemOrId === "object" ? itemOrId : null;
-    if (state4) return loadInto(id, hint, true);
+    const hint2 = typeof itemOrId === "object" ? itemOrId : null;
+    if (state4) return loadInto(id, hint2, true);
     create2(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay), id);
-    return loadInto(id, hint, false);
+    return loadInto(id, hint2, false);
   }
   function create2(opener2, overlayMode = false, id = null) {
     const overlay = mountPoint(ROOT_ID2, { className: "lfx-modal-overlay" });
     overlay.replaceChildren();
     const closeBtn = h("button", { type: "button", class: "lfx-modal__close", "aria-label": "Schlie\xDFen", title: "Schlie\xDFen", onclick: () => closeModal() }, [icon("close")]);
-    const content = h("div", { class: "lfx-modal__content" });
-    const modal = h("div", { class: "lfx-modal", role: "dialog", "aria-modal": "true", "aria-labelledby": TITLE_ID, tabindex: "-1" }, [closeBtn, content]);
+    const content2 = h("div", { class: "lfx-modal__content" });
+    const modal = h("div", { class: "lfx-modal", role: "dialog", "aria-modal": "true", "aria-labelledby": TITLE_ID, tabindex: "-1" }, [closeBtn, content2]);
     overlay.append(modal);
     overlay.scrollTop = 0;
     const onOverlayClick = (e) => {
@@ -6898,7 +6916,7 @@
     } catch {
       kb = true;
     }
-    state4 = { overlay, modal, content, closeBtn, opener: opener2, kb, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    state4 = { overlay, modal, content: content2, closeBtn, opener: opener2, kb, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
     state4.unsub = onItemsChanged(onChanged);
     lockScroll(state4);
     if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches) {
@@ -7014,12 +7032,12 @@
     if (!state4) return;
     if (overlayOnTop()) return;
     if (e.key === "Escape") {
-      const open3 = state4.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
+      const open4 = state4.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
       e.stopPropagation();
       e.preventDefault();
-      if (open3) {
-        open3.click();
-        open3.focus();
+      if (open4) {
+        open4.click();
+        open4.focus();
       } else closeModal();
       return;
     }
@@ -7043,8 +7061,8 @@
       first2.focus();
     }
   }
-  async function resolveTarget(id, hint) {
-    const item = hint || getStoredItem(id) || await loadItem(id);
+  async function resolveTarget(id, hint2) {
+    const item = hint2 || getStoredItem(id) || await loadItem(id);
     const sel = { seasonId: null, episodeId: null };
     let targetId = id;
     if (item.Type === "Episode") {
@@ -7057,8 +7075,8 @@
     }
     return { targetId, sel };
   }
-  function preloadImages(id, hint) {
-    const item = hint || getStoredItem(id);
+  function preloadImages(id, hint2) {
+    const item = hint2 || getStoredItem(id);
     if (!item) return;
     let target2 = item;
     if (item.Type === "Episode" || item.Type === "Season") {
@@ -7077,7 +7095,7 @@
   function keepFocus(s) {
     if (document.activeElement === document.body) s.closeBtn.focus({ preventScroll: true });
   }
-  async function loadInto(id, hint, replace, refresh2 = false) {
+  async function loadInto(id, hint2, replace, refresh2 = false) {
     const s = state4;
     const token2 = ++s.token;
     const stale = () => state4 !== s || s.token !== token2;
@@ -7099,11 +7117,11 @@
       s.content.replaceChildren(buildSkeleton());
     }
     if (!refresh2) keepFocus(s);
-    if (!refresh2) preloadImages(id, hint);
+    if (!refresh2) preloadImages(id, hint2);
     let main;
     let sel;
     try {
-      const r = await resolveTarget(id, hint);
+      const r = await resolveTarget(id, hint2);
       sel = refresh2 ? { seasonId: s.seasonId, episodeId: s.selectedEpisodeId } : r.sel;
       main = await loadItem(r.targetId);
       if (!main) throw new Error("Titel nicht gefunden");
@@ -7863,6 +7881,107 @@
     };
   }
 
+  // src/js/shared/chartinfo.js
+  var LABEL2 = "So entsteht die Liste";
+  var SHEET_W = 340;
+  var BTN_CLASS = "lfx-chartinfo-btn";
+  var num3 = (v, fallback) => Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : fallback;
+  var daysAgo = (n) => n === 1 ? "vor 1 Tag" : `vor ${n} Tagen`;
+  var minutes = (s) => Number(s) >= 60 ? `${Math.round(Number(s) / 60)}\xA0Min.` : null;
+  function windowText(days) {
+    const d = Number(days);
+    if (!Number.isFinite(d) || d <= 0) return "zuletzt";
+    return d === 1 ? "am letzten Tag" : `in den letzten ${d} Tagen`;
+  }
+  var heading = (text) => h("h3", { class: "lfx-chartinfo__h" }, text);
+  var para = (text) => h("p", { class: "lfx-chartinfo__p" }, text);
+  var hint = (text) => h("p", { class: "lfx-chartinfo__hint" }, text);
+  function steps() {
+    const rows = [[1, 1], [3, 2], [7, 3], [15, 4]];
+    return h("ul", { class: "lfx-chartinfo__steps" }, rows.map(([eps, pts]) => h("li", { class: "lfx-chartinfo__step" }, [
+      h("span", { class: "lfx-chartinfo__step-n" }, eps === 1 ? "1 Folge" : `${eps} Folgen`),
+      h("span", { class: "lfx-chartinfo__dots", "aria-hidden": "true" }, Array.from({ length: pts }, () => h("span", { class: "lfx-chartinfo__dot" }))),
+      h("span", { class: "lfx-chartinfo__step-v" }, pts === 1 ? "1 Punkt" : `${pts} Punkte`)
+    ])));
+  }
+  function bars(halfLife) {
+    const vals = ["1", "\xBD", "\xBC"];
+    return h("ul", { class: "lfx-chartinfo__bars" }, vals.map((v, k) => h("li", { class: "lfx-chartinfo__bar" }, [
+      h("span", { class: "lfx-chartinfo__bar-l" }, k === 0 ? "heute" : daysAgo(halfLife * k)),
+      h("span", { class: "lfx-chartinfo__track", "aria-hidden": "true" }, [
+        h("span", { class: "lfx-chartinfo__fill", style: { width: `${Math.round(0.5 ** k * 100)}%` } })
+      ]),
+      h("span", { class: "lfx-chartinfo__bar-v" }, v)
+    ])));
+  }
+  function content(chart) {
+    const rules = chart.rules || {};
+    const half = num3(rules.halfLifeDays, 7);
+    const win = windowText(chart.windowDays);
+    if (chart.kind === "movies") {
+      const min2 = minutes(rules.minSecondsMovie);
+      return [
+        para(`Gez\xE4hlt wird, wer einen Film ${win} geschaut hat${min2 ? `, ab ${min2}` : "."} Jede Person bringt h\xF6chstens 1 Punkt, mehrmals schauen z\xE4hlt nicht extra.`),
+        heading("Neues z\xE4hlt mehr"),
+        bars(half),
+        hint(`Wer den Film ${daysAgo(half)} gesehen hat, z\xE4hlt nur noch halb.`)
+      ];
+    }
+    const min = minutes(rules.minSecondsEpisode);
+    return [
+      para(`Gez\xE4hlt wird, was alle Konten ${win} geschaut haben.${min ? ` Eine Folge z\xE4hlt ab ${min}` : ""}`),
+      heading("Viel schauen z\xE4hlt mehr, aber abnehmend"),
+      steps(),
+      hint("Das gilt pro Person, die Punkte aller Personen werden addiert."),
+      heading("Neues z\xE4hlt mehr"),
+      bars(half),
+      hint(`Eine Folge von ${daysAgo(half)} z\xE4hlt nur noch halb so viel.`)
+    ];
+  }
+  function fitToViewport(c, btn3) {
+    const hgt = c.sheet.offsetHeight;
+    if (!hgt || !btn3.isConnected) return;
+    const pos = computeMenuPosition(rectOf(btn3), void 0, { w: SHEET_W, h: hgt });
+    c.sheet.style.setProperty("--lfx-sheet-x", `${Math.round(pos.x)}px`);
+    c.sheet.style.setProperty("--lfx-sheet-y", `${Math.round(pos.y)}px`);
+  }
+  function open(btn3, chart) {
+    const c = openSheet(btn3, LABEL2);
+    c.sheet.classList.add("lfx-chartinfo-sheet");
+    const close2 = h("button", { type: "button", class: "lfx-chartinfo__close", "aria-label": "Schlie\xDFen", title: "Schlie\xDFen", onclick: () => closeChooser() }, "\u2715");
+    c.list.replaceChildren(...content(chart));
+    c.sheet.append(close2);
+    fitToViewport(c, btn3);
+    close2.focus({ preventScroll: true });
+  }
+  function chartInfoButton(chart, { className = "" } = {}) {
+    if (!chart || !chart.rules || typeof chart.rules !== "object") return null;
+    const btn3 = h("button", {
+      type: "button",
+      class: `${BTN_CLASS} ${className}`.trim(),
+      "aria-label": LABEL2,
+      "aria-haspopup": "dialog",
+      title: LABEL2
+    });
+    btn3.innerHTML = ICON_INFO;
+    btn3.addEventListener("click", (e) => {
+      e.stopPropagation();
+      open(btn3, chart);
+    });
+    return btn3;
+  }
+  function syncChartInfo(headEl, chart, { className = "", before = null } = {}) {
+    if (!headEl) return null;
+    for (const old of headEl.querySelectorAll(`.${BTN_CLASS}`)) old.remove();
+    const btn3 = chartInfoButton(chart, { className });
+    if (!btn3) return null;
+    const title = headEl.querySelector(".lfx-row__title") || headEl.querySelector("h1, h2, h3");
+    if (before && before.parentNode === headEl) before.before(btn3);
+    else if (title && title.parentNode === headEl) title.after(btn3);
+    else headEl.append(btn3);
+    return btn3;
+  }
+
   // src/js/features/rows.js
   var ROWS_READY_EVENT = "lfx:rows-ready";
   function skeleton(def) {
@@ -7892,6 +8011,7 @@
     viewport.textContent = "";
     viewport.append(prev, track, next);
     rowEl.querySelector(".lfx-row__title").textContent = def.title || "";
+    syncChartInfo(rowEl.querySelector(".lfx-row__head"), def.chart);
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev, next, indicator });
   }
@@ -8002,6 +8122,7 @@
           if (!items.length) continue;
           def.id = snap.id;
           def.title = snap.title;
+          def.chart = snap.chart ?? null;
           const el5 = skeleton(def);
           slot2.append(el5);
           showRow(el5, def, items, shown2++ < EAGER_ROWS);
@@ -8280,7 +8401,7 @@
     let video2 = null;
     let card3 = null;
     let media = null;
-    let content = null;
+    let content2 = null;
     let muteBtn = null;
     let dots = null;
     const cleanupFns = [];
@@ -8469,7 +8590,7 @@
           clearTimeout(rotateTimer);
           timers2.forEach(clearTimeout);
           timers2.clear();
-          content.replaceChildren();
+          content2.replaceChildren();
           slot2.hidden = true;
           resetAmbient();
           return;
@@ -8485,12 +8606,12 @@
         if (!fresh) return;
         const merged = { ...cur3, ...fresh };
         pool[index] = merged;
-        if (!content.classList.contains("is-out")) {
+        if (!content2.classList.contains("is-out")) {
           const act = document.activeElement;
-          const btn3 = act && content.contains(act) ? [...act.classList].find((c) => c.startsWith("lfx-bb__btn--")) : null;
-          content.replaceChildren(...buildContent(merged).childNodes);
+          const btn3 = act && content2.contains(act) ? [...act.classList].find((c) => c.startsWith("lfx-bb__btn--")) : null;
+          content2.replaceChildren(...buildContent(merged).childNodes);
           if (btn3) {
-            const n = content.querySelector(`.${btn3}`);
+            const n = content2.querySelector(`.${btn3}`);
             if (n) n.focus();
           }
         }
@@ -8618,12 +8739,12 @@
       }
       const swap = () => {
         if (disposed || myGen !== gen8) return;
-        content.replaceChildren(...buildContent(item).childNodes);
-        content.classList.remove("is-out");
+        content2.replaceChildren(...buildContent(item).childNodes);
+        content2.classList.remove("is-out");
       };
-      if (immediate || !content.firstChild) swap();
+      if (immediate || !content2.firstChild) swap();
       else {
-        content.classList.add("is-out");
+        content2.classList.add("is-out");
         later(swap, TEXT_FADE_MS);
       }
       putItems([item]);
@@ -8646,7 +8767,7 @@
     }
     function build13() {
       media = h("div", { class: "lfx-bb__media" });
-      content = h("div", { class: "lfx-bb__live", "aria-live": "off" });
+      content2 = h("div", { class: "lfx-bb__live", "aria-live": "off" });
       muteBtn = h("button", { type: "button", class: "lfx-bb__mute", hidden: true, "aria-label": "Ton einschalten" });
       muteBtn.addEventListener("click", () => {
         if (!video2) return;
@@ -8660,7 +8781,7 @@
         h("div", { class: "lfx-bb__shade", "aria-hidden": "true" }),
         h("span", { class: "lfx-bb__mark", "aria-hidden": "true" }),
         muteBtn,
-        content,
+        content2,
         dots
       ]);
       slot2.replaceChildren(card3);
@@ -9360,7 +9481,7 @@
     s.body = body;
     return el4;
   }
-  function open(target2) {
+  function open2(target2) {
     if (!enabled() || !target2.card.isConnected) return;
     closeNow();
     const cardRect = target2.card.getBoundingClientRect();
@@ -9487,7 +9608,7 @@
     if (session2) closeNow();
     openTimer = setTimeout(() => {
       openTimer = null;
-      open(target2);
+      open2(target2);
     }, readDelay());
   }
   function onOut(e) {
@@ -9752,7 +9873,7 @@
     let kind2 = "series";
     let genre = null;
     let genres = [];
-    let open3 = false;
+    let open4 = false;
     const btn3 = h("button", {
       type: "button",
       class: "lfx-lib__genres-btn",
@@ -9776,9 +9897,9 @@
       if (!el4.contains(e.target)) close2();
     }
     function setOpen(on, focusFirst) {
-      if (on === open3) return;
+      if (on === open4) return;
       if (on && !genres.length) return;
-      open3 = on;
+      open4 = on;
       panel.hidden = !on;
       btn3.setAttribute("aria-expanded", String(on));
       el4.classList.toggle("is-open", on);
@@ -9795,7 +9916,7 @@
     function close2() {
       setOpen(false);
     }
-    btn3.addEventListener("click", () => setOpen(!open3, true));
+    btn3.addEventListener("click", () => setOpen(!open4, true));
     btn3.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -9806,7 +9927,7 @@
       if (e.target.closest && e.target.closest("a")) close2();
     });
     el4.addEventListener("keydown", (e) => {
-      if (!open3) return;
+      if (!open4) return;
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
@@ -10197,9 +10318,9 @@
   function fillEmpty(s) {
     const retro = isTheme("retro");
     const kind2 = { movies: "Filme", series: "Serien" }[s.type];
-    const [title, hint, link2] = s.empty.children;
+    const [title, hint2, link2] = s.empty.children;
     title.textContent = kind2 ? retro ? `KEINE ${kind2.toUpperCase()} GEMERKT` : `Keine ${kind2} in deiner Liste` : retro ? "KEINE B\xC4NDER GEMERKT" : "Deine Liste ist leer";
-    hint.hidden = Boolean(kind2);
+    hint2.hidden = Boolean(kind2);
     link2.textContent = kind2 ? retro ? "ALLE ANZEIGEN" : "Alle anzeigen" : retro ? "ZUR\xDCCK ZUM STARTMEN\xDC" : "Zur Startseite";
     link2.setAttribute("href", kind2 ? myListHref({ sort: s.sort === "az" ? void 0 : s.sort }) : "#/home");
   }
@@ -10421,7 +10542,7 @@
       const charts = await getCharts();
       if (!charts || !(charts[key] || []).length) return { items: [], charted: false };
       const items = await resolveChartItems(charts[key], { type, limit });
-      return items.length >= MIN_CHART_TITLES ? { items, charted: true, windowDays: charts.windowDays } : { items: [], charted: false };
+      return items.length >= MIN_CHART_TITLES ? { items, charted: true, windowDays: charts.windowDays, rules: charts.rules && typeof charts.rules === "object" ? charts.rules : null } : { items: [], charted: false };
     } catch (e) {
       console.warn("[LenzFlix] Charts nicht aufl\xF6sbar", e && e.message);
       return { items: [], charted: false };
@@ -10513,11 +10634,11 @@
     const title = item.Name || "";
     const bg = imageUrl(item, { type: "Backdrop", maxWidth: 1e3, quality: 85 }) || (landscapeFor(item, 1e3) || {}).url;
     const logo = logoImage(item, { maxWidth: 400 });
-    const open3 = (e) => {
+    const open4 = (e) => {
       if (e && e.preventDefault) e.preventDefault();
       openModal(item);
     };
-    const media = h("a", { class: "lfx-np__media", href: detailHref2(item), "aria-label": title, onclick: open3 }, [
+    const media = h("a", { class: "lfx-np__media", href: detailHref2(item), "aria-label": title, onclick: open4 }, [
       bg ? h("img", { class: "lfx-np__img", src: bg, alt: "", loading: "lazy", decoding: "async" }) : null,
       logo ? h("img", { class: "lfx-np__media-logo", src: logo, alt: "", loading: "lazy", decoding: "async" }) : h("span", { class: "lfx-np__media-title" }, title)
     ]);
@@ -10527,7 +10648,7 @@
       }),
       favoriteButton(item),
       ...extraButtons(item),
-      roundButton2("Weitere Infos", ICON_DOWN, open3)
+      roundButton2("Weitere Infos", ICON_DOWN, open4)
     ]);
     const genres = (item.Genres || []).slice(0, 4).join(" \u2022 ");
     const body = h("div", { class: "lfx-np__body" }, [
@@ -10631,8 +10752,8 @@
       pills.delete(id);
     }
     function relabel(id, label) {
-      const heading = sections.get(id)?.querySelector(".lfx-np__heading");
-      if (heading) heading.textContent = label;
+      const heading2 = sections.get(id)?.querySelector(".lfx-np__heading");
+      if (heading2) heading2.textContent = label;
       const pill = pills.get(id);
       if (pill && pill.lastChild) pill.lastChild.textContent = label;
     }
@@ -10683,8 +10804,11 @@
         if (!disposed) drop2(id);
       }
     }
-    const rowRenderer = (title, kind2, fallbackTitle) => (sec, items, newSeries, meta2 = {}) => {
+    const rowRenderer = (title, kind2, fallbackTitle, chartKind) => (sec, items, newSeries, meta2 = {}) => {
       const row = createRow(meta2.charted || !fallbackTitle ? title : fallbackTitle, items, kind2, newSeries);
+      if (chartKind && meta2.charted && meta2.rules) {
+        syncChartInfo(row.el.querySelector(".lfx-row__head"), { kind: chartKind, rules: meta2.rules, windowDays: meta2.windowDays });
+      }
       sec.querySelector(".lfx-np__heading")?.remove();
       if (meta2.charted) {
         row.el.querySelector(".lfx-row__head").after(h("p", { class: "lfx-np__sub", dataset: { days: meta2.windowDays || "" } }, chartSubtitle(meta2.windowDays)));
@@ -10697,8 +10821,8 @@
         sec.append(h("div", { class: "lfx-np__list" }, items.map((it) => createNewEntry(it, newSeries))));
       });
       fill4("watched", loadMostWatchedSection, rowRenderer("Am h\xE4ufigsten geschaut", "landscape"));
-      fill4("top-series", () => loadTopSection("Series"), rowRenderer("Top 10 Serien", "top10", "Neueste Serien"), "Neueste Serien");
-      fill4("top-movies", () => loadTopSection("Movie"), rowRenderer("Top 10 Filme", "top10", "Neueste Filme"), "Neueste Filme");
+      fill4("top-series", () => loadTopSection("Series"), rowRenderer("Top 10 Serien", "top10", "Neueste Serien", "series"), "Neueste Serien");
+      fill4("top-movies", () => loadTopSection("Movie"), rowRenderer("Top 10 Filme", "top10", "Neueste Filme", "movies"), "Neueste Filme");
     } else {
       console.warn("[LenzFlix] Neu und beliebt: keine Anmeldung");
     }
@@ -13529,6 +13653,7 @@
     viewport.textContent = "";
     viewport.append(prev, track, next);
     rowEl.querySelector(".lfx-plus-row__title").textContent = def.title || "";
+    rowEl.classList.toggle("lfx-plus-row--chart", !!syncChartInfo(rowEl, def.chart, { className: "lfx-plus-row__info" }));
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev, next, indicator: null });
   }
@@ -14170,16 +14295,16 @@
       played ? h("span", { class: "lfx-plus-ep__seen", "aria-label": "Gesehen", title: "Gesehen" }) : null,
       p > 0 ? h("span", { class: "lfx-plus-progress lfx-plus-ep__progress" }, [h("span", { class: "lfx-plus-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })]) : null
     ]);
-    const num3 = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
+    const num4 = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
     const btn3 = h("button", {
       type: "button",
       class: `lfx-plus-ep${selected ? " is-selected" : ""}`,
       dataset: { id: ep.Id },
-      "aria-label": `${num3}${ep.Name || ""} abspielen`,
+      "aria-label": `${num4}${ep.Name || ""} abspielen`,
       onclick: () => onPlay(ep)
     }, [
       media,
-      h("span", { class: "lfx-plus-ep__title" }, `${num3}${ep.Name || ""}`),
+      h("span", { class: "lfx-plus-ep__title" }, `${num4}${ep.Name || ""}`),
       mins ? h("span", { class: "lfx-plus-ep__dur" }, mins) : null,
       ep.Overview ? h("span", { class: "lfx-plus-ep__text" }, ep.Overview) : null
     ]);
@@ -15660,7 +15785,7 @@
         column("Empfohlene Sammlungen", data.collections)
       );
     }
-    function open3({ focus = false } = {}) {
+    function open4({ focus = false } = {}) {
       clearTimeout(leaveTimer3);
       if (!opened) {
         opened = true;
@@ -15686,7 +15811,7 @@
       button.setAttribute("aria-expanded", "false");
       if (restoreFocus) button.focus();
     }
-    const onEnter = () => open3();
+    const onEnter = () => open4();
     const onLeave = () => {
       clearTimeout(leaveTimer3);
       if (pinned) return;
@@ -15695,12 +15820,12 @@
     const onClick2 = (e) => {
       if (e.detail === 0) {
         if (opened) close2();
-        else open3({ focus: true });
+        else open4({ focus: true });
       } else if (opened && !pinned) {
         pinned = true;
       } else if (opened) close2();
       else {
-        open3();
+        open4();
         pinned = true;
       }
     };
@@ -15711,7 +15836,7 @@
       if (!opened) {
         if (e.key === "ArrowDown" && e.target === button) {
           e.preventDefault();
-          open3({ focus: true });
+          open4({ focus: true });
         }
         return;
       }
@@ -15746,7 +15871,7 @@
     wrap.addEventListener("focusout", onFocusOut);
     document.addEventListener("click", onDocClick2, true);
     return {
-      open: open3,
+      open: open4,
       close: close2,
       isOpen: () => opened,
       destroy() {
@@ -16460,7 +16585,7 @@
   var ICON_PLAY4 = '<path fill="currentColor" d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/>';
   var ICON_PLUS4 = '<path fill="currentColor" d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/>';
   var ICON_CHECK4 = '<path fill="currentColor" d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>';
-  var ICON_INFO = '<path fill="currentColor" d="M11 10h2v8h-2zM11 6h2v2h-2z"/>';
+  var ICON_INFO2 = '<path fill="currentColor" d="M11 10h2v8h-2zM11 6h2v2h-2z"/>';
   var ICON_MUTED2 = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>';
   var ICON_SOUND2 = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/>';
   var ICON_TREND = '<path fill="currentColor" d="M3 17.6 9.5 11l4 4L21 7.5V12h2V4h-8v2h4.6l-6.1 6.1-4-4L1.6 16.2z"/>';
@@ -16519,7 +16644,7 @@
     let video2 = null;
     let trend2 = null;
     let media = null;
-    let content = null;
+    let content2 = null;
     let muteBtn = null;
     let dots = null;
     let hero = null;
@@ -16647,7 +16772,7 @@
         href: titleHref(item.Id),
         "aria-label": "Weitere Informationen",
         title: "Weitere Informationen"
-      }, [svg8(ICON_INFO)]);
+      }, [svg8(ICON_INFO2)]);
       const fsk = formatRating(item.OfficialRating);
       return h("div", null, [
         h("div", { class: "lfx-prime-hero__text" }, [
@@ -16720,15 +16845,15 @@
         if (mobile) {
           const parts = buildMobileParts(item, myGen);
           logoBox.replaceChildren(parts.title);
-          content.replaceChildren(parts.info);
+          content2.replaceChildren(parts.info);
         } else {
-          content.replaceChildren(...buildContent(item, myGen).childNodes);
+          content2.replaceChildren(...buildContent(item, myGen).childNodes);
         }
-        content.classList.remove("is-out");
+        content2.classList.remove("is-out");
       };
-      if (immediate || !content.firstChild) swap();
+      if (immediate || !content2.firstChild) swap();
       else {
-        content.classList.add("is-out");
+        content2.classList.add("is-out");
         later(swap, TEXT_FADE_MS2);
       }
       putItems([item]);
@@ -16772,7 +16897,7 @@
         h("div", { class: "lfx-prime-hero__shade", "aria-hidden": "true" }),
         logoBox
       ]);
-      hero = h("div", { class: "lfx-prime-hero lfx-prime-hero--mobile" }, [frame, content, dots]);
+      hero = h("div", { class: "lfx-prime-hero lfx-prime-hero--mobile" }, [frame, content2, dots]);
       slot2.replaceChildren(hero);
       slot2.setAttribute("aria-roledescription", "Karussell");
       let sx = 0;
@@ -16799,7 +16924,7 @@
     }
     function build13() {
       media = h("div", { class: "lfx-prime-hero__media" });
-      content = h("div", { class: "lfx-prime-hero__live", "aria-live": "off" });
+      content2 = h("div", { class: "lfx-prime-hero__live", "aria-live": "off" });
       muteBtn = h("button", { type: "button", class: "lfx-prime-hero__mute", hidden: true, "aria-label": "Ton einschalten" });
       muteBtn.addEventListener("click", () => {
         if (!video2) return;
@@ -16825,7 +16950,7 @@
         prev,
         next,
         muteBtn,
-        content,
+        content2,
         dots
       ]);
       slot2.replaceChildren(hero);
@@ -17070,6 +17195,8 @@
       track.before(prev);
       track.after(next);
       rowEl.querySelector(".lfx-prime-row__title").textContent = def.title || "";
+      const head = rowEl.querySelector(".lfx-prime-row__head");
+      syncChartInfo(head, def.chart, { className: "lfx-prime-row__info", before: head.querySelector(".lfx-prime-row__more") });
       rowEl.classList.remove("is-loading");
       disposers.push(attachScroller({ track, prev, next, indicator: null }));
     }
@@ -17380,7 +17507,7 @@
         href: titleHref(item.Id),
         title: "Weitere Informationen",
         "aria-label": "Weitere Informationen"
-      }, [svgIcon(ICON_INFO)]));
+      }, [svgIcon(ICON_INFO2)]));
     }
     const rank = heroTrendLine(item, trend2);
     const desc = item.Overview ? h("p", { class: "lfx-prime-hc__desc" }, item.Overview) : null;
@@ -18154,14 +18281,14 @@
     const more = circleButton2({ label: "Mehr", icon: ICON_MORE, mod: "more", onClick: (b) => openTitleMenu(main, b) });
     more.setAttribute("aria-haspopup", "menu");
     s.circles = h("div", { class: "lfx-pt__circles" }, [s.trailerBtn, s.favBtn, s.playedBtn, s.dlBtn, more]);
-    const content = h("div", { class: "lfx-pt__content" }, [
+    const content2 = h("div", { class: "lfx-pt__content" }, [
       title,
       s.rankEl,
       meta2,
       main.Overview ? h("p", { class: "lfx-pt__desc" }, main.Overview) : null,
       h("div", { class: "lfx-pt__actions" }, [s.playWrap, s.circles])
     ]);
-    s.stage = h("div", { class: "lfx-pt__stage" }, [s.bg, s.muteBtn, content]);
+    s.stage = h("div", { class: "lfx-pt__stage" }, [s.bg, s.muteBtn, content2]);
     syncButtons(s, main);
     return s.stage;
   }
@@ -19776,6 +19903,8 @@
         track.before(prev);
         track.after(next);
         rowEl.querySelector(".lfx-retro-row__title").textContent = title;
+        const head = rowEl.querySelector(".lfx-retro-row__head");
+        syncChartInfo(head, def.chart, { className: "lfx-retro-row__info", before: head.querySelector(".lfx-retro-row__more") });
         rowEl.classList.remove("is-loading");
         rowEl.dataset.variant = variant;
         disposers.push(attachScroller({ track, prev, next, indicator: null }));
@@ -20103,7 +20232,7 @@
     const src = imageUrl(ep, { type: "Primary", maxWidth: 480, quality: 80 }) || (landscapeFor(ep, 480) || {}).url || null;
     const mins = episodeRuntime(ep);
     const left = remainingLabel2(ep);
-    const num3 = ep.IndexNumber != null ? pad2(ep.IndexNumber) : "--";
+    const num4 = ep.IndexNumber != null ? pad2(ep.IndexNumber) : "--";
     const btn3 = h("button", {
       type: "button",
       class: `lfx-rt__ep${selected ? " is-selected" : ""}${next ? " is-next" : ""}${played ? " is-played" : ""}`,
@@ -20113,11 +20242,11 @@
         if (onPlay) onPlay(ep);
       }
     }, [
-      h("span", { class: "lfx-rt__ep-no", "aria-hidden": "true" }, num3),
+      h("span", { class: "lfx-rt__ep-no", "aria-hidden": "true" }, num4),
       h("span", { class: "lfx-rt__ep-thumb", "aria-hidden": "true" }, src ? [h("img", { src, alt: "", loading: "lazy", decoding: "async" })] : []),
       h("span", { class: "lfx-rt__ep-label" }, [
         h("span", { class: "lfx-rt__ep-meta" }, [code, mins, left].filter(Boolean).join("  \xB7  ")),
-        h("span", { class: "lfx-rt__ep-title" }, ep.Name || `Folge ${num3}`),
+        h("span", { class: "lfx-rt__ep-title" }, ep.Name || `Folge ${num4}`),
         ep.Overview ? h("span", { class: "lfx-rt__ep-text" }, ep.Overview) : null
       ]),
       h("span", { class: "lfx-rt__ep-reels", "aria-hidden": "true" }, [
@@ -20440,20 +20569,20 @@
       ])
     ]);
     const kase = h("div", { class: "lfx-rt__case", role: "region", "aria-label": main.Name || "Titel" }, [buildFront(main), back]);
-    const content = h("div", { class: "lfx-rt__content" }, [kase]);
+    const content2 = h("div", { class: "lfx-rt__content" }, [kase]);
     const epList = h("ul", { class: "lfx-rt__eps" });
     const tabs = h("div", { class: "lfx-rt__tabs", role: "tablist", "aria-label": "Staffeln" });
     if (isSeries) {
-      content.append(h("section", { class: "lfx-rt__tapes", "aria-label": "Folgen" }, [h("h2", { class: "lfx-retro-label" }, "B\xE4nder"), tabs, epList]));
+      content2.append(h("section", { class: "lfx-rt__tapes", "aria-label": "Folgen" }, [h("h2", { class: "lfx-retro-label" }, "B\xE4nder"), tabs, epList]));
     }
     const shelfRow = h("div", { class: `lfx-rt__shelf-row${isBox || isMobile() ? " is-wrap" : ""}`, role: "list" });
     const shelf = h("section", { class: "lfx-rt__shelf", "aria-label": isBox ? "Inhalt" : "\xC4hnliche Titel", hidden: true }, [
       h("h2", { class: "lfx-retro-label" }, isBox ? "Inhalt" : "\xC4hnliche Titel"),
       shelfRow
     ]);
-    content.append(shelf);
+    content2.append(shelf);
     root6.classList.remove("is-loading");
-    root6.replaceChildren(backdrop, content);
+    root6.replaceChildren(backdrop, content2);
     paintPlay2();
     emitFx("open");
     if (typed) {
@@ -21069,9 +21198,9 @@
       return b;
     };
     const genreBtn = optBtn({ "aria-expanded": "false" }, "/F:GENRE", (b) => {
-      const open3 = genres.hidden;
-      genres.hidden = !open3;
-      b.setAttribute("aria-expanded", String(open3));
+      const open4 = genres.hidden;
+      genres.hidden = !open4;
+      b.setAttribute("aria-expanded", String(open4));
     });
     const opts = h("div", { class: "lfx-rb__opts", role: "toolbar", "aria-label": "Anzeigeoptionen" }, [
       ...Object.entries(SORTS4).map(([key, v]) => optBtn({ dataset: { sort: key } }, `/S:${v.label}`, () => {
@@ -21403,13 +21532,13 @@
     }
     return play(ep, { resume: Boolean(ep.UserData && ep.UserData.PlaybackPositionTicks > 0) });
   }
-  function open2(card3) {
+  function open3(card3) {
     const stored = getStoredItem(card3.dataset.lfxId);
     if (active6 || blocked4()) return;
     if (!stored) {
       const g0 = gen6;
       loadDetail2(card3.dataset.lfxId).then((it) => {
-        if (it && g0 === gen6 && overCard === card3 && card3.isConnected && !active6) open2(card3);
+        if (it && g0 === gen6 && overCard === card3 && card3.isConnected && !active6) open3(card3);
       }, () => {
       });
       return;
@@ -21514,7 +21643,7 @@
       intent3 = null;
       syncScroll();
       if (!card3.isConnected) return;
-      open2(card3);
+      open3(card3);
     }, INTENT_MS);
     intent3 = { card: card3, timer: timer2 };
     syncScroll();
@@ -21692,8 +21821,8 @@
     const top = h("div", { class: "lfx-retro-boot__half lfx-retro-boot__half--top" });
     const bot = h("div", { class: "lfx-retro-boot__half lfx-retro-boot__half--bottom" });
     const line = h("div", { class: "lfx-retro-boot__line" });
-    const hint = h("div", { class: "lfx-retro-boot__hint" }, "TASTE / TIPPEN ZUM \xDCBERSPRINGEN");
-    const el4 = h("div", { id: BOOT_ID, class: `lfx-retro-boot${reduced ? " is-reduced" : ""}`, role: "presentation", "aria-hidden": "true" }, [top, bot, text, line, hint]);
+    const hint2 = h("div", { class: "lfx-retro-boot__hint" }, "TASTE / TIPPEN ZUM \xDCBERSPRINGEN");
+    const el4 = h("div", { id: BOOT_ID, class: `lfx-retro-boot${reduced ? " is-reduced" : ""}`, role: "presentation", "aria-hidden": "true" }, [top, bot, text, line, hint2]);
     let done = false;
     let name = "";
     let nameKnown = false;
@@ -22558,7 +22687,7 @@
         }, 0);
       });
     }
-    function open3() {
+    function open4() {
       if (alive) {
         if (input) input.focus();
         return;
@@ -22613,11 +22742,11 @@
       }
     }
     return {
-      open: open3,
+      open: open4,
       close: close2,
       toggle() {
         if (alive) close2();
-        else open3();
+        else open4();
       },
       isOpen: () => alive,
       run,

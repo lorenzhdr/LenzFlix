@@ -305,6 +305,12 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__mor
   position: absolute;
   inset: 0;
 }
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__info {
+  width: 28px;
+  height: 28px;
+  margin: -4px 0 -4px 2px;
+  color: #a9adb6;
+}
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__track {
   --pv-w: clamp(140px, 44.9cqw, 260px); /* 16:9 ~175x98 bei 390 */
   --lfx-cards-visible: 2;

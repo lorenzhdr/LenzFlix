@@ -37,6 +37,19 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__more:focus-visible {
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__more:hover { color: var(--lfx-retro-amber-hi); text-shadow: var(--lfx-retro-glow); }
 }
 
+/* Info-Knopf „So entsteht die Liste“ (Top-10-Chart-Zeilen): hinter dem Titel, „Alle anzeigen“ bleibt rechts (margin-right:auto aus js-ui/chartinfo.css) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info {
+  align-self: center;
+  margin-left: 10px;
+  color: var(--lfx-retro-amber-lo);
+  border-radius: 2px;
+  transition: color 90ms steps(2, end);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info:focus-visible { color: var(--lfx-retro-amber-hi); outline-color: var(--lfx-retro-amber-hi); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info:hover { color: var(--lfx-retro-amber-hi); }
+}
+
 /* ----- Regal ----- */
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__viewport { position: relative; }
 /* Regalboden: Holzkante mit Glow-Linie unten (liegt hinter den Kassetten) */
@@ -147,6 +160,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-more:disabled { opacity: 
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-rows { padding-top: 20px; gap: 26px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 24px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__more { font-size: 17px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info { flex: none; margin-left: 6px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-shelf { padding-left: 14px; padding-right: 14px; scroll-padding: 0 14px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__head { padding: 0 14px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row:not(.lfx-retro-row--wide) .lfx-retro-skel { flex-basis: 128px; height: 192px; }

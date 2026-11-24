@@ -1227,6 +1227,22 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:focus-within .lfx-pri
   }
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__info {
+  color: var(--pv-text-2);
+  align-self: center;
+  margin: -6px 0 -6px -12px;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__info:focus-visible {
+  outline-offset: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__info:hover {
+    color: #fff;
+  }
+}
+
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__viewport {
   position: relative;
   container-type: inline-size;
@@ -3628,6 +3644,13 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__mor
   bottom: 0;
   left: 0;
   right: 0;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__info {
+  color: #a9adb6;
+  width: 28px;
+  height: 28px;
+  margin: -4px 0 -4px 2px;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__track {

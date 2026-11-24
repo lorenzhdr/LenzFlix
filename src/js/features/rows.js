@@ -10,6 +10,7 @@ import { createCard, setCardBadge } from './rows/card.js';
 import { badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
 import { startRowPrefetch } from './rows/prefetch.js';
+import { syncChartInfo } from '../shared/chartinfo.js';
 import { buildRowDefs, getNewSeriesIds, peekNewSeriesIds, peekRowDefs } from './rows/sources.js';
 
 /** Signal für das Billboard (Trailer darf erst danach vorladen): erste Zeile ist gefüllt. */
@@ -44,6 +45,7 @@ function fill(rowEl, def, items, newSeries, eager = false) {
   viewport.textContent = '';
   viewport.append(prev, track, next);
   rowEl.querySelector('.lfx-row__title').textContent = def.title || '';
+  syncChartInfo(rowEl.querySelector('.lfx-row__head'), def.chart);
   rowEl.classList.remove('is-loading');
   return attachScroller({ track, prev, next, indicator });
 }
@@ -163,6 +165,7 @@ export function render(slot, ctx = {}) {
         if (!items.length) continue;
         def.id = snap.id;
         def.title = snap.title;
+        def.chart = snap.chart ?? null;
         const el = skeleton(def);
         slot.append(el);
         showRow(el, def, items, shown++ < EAGER_ROWS);

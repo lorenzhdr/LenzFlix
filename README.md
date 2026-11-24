@@ -19,7 +19,7 @@ Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkl
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.0/dist/lenzflix.min.css");
 ```
 
 - Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,14 +29,14 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
 **Auto-Weiter auf älteren Fernsehern (optional):** Das Hauptskript läuft auf älteren Fernsehern (z. B. Chromium 53, LG webOS 4) nicht. Damit dort trotzdem „Auto-Weiter“ (siehe „Bedienung“) funktioniert, gibt es das kleine Zusatzskript `dist/lenzupnext.min.js`. Es kommt als **eigener** JavaScript-Injector-Eintrag mit externer URL, nicht als Inline-Inhalt:
 
 ```
-https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzupnext.min.js
+https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.0/dist/lenzupnext.min.js
 ```
 
 Inline-Einträge landen im Plugin in einer gemeinsamen Datei; passt darin etwas nicht zum alten Browser, fällt die ganze Datei aus. Auf PC und Handy ist der Eintrag unnötig, dort steckt Auto-Weiter im Hauptskript. Sind beide eingetragen, läuft Auto-Weiter trotzdem nur einmal.
@@ -105,7 +105,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.0/dist/lenzflix.min.css");
 :root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -185,6 +185,8 @@ Für serverweite Charts („Top 10 Serien/Filme auf LENZFLIX“, meistgesehen de
 
 Alternativ per JS: `window.LenzFlixConfig = { chartsUrl: "https://charts.example.com" }` (hat Vorrang). Nur `https://`-URLs werden akzeptiert. Der Browser sendet dein Jellyfin-Token an den Worker (Header `X-Emby-Token`) und der Worker braucht die passende CORS-Freigabe; ist der Worker nicht erreichbar, greift automatisch der Fallback oben. Bei weniger als 3 (Neu und beliebt) bzw. 5 (Startseite) auflösbaren Chart-Titeln wird ebenfalls der Fallback verwendet.
 
+So wird gerechnet (seit 1.21.0): Filme zählen ab 800 Sekunden Wiedergabe, Folgen ab 300 Sekunden. Was kürzlich lief, zählt mehr (Halbwertszeit 7 Tage). Bei Filmen bringt jede Person höchstens einen Punkt. Bei Serien bekommt jede Person log₂(1 + Folgen) Punkte, viel schauen zählt also mehr, aber abnehmend. „Am häufigsten geschaut“ sortiert weiter nach der Zahl der Zuschauer. Ein Info-Knopf (i) neben „Top 10 Serien/Filme“ erklärt das kurz in der Oberfläche. Er erscheint nur mit einem Worker ab 1.21.0.
+
 ## Meine Statistik (optional)
 
 Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Domain eine eigenständige Statistik-Seite (z. B. `/lenzflix-stats/`), erscheint „Meine Statistik“ im „Mehr“-Menü der Navigation und im „Mehr“-Overlay am Handy. Die URL im Custom-CSS eintragen:
@@ -229,7 +231,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.20.1/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

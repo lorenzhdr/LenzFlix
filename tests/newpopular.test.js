@@ -256,4 +256,32 @@ describe('Charts in Neu und beliebt', () => {
     await vi.waitFor(() => expect(titles()).toContain('Neueste Serien'), { timeout: 3000 });
     expect(titles()).not.toContain('Top 10 Filme');
   });
+
+  const RULES = { halfLifeDays: 7, minSecondsMovie: 800, minSecondsEpisode: 300 };
+  const sectionBtn = (id) => document.querySelector('#lfx-np-' + id + ' .lfx-chartinfo-btn');
+
+  it('Info-Knopf: bei Charts mit rules in Top 10 Serien/Filme, nicht in „Am häufigsten geschaut“', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...body(5), rules: RULES }) }));
+    feature.mount();
+    await vi.waitFor(() => expect(titles()).toContain('Top 10 Filme'), { timeout: 3000 });
+    expect(sectionBtn('top-series')).not.toBeNull();
+    expect(sectionBtn('top-movies')).not.toBeNull();
+    expect(sectionBtn('watched')).toBeNull();
+    expect(sectionBtn('top-series').previousElementSibling.classList.contains('lfx-row__title')).toBe(true);
+    expect(document.querySelectorAll('.lfx-chartinfo-btn').length).toBe(2);
+  });
+
+  it('Info-Knopf: ohne rules kein Knopf', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => body(5) }));
+    feature.mount();
+    await vi.waitFor(() => expect(titles()).toContain('Top 10 Filme'), { timeout: 3000 });
+    expect(document.querySelector('.lfx-chartinfo-btn')).toBeNull();
+  });
+
+  it('Info-Knopf: Fallback-Zeilen („Neueste …“) ohne Knopf', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ...body(2), rules: RULES }) }));
+    feature.mount();
+    await vi.waitFor(() => expect(titles()).toContain('Neueste Serien'), { timeout: 3000 });
+    expect(document.querySelector('.lfx-chartinfo-btn')).toBeNull();
+  });
 });

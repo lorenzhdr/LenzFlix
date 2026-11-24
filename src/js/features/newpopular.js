@@ -15,6 +15,7 @@ import { createCard, detailHref, landscapeFor } from './rows/card.js';
 import { brandName, isTheme, onThemeChange } from '../core/theme.js';
 import { cached, homeKey } from '../core/cache.js';
 import { BASE_PARAMS, badgeFor } from './rows/logic.js';
+import { syncChartInfo } from '../shared/chartinfo.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
 import { asItems, getNewSeriesIds } from './rows/sources.js';
 import { dateParts, hasPlayCounts, sinceLabel, uniqueTitles } from './newpopular/format.js';
@@ -75,7 +76,7 @@ async function loadChart(key, limit, type) {
     if (!charts || !(charts[key] || []).length) return { items: [], charted: false };
     const items = await resolveChartItems(charts[key], { type, limit });
     return items.length >= MIN_CHART_TITLES
-      ? { items, charted: true, windowDays: charts.windowDays }
+      ? { items, charted: true, windowDays: charts.windowDays, rules: charts.rules && typeof charts.rules === 'object' ? charts.rules : null }
       : { items: [], charted: false };
   } catch (e) {
     console.warn('[LenzFlix] Charts nicht auflösbar', e && e.message);
@@ -360,8 +361,11 @@ function build(tab) {
       if (!disposed) drop(id);
     }
   }
-  const rowRenderer = (title, kind, fallbackTitle) => (sec, items, newSeries, meta = {}) => {
+  const rowRenderer = (title, kind, fallbackTitle, chartKind) => (sec, items, newSeries, meta = {}) => {
     const row = createRow(meta.charted || !fallbackTitle ? title : fallbackTitle, items, kind, newSeries);
+    if (chartKind && meta.charted && meta.rules) {
+      syncChartInfo(row.el.querySelector('.lfx-row__head'), { kind: chartKind, rules: meta.rules, windowDays: meta.windowDays });
+    }
     sec.querySelector('.lfx-np__heading')?.remove();
     if (meta.charted) {
       row.el.querySelector('.lfx-row__head').after(h('p', { class: 'lfx-np__sub', dataset: { days: meta.windowDays || '' } }, chartSubtitle(meta.windowDays)));
@@ -375,8 +379,8 @@ function build(tab) {
       sec.append(h('div', { class: 'lfx-np__list' }, items.map((it) => createNewEntry(it, newSeries))));
     });
     fill('watched', loadMostWatchedSection, rowRenderer('Am häufigsten geschaut', 'landscape'));
-    fill('top-series', () => loadTopSection('Series'), rowRenderer('Top 10 Serien', 'top10', 'Neueste Serien'), 'Neueste Serien');
-    fill('top-movies', () => loadTopSection('Movie'), rowRenderer('Top 10 Filme', 'top10', 'Neueste Filme'), 'Neueste Filme');
+    fill('top-series', () => loadTopSection('Series'), rowRenderer('Top 10 Serien', 'top10', 'Neueste Serien', 'series'), 'Neueste Serien');
+    fill('top-movies', () => loadTopSection('Movie'), rowRenderer('Top 10 Filme', 'top10', 'Neueste Filme', 'movies'), 'Neueste Filme');
   } else {
     console.warn('[LenzFlix] Neu und beliebt: keine Anmeldung');
   }

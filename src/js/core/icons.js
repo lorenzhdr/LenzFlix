@@ -37,3 +37,8 @@ export const ICON_TVMODE = svg(
 export const ICON_DATASAVER = svg(
   '<path d="M3 15a9 9 0 0 1 18 0h-2a7 7 0 0 0-14 0z"/><circle cx="12" cy="15" r="1.9"/><path d="M6.4 11.6l6.05 2.6-.9 1.6z"/><path d="M11 4.2h2v2.2h-2z"/>',
 );
+
+/** Kreis mit „i“ (Info). */
+export const ICON_INFO = svg(
+  '<path fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16z"/><circle cx="12" cy="7.6" r="1.35"/><path d="M11 10.8h2v6.4h-2z"/>',
+);

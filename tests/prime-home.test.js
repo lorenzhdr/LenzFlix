@@ -14,6 +14,7 @@ vi.mock('../src/js/core/api.js', async () => {
 });
 vi.mock('../src/js/core/itemmenu.js', () => ({
   openItemMenu: vi.fn(), isMenuOpen: () => false, onItemsChanged: vi.fn(() => () => {}),
+  computeMenuPosition: () => ({ x: 0, y: 0 }), anchorRect: () => ({ left: 0, right: 0, top: 0, bottom: 0 }),
 }));
 vi.mock('../src/js/core/themepicker.js', () => ({ openThemePicker: vi.fn() }));
 vi.mock('../src/js/core/stats.js', () => ({ statsHref: vi.fn(() => '/stats?theme=prime'), STATS_LABEL: 'Meine Statistik' }));
@@ -40,7 +41,7 @@ vi.mock('../src/js/features/rows/prefetch.js', () => ({
 }));
 
 import feature, { moreHrefFor } from '../src/js/features/prime/home.js';
-import { pickPosterId } from '../src/js/features/prime/home-rows.js';
+import { pickPosterId, createRows as createPrimeRows } from '../src/js/features/prime/home-rows.js';
 import { primeHomeRoute } from '../src/js/features/prime/home-route.js';
 import { createPrimeCard } from '../src/js/features/prime/card.js';
 import { isTheme } from '../src/js/core/theme.js';
@@ -248,5 +249,69 @@ describe('prime-home: Hub ohne auflösbare Bibliothek', () => {
     feature.update(route('lfx=hub&lib=XX'));
     await vi.waitFor(() => expect(document.getElementById('lfx-prime-home')).toBeNull());
     expect(document.documentElement.classList.contains('lfx-prime-home-on')).toBe(false);
+  });
+});
+
+describe('Chart-Info-Knopf', () => {
+  const CHART = { kind: 'series', rules: { halfLifeDays: 7, minSecondsMovie: 800, minSecondsEpisode: 300 }, windowDays: 30 };
+  const TOP = (extra) => ({ id: 'top10-series', title: 'Top 10 Serien', kind: 'top10', load: async () => [mk('a'), mk('b')], ...extra });
+  const run = async (extra, opts) => {
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    const rows = createPrimeRows(slot, opts);
+    rows.add([TOP(extra)]);
+    await vi.waitFor(() => expect(slot.querySelector('.lfx-prime-row:not(.is-loading)')).not.toBeNull());
+    return { slot, rows };
+  };
+  afterEach(() => { document.body.innerHTML = ''; });
+
+  it('Chart-Zeile: Knopf direkt hinter dem Titel; Klick öffnet das Kästchen', async () => {
+    const { slot, rows } = await run({ chart: CHART });
+    const head = slot.querySelector('.lfx-prime-row__head');
+    const btn = head.querySelector('.lfx-chartinfo-btn');
+    expect(btn).not.toBeNull();
+    expect(btn.classList.contains('lfx-prime-row__info')).toBe(true);
+    expect(btn.getAttribute('aria-label')).toBe('So entsteht die Liste');
+    expect(btn.classList.contains('lfx-card')).toBe(false);
+    expect(btn.dataset.lfxId).toBeUndefined();
+    expect(btn.previousElementSibling.classList.contains('lfx-prime-row__title')).toBe(true);
+    expect(head.querySelectorAll('.lfx-chartinfo-btn')).toHaveLength(1);
+    btn.click();
+    expect(document.querySelector('.lfx-chartinfo-sheet').textContent).toContain('So entsteht die Liste');
+    document.querySelector('.lfx-chartinfo__close').click();
+    rows.destroy();
+  });
+
+  it('Mehr-Link bleibt hinter dem Knopf', async () => {
+    const { slot, rows } = await run({ chart: CHART }, { moreHref: () => '#/x' });
+    const btn = slot.querySelector('.lfx-chartinfo-btn');
+    expect(btn.previousElementSibling.classList.contains('lfx-prime-row__title')).toBe(true);
+    expect(btn.nextElementSibling.classList.contains('lfx-prime-row__more')).toBe(true);
+    rows.destroy();
+  });
+
+  it('chart null, ohne rules oder späteres Füllen ohne chart: kein Knopf', async () => {
+    const none = await run({ chart: null });
+    expect(none.slot.querySelector('.lfx-chartinfo-btn')).toBeNull();
+    none.rows.destroy();
+    const norules = await run({ chart: { kind: 'series', windowDays: 30 } });
+    expect(norules.slot.querySelector('.lfx-chartinfo-btn')).toBeNull();
+    norules.rows.destroy();
+    // dieselbe Def zuerst mit, dann (Rückfall) ohne Kennzeichen: der Knopf wird beim Füllen abgeglichen
+    const def = TOP({ chart: CHART });
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    const rows = createPrimeRows(slot);
+    rows.add([def]);
+    await vi.waitFor(() => expect(slot.querySelector('.lfx-chartinfo-btn')).not.toBeNull());
+    rows.destroy();
+    def.chart = null;
+    const slot2 = document.createElement('div');
+    document.body.append(slot2);
+    const rows2 = createPrimeRows(slot2);
+    rows2.add([def]);
+    await vi.waitFor(() => expect(slot2.querySelector('.lfx-prime-row:not(.is-loading)')).not.toBeNull());
+    expect(slot2.querySelector('.lfx-chartinfo-btn')).toBeNull();
+    rows2.destroy();
   });
 });

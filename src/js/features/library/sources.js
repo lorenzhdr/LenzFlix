@@ -7,7 +7,7 @@ import { putItems } from '../../core/itemstore.js';
 import { getCharts, getChartsUrl, resolveChartItems } from '../../core/charts.js';
 import { buildPool } from '../billboard/format.js';
 import { BASE_PARAMS, dayKey, pickGenres, selectTop10 } from '../rows/logic.js';
-import { asItems, wrapRow, chartSpecs, MIN_CHART_ROW } from '../rows/sources.js';
+import { asItems, wrapRow, chartSpecs, chartMeta, MIN_CHART_ROW } from '../rows/sources.js';
 
 export const LIB_TYPES = { series: 'Series', movies: 'Movie' };
 const RESUME_TYPES = { series: 'Episode', movies: 'Movie' };
@@ -141,12 +141,13 @@ export async function buildLibraryRowDefs(kind, { genre, genreName } = {}) {
   defs.push({
     id: `${pre}top10`, title: chartTitle || `Top 10 auf ${brandName()}`, kind: 'top10',
     async load(def) {
+      def.chart = null;
       try {
         const charts = await getCharts();
         if (charts && (charts[chartKey] || []).length) {
           const list = await resolveChartItems(charts[chartKey], { limit: 10 });
           const own = list.filter((it) => it.Type === type);
-          if (own.length >= MIN_CHART_ROW) return own;
+          if (own.length >= MIN_CHART_ROW) { def.chart = chartMeta(charts, chartKey); return own; }
         }
       } catch (e) {
         console.warn('[LenzFlix] Top 10 nicht aufgebaut', e && e.message);

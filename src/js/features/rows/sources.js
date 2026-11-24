@@ -84,6 +84,13 @@ export function chartSpecs() {
   ];
 }
 
+/** Kennzeichen „echte Chart-Zeile“ für den Info-Knopf: nur mit rules in der Charts-Antwort (alter Worker: null). */
+export function chartMeta(charts, kind) {
+  const rules = charts && charts.rules;
+  if (!rules || typeof rules !== 'object') return null;
+  return { kind, rules, windowDays: charts.windowDays };
+}
+
 /** Echte Top-10-Zeilen (Serien/Filme), je nur mit >= 5 auflösbaren Titeln. Leer, wenn keine Charts. */
 async function buildChartDefs() {
   try {
@@ -94,7 +101,7 @@ async function buildChartDefs() {
     const defs = [];
     specs.forEach((s, i) => {
       const list = lists[i];
-      if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: 'top10', load: () => list });
+      if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: 'top10', chart: chartMeta(charts, s.key), load: () => list });
     });
     return defs;
   } catch (e) {
@@ -107,17 +114,21 @@ const VIEWS_TTL = 5 * 60_000;
 
 const degraded = new WeakSet(); // Zeilenlisten ohne Bibliotheken/Genres: nicht cachen
 
-/** Zeilen-Ergebnis 10 min pro Nutzer cachen (Zufalls-Sortierung bleibt gleich); Snapshot {items, id, title} wegen Titel-/Id-Anpassungen. */
+/** Zeilen-Ergebnis 10 min pro Nutzer cachen (Zufalls-Sortierung bleibt gleich); Snapshot {items, id, title, chart} wegen Titel-/Id-Anpassungen. */
 export function wrapRow(def) {
   const key = homeKey(api.getUserId(), 'row', def.id);
   const orig = def.load;
   def.cacheKey = key;
   def.load = async (d = def) => {
     d.noCache = false;
-    const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title, noCache: !!d.noCache }),
+    const snap = await cached(key, async () => {
+      const items = await orig(d);
+      return { items, id: d.id, title: d.title, chart: d.chart ?? null, noCache: !!d.noCache };
+    },
       (s) => (s.noCache ? 0 : HOME_TTL)); // Ersatz bei fehlenden Charts: nicht 10 min festhalten
     d.id = snap.id;
     d.title = snap.title;
+    d.chart = snap.chart ?? null;
     return snap.items;
   };
   return def;
@@ -167,7 +178,7 @@ async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = f
   const newTop10 = () => items({
     IncludeItemTypes: MOVIE_SERIES, Recursive: true, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 10,
   }).then(selectTop10);
-  const fallbackDef = () => ({ id: 'top10', title: `Top 10: Neu auf ${brandName()}`, kind: 'top10', load: newTop10 });
+  const fallbackDef = () => ({ id: 'top10', title: `Top 10: Neu auf ${brandName()}`, kind: 'top10', chart: null, load: newTop10 });
   if (deferCharts) {
     if (!getChartsUrl()) defs.push(fallbackDef());
     else {
@@ -180,8 +191,10 @@ async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = f
             const found = await chartDefs;
             if (found.length) {
               const hit = found.find((d) => d.id === s.id);
+              def.chart = hit ? (hit.chart ?? null) : null;
               return hit ? hit.load() : [];
             }
+            def.chart = null;
             if (i !== 0) return [];
             const fb = fallbackDef(); // keine Charts: erste Platzhalter-Zeile wird zur „Neu auf“-Zeile
             def.id = fb.id;

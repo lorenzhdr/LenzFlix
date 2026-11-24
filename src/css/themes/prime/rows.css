@@ -36,6 +36,17 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:focus-within .lfx-pri
   html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:hover { color: var(--pv-text-2); }
 }
 
+/* Info-Knopf „So entsteht die Liste“ (Top-10-Chart-Zeilen): direkt hinter dem Titel, „Mehr ansehen“ bleibt rechts daneben */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__info {
+  align-self: center;
+  margin: -6px 0 -6px -12px;
+  color: var(--pv-text-2);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__info:focus-visible { outline-offset: 0; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__info:hover { color: #fff; }
+}
+
 /* Viewport: Container für die Kartenbreite (cqw), Track: nativer Scroll-Container */
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__viewport {
   position: relative;

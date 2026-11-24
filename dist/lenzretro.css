@@ -2400,6 +2400,25 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__more:focus-visible {
   }
 }
 
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info {
+  color: var(--lfx-retro-amber-lo);
+  border-radius: 2px;
+  align-self: center;
+  margin-left: 10px;
+  transition: color 90ms steps(2, end);
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info:focus-visible {
+  color: var(--lfx-retro-amber-hi);
+  outline-color: var(--lfx-retro-amber-hi);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info:hover {
+    color: var(--lfx-retro-amber-hi);
+  }
+}
+
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__viewport {
   position: relative;
 }
@@ -2595,6 +2614,11 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-more:disabled {
 
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__more {
     font-size: 17px;
+  }
+
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-row__info {
+    flex: none;
+    margin-left: 6px;
   }
 
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-shelf {
@@ -5387,6 +5411,22 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-np .lfx-row__title:before {
   content: "// ";
   color: var(--lfx-retro-hot);
   text-shadow: 0 0 8px rgba(255, 90, 31, .6);
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-np .lfx-chartinfo-btn {
+  color: var(--lfx-retro-amber-lo);
+  border-radius: 2px;
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-np .lfx-chartinfo-btn:focus-visible {
+  color: var(--lfx-retro-amber-hi);
+  outline-color: var(--lfx-retro-amber-hi);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-np .lfx-chartinfo-btn:hover {
+    color: var(--lfx-retro-amber-hi);
+  }
 }
 
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-np .lfx-card__rank {

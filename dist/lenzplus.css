@@ -964,6 +964,18 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__title {
   line-height: 35px;
 }
 
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row--chart > .lfx-plus-row__title {
+  max-width: calc(100% - var(--plus-gutter) - 40px);
+  vertical-align: middle;
+  margin-right: 0;
+  display: inline-block;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__info {
+  vertical-align: middle;
+  margin: 0 0 0 4px;
+}
+
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__viewport {
   position: relative;
 }

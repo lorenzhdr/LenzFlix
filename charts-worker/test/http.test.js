@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import worker, { clearTokenCache } from '../src/index.js';
 
 const ORIGIN = 'https://stream.example';
-const DATA = { version: 1, generatedAt: '2026-11-08T19:00:00Z', windowDays: 30, metric: 'viewers', movies: [], series: [], all: [] };
+const DATA = { version: 1, generatedAt: '2026-11-08T19:00:00Z', windowDays: 30, metric: 'score', movies: [], series: [], all: [] };
 
 function makeEnv(stored) {
   const kv = new Map(stored ? [['charts:v1', stored]] : []);
@@ -97,14 +97,14 @@ describe('/health und /refresh', () => {
   it('refresh mit Secret schreibt KV ohne UserIds', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(new Response(JSON.stringify({ colums: ['ItemId', 'ItemType', 'UserId', 'plays', 'secs'], results: [['m1', 'Movie', 'secretuser', '1', '300']] }))),
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ colums: ['ItemId', 'ItemType', 'UserId', 'plays', 'secs', 'age'], results: [['m1', 'Movie', 'secretuser', '1', '900', '0']] }))),
     );
     const env = makeEnv();
     const res = await worker.fetch(req('/refresh', { method: 'POST', headers: { 'X-Refresh-Secret': 'sec' } }), env);
     expect(res.status).toBe(200);
     const stored = env.CHARTS.put.mock.calls[0][1];
     expect(stored).not.toContain('secretuser');
-    expect(JSON.parse(stored).movies[0]).toEqual({ id: 'm1', viewers: 1, plays: 1, seconds: 300 });
+    expect(JSON.parse(stored).movies[0]).toEqual({ id: 'm1', viewers: 1, plays: 1, seconds: 900, score: 1 });
   });
 
   it('Cron: leeres Ergebnis wird gespeichert, Fehler behält altes Ergebnis', async () => {

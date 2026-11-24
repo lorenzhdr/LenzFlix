@@ -10,13 +10,19 @@ export function parseCustomQuery(json) {
   const cols = json?.colums ?? json?.columns;
   const results = json?.results;
   if (!Array.isArray(cols) || !Array.isArray(results)) return [];
-  const [iId, iType, iUser, iPlays, iSecs] = ['ItemId', 'ItemType', 'UserId', 'plays', 'secs'].map((n) =>
+  const [iId, iType, iUser, iPlays, iSecs, iAge] = ['ItemId', 'ItemType', 'UserId', 'plays', 'secs', 'age'].map((n) =>
     cols.indexOf(n),
   );
   if (iId < 0 || iType < 0 || iUser < 0) return [];
   const toNum = (v) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
+  };
+  // Alter in Sekunden: Spalte fehlt -> undefined (Aufrufer), Zelle nicht als Zahl lesbar -> null.
+  const toAge = (v) => {
+    if (v === null || v === undefined || String(v).trim() === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
   };
   return results
     .filter(Array.isArray)
@@ -26,6 +32,7 @@ export function parseCustomQuery(json) {
       userId: normId(r[iUser]),
       plays: iPlays >= 0 ? toNum(r[iPlays]) : 1,
       secs: iSecs >= 0 ? toNum(r[iSecs]) : 0,
+      age: iAge >= 0 ? toAge(r[iAge]) : undefined,
     }));
 }
 

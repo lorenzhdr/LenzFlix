@@ -4,6 +4,7 @@ import { h } from '../../core/dom.js';
 import { isDataSaver } from '../../core/datasaver.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
+import { syncChartInfo } from '../../shared/chartinfo.js';
 import { startRowPrefetch } from '../rows/prefetch.js';
 import { attachScroller } from '../rows/scroller.js';
 import { createTapeCard } from './card.js';
@@ -105,6 +106,8 @@ export function createRows(slot, { moreHref = () => null, prefetch = false, hero
       track.before(prev);
       track.after(next);
       rowEl.querySelector('.lfx-retro-row__title').textContent = title;
+      const head = rowEl.querySelector('.lfx-retro-row__head');
+      syncChartInfo(head, def.chart, { className: 'lfx-retro-row__info', before: head.querySelector('.lfx-retro-row__more') });
       rowEl.classList.remove('is-loading');
       rowEl.dataset.variant = variant;
       disposers.push(attachScroller({ track, prev, next, indicator: null }));

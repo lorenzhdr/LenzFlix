@@ -25,6 +25,17 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__title {
   letter-spacing: -0.1px;
   line-height: 35px;
 }
+/* Chart-Zeilen: Titel und Info-Knopf „So entsteht die Liste“ in einer Zeile (kein Kopf-Container); andere Zeilen unberührt */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row--chart > .lfx-plus-row__title {
+  display: inline-block;
+  max-width: calc(100% - var(--plus-gutter) - 40px);
+  margin-right: 0;
+  vertical-align: middle;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__info {
+  vertical-align: middle;
+  margin: 0 0 0 4px;
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__viewport {
   position: relative;
 }

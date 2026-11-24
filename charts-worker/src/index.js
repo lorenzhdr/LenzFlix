@@ -1,10 +1,10 @@
-import { aggregate } from './aggregate.js';
+import { HALF_LIFE_DAYS, aggregate } from './aggregate.js';
 import { jsonResponse, preflight } from './http.js';
 import { checkToken, resolveSeries, runCustomQuery } from './jellyfin.js';
 import { handleMeStats } from './me-stats.js';
 import { handleOnline, handleTicket, handleUpgrade } from './mp/route.js';
 export { MpWorld } from './mp/world.js';
-import { buildSql, windowDays } from './sql.js';
+import { buildSql, minSeconds, minSecondsMovie, windowDays } from './sql.js';
 import { handleWx } from './wx.js';
 
 const KV_KEY = 'charts:v1';
@@ -48,7 +48,11 @@ async function isTokenValid(env, token) {
 
 export async function computeCharts(env) {
   const days = windowDays(env.WINDOW_DAYS);
-  const rows = await runCustomQuery(env, buildSql(env.WINDOW_DAYS, env.MIN_SECONDS));
+  const rows = await runCustomQuery(env, buildSql(env.WINDOW_DAYS, env.MIN_SECONDS, env.MIN_SECONDS_MOVIE));
+  // Kein stiller Ausfall: ohne gültiges Alter wäre die Aktualität wirkungslos -> altes KV-Ergebnis bleibt.
+  if (rows.length > 0 && !rows.some((r) => typeof r.age === 'number' && Number.isFinite(r.age))) {
+    throw new Error('charts: age column missing');
+  }
   const perEpisode = new Map();
   for (const r of rows) {
     if (r.itemType !== 'Episode') continue;
@@ -68,7 +72,12 @@ export async function computeCharts(env) {
     version: 1,
     generatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
     windowDays: days,
-    metric: 'viewers',
+    metric: 'score',
+    rules: {
+      halfLifeDays: HALF_LIFE_DAYS,
+      minSecondsMovie: minSecondsMovie(env.MIN_SECONDS_MOVIE),
+      minSecondsEpisode: minSeconds(env.MIN_SECONDS),
+    },
     movies,
     series,
     all,

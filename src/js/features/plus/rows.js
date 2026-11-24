@@ -5,6 +5,7 @@ import { isDataSaver } from '../../core/datasaver.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { plusBadge, getNewContentInfo } from '../../shared/newcontent.js';
+import { syncChartInfo } from '../../shared/chartinfo.js';
 import { startRowPrefetch } from '../rows/prefetch.js';
 import { attachScroller, chevronButton } from '../rows/scroller.js';
 import { createPlusCard } from './card.js';
@@ -42,6 +43,8 @@ function fill(rowEl, def, items, info, eager = false) {
   viewport.textContent = '';
   viewport.append(prev, track, next);
   rowEl.querySelector('.lfx-plus-row__title').textContent = def.title || '';
+  // Kein Kopf-Container: Knopf direkt hinter das h2 (erstes h2 der Section ist der Titel, Karten stehen im Viewport)
+  rowEl.classList.toggle('lfx-plus-row--chart', !!syncChartInfo(rowEl, def.chart, { className: 'lfx-plus-row__info' }));
   rowEl.classList.remove('is-loading');
   return attachScroller({ track, prev, next, indicator: null });
 }

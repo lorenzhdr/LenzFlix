@@ -120,6 +120,11 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
     text-shadow: var(--lfx-retro-glow);
   }
   & .lfx-np .lfx-row__title::before { content: "// "; color: var(--lfx-retro-hot); text-shadow: 0 0 8px rgba(255, 90, 31, 0.6); }
+  & .lfx-np .lfx-chartinfo-btn { color: var(--lfx-retro-amber-lo); border-radius: 2px; }
+  & .lfx-np .lfx-chartinfo-btn:focus-visible { color: var(--lfx-retro-amber-hi); outline-color: var(--lfx-retro-amber-hi); }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-np .lfx-chartinfo-btn:hover { color: var(--lfx-retro-amber-hi); }
+  }
   & .lfx-np .lfx-card__rank {
     font-family: var(--lfx-retro-font-pixel);
     font-weight: 400;
