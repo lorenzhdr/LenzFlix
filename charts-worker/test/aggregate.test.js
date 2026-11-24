@@ -109,6 +109,50 @@ describe('aggregate', () => {
     expect(r.movies.map((x) => x.id)).toEqual(['d', 'c', 'b', 'a', 'z']);
   });
 
+  it('gleiches Alter (Tageswerte) -> exakter score-Gleichstand', () => {
+    const r = aggregate([row('a', 'Movie', 'u1', 1, 900, 2 * DAY), row('b', 'Movie', 'u1', 1, 900, 2 * DAY)], new Map());
+    expect(r.movies[0].score).toBe(r.movies[1].score);
+  });
+
+  it('Filme: höhere completion gewinnt bei gleichem score/viewers, unabhängig von der Länge', () => {
+    // short: 90 min, 2 Personen ganz; long: 180 min, 2 Personen halb -> gleiche Sekunden
+    const rt = new Map([['short', 5400], ['long', 10800]]);
+    const rows = [
+      row('long', 'Movie', 'u1', 1, 5400),
+      row('long', 'Movie', 'u2', 1, 5400),
+      row('short', 'Movie', 'u1', 1, 5400),
+      row('short', 'Movie', 'u2', 1, 5400),
+    ];
+    const r = aggregate(rows, new Map(), 50, rt);
+    expect(r.movies.map((x) => x.id)).toEqual(['short', 'long']);
+    expect(r.movies[0].completion).toBe(2);
+    expect(r.movies[1].completion).toBe(1);
+    // ohne Laufzeiten: Rückfall auf seconds/plays/id, kein completion-Feld
+    const r2 = aggregate(rows, new Map());
+    expect(r2.movies.map((x) => x.id)).toEqual(['long', 'short']);
+    expect('completion' in r2.movies[0]).toBe(false);
+  });
+
+  it('Filme: completion nur im Vergleich, wenn beide eine Laufzeit haben', () => {
+    const rows = [row('a', 'Movie', 'u1', 1, 100), row('b', 'Movie', 'u1', 1, 200)];
+    const r = aggregate(rows, new Map(), 50, new Map([['a', 100]]));
+    expect(r.movies.map((x) => x.id)).toEqual(['b', 'a']); // b mehr seconds; a hat nur einseitig completion
+    expect(r.movies[1].completion).toBe(1);
+    expect('completion' in r.movies[0]).toBe(false);
+  });
+
+  it('Filme: completion je Person auf 1 gekappt', () => {
+    const r = aggregate([row('a', 'Movie', 'u1', 3, 9000)], new Map(), 50, new Map([['a', 3000]]));
+    expect(r.movies[0].completion).toBe(1);
+  });
+
+  it('Serien: seconds vor plays; all bleibt viewers/plays/seconds', () => {
+    const rows = [row('e1', 'Episode', 'u1', 9, 100), row('e2', 'Episode', 'u1', 1, 5000)];
+    const r = aggregate(rows, new Map([['e1', 'A'], ['e2', 'B']]));
+    expect(r.series.map((x) => x.id)).toEqual(['B', 'A']);
+    expect(r.all.map((x) => x.id)).toEqual(['A', 'B']);
+  });
+
   it('Gleicher score, mehr viewers gewinnt', () => {
     // x: 2 Personen je 0.5 = 1.0; y: 1 Person frisch = 1.0
     const r = aggregate([row('y', 'Movie', 'u1'), row('x', 'Movie', 'u1', 1, 600, 7 * DAY), row('x', 'Movie', 'u2', 1, 600, 7 * DAY)], new Map());

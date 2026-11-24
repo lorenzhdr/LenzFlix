@@ -19,10 +19,11 @@ export function buildSql(windowDaysValue, minSecondsValue, minSecondsMovieValue)
   const days = windowDays(windowDaysValue);
   const secs = minSeconds(minSecondsValue);
   const movieSecs = minSecondsMovie(minSecondsMovieValue);
-  // age = Alter des letzten Abrufs in ganzen Sekunden (DateCreated = lokale Serverzeit, wie 'now','localtime').
+  // age = Alter des letzten Abrufs in ganzen Kalendertagen, als Sekunden (Vielfaches von 86400):
+  // Mitternacht heute minus Mitternacht des Abruftags (DateCreated = lokale Serverzeit, wie 'now','localtime').
   return (
     'SELECT ItemId, ItemType, UserId, COUNT(*) AS plays, SUM(PlayDuration) AS secs, ' +
-    "(strftime('%s','now','localtime') - strftime('%s', substr(MAX(DateCreated),1,19))) AS age " +
+    "(strftime('%s','now','localtime','start of day') - strftime('%s', substr(MAX(DateCreated),1,10))) AS age " +
     'FROM PlaybackActivity ' +
     `WHERE ((ItemType = 'Movie' AND PlayDuration >= ${movieSecs}) ` +
     `OR (ItemType = 'Episode' AND PlayDuration >= ${secs})) ` +

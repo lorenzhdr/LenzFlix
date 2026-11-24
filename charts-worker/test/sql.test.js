@@ -40,10 +40,11 @@ describe('sql', () => {
     expect(buildSql('30', '300', '800')).toBe(sql);
   });
 
-  it('liefert das Alter des letzten Abrufs in ganzen Sekunden als Spalte age', () => {
+  it('liefert das Alter des letzten Abrufs in ganzen Kalendertagen (als Sekunden) als Spalte age', () => {
     const sql = buildSql();
-    expect(sql).toContain("strftime('%s','now','localtime')");
-    expect(sql).toContain("strftime('%s', substr(MAX(DateCreated),1,19))");
+    expect(sql).toContain("strftime('%s','now','localtime','start of day')");
+    expect(sql).toContain("strftime('%s', substr(MAX(DateCreated),1,10))");
+    expect(sql).not.toContain('1,19');
     expect(sql).toContain(' AS age ');
   });
 

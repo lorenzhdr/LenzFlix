@@ -1,6 +1,6 @@
-import { HALF_LIFE_DAYS, aggregate } from './aggregate.js';
+import { HALF_LIFE_DAYS, LIMIT, aggregate } from './aggregate.js';
 import { jsonResponse, preflight } from './http.js';
-import { checkToken, resolveSeries, runCustomQuery } from './jellyfin.js';
+import { checkToken, resolveRuntimes, resolveSeries, runCustomQuery } from './jellyfin.js';
 import { handleMeStats } from './me-stats.js';
 import { handleOnline, handleTicket, handleUpgrade } from './mp/route.js';
 export { MpWorld } from './mp/world.js';
@@ -11,7 +11,8 @@ const KV_KEY = 'charts:v1';
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 const NEG_TTL_MS = 60 * 1000;
 const MAX_CACHE = 500;
-// Free-Plan: höchstens 50 Subrequests je Lauf; 2000 Episoden = 20 /Items-Blöcke + Abfrage + /Users.
+// Free-Plan: höchstens 50 Subrequests je Lauf; 2000 Episoden = 20 /Items-Blöcke + Abfrage + /Users,
+// dazu höchstens 5 Laufzeit-Blöcke (500 Filme) + /Users: worst case 28.
 const EPISODE_CAP = 2000;
 
 /*
@@ -67,7 +68,21 @@ export async function computeCharts(env) {
     .slice(0, EPISODE_CAP)
     .map((e) => e.id);
   const seriesByEpisode = episodeIds.length ? await resolveSeries(env, episodeIds) : new Map();
-  const { movies, series, all } = aggregate(rows, seriesByEpisode);
+  // Filmlängen (nur für den Gleichstand „Anteil gesehen“); Fehler -> leere Map, Lauf bleibt gültig.
+  const perMovie = new Map();
+  for (const r of rows) {
+    if (r.itemType !== 'Movie') continue;
+    const e = perMovie.get(r.itemId) ?? { id: r.itemId, viewers: 0, secs: 0 };
+    e.viewers += 1;
+    e.secs += r.secs;
+    perMovie.set(r.itemId, e);
+  }
+  const movieIds = [...perMovie.values()]
+    .sort((a, b) => b.viewers - a.viewers || b.secs - a.secs || (a.id < b.id ? -1 : 1))
+    .slice(0, 500)
+    .map((e) => e.id);
+  const runtimes = movieIds.length ? await resolveRuntimes(env, movieIds) : new Map();
+  const { movies, series, all } = aggregate(rows, seriesByEpisode, LIMIT, runtimes);
   return {
     version: 1,
     generatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
@@ -75,6 +90,7 @@ export async function computeCharts(env) {
     metric: 'score',
     rules: {
       halfLifeDays: HALF_LIFE_DAYS,
+      ageUnit: 'day',
       minSecondsMovie: minSecondsMovie(env.MIN_SECONDS_MOVIE),
       minSecondsEpisode: minSeconds(env.MIN_SECONDS),
     },

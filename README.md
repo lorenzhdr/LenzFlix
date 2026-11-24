@@ -185,7 +185,7 @@ Für serverweite Charts („Top 10 Serien/Filme auf LENZFLIX“, meistgesehen de
 
 Alternativ per JS: `window.LenzFlixConfig = { chartsUrl: "https://charts.example.com" }` (hat Vorrang). Nur `https://`-URLs werden akzeptiert. Der Browser sendet dein Jellyfin-Token an den Worker (Header `X-Emby-Token`) und der Worker braucht die passende CORS-Freigabe; ist der Worker nicht erreichbar, greift automatisch der Fallback oben. Bei weniger als 3 (Neu und beliebt) bzw. 5 (Startseite) auflösbaren Chart-Titeln wird ebenfalls der Fallback verwendet.
 
-So wird gerechnet (seit 1.21.0): Filme zählen ab 800 Sekunden Wiedergabe, Folgen ab 300 Sekunden. Was kürzlich lief, zählt mehr (Halbwertszeit 7 Tage). Bei Filmen bringt jede Person höchstens einen Punkt. Bei Serien bekommt jede Person log₂(1 + Folgen) Punkte, viel schauen zählt also mehr, aber abnehmend. „Am häufigsten geschaut“ sortiert weiter nach der Zahl der Zuschauer. Ein Info-Knopf (i) neben „Top 10 Serien/Filme“ erklärt das kurz in der Oberfläche. Er erscheint nur mit einem Worker ab 1.21.0.
+So wird gerechnet (seit 1.21.0): Filme zählen ab 800 Sekunden Wiedergabe, Folgen ab 300 Sekunden. Was kürzlich lief, zählt mehr (Halbwertszeit 7 Tage). Abrufe vom selben Tag zählen gleich. Bei Filmen bringt jede Person höchstens einen Punkt. Bei Serien bekommt jede Person log₂(1 + Folgen) Punkte, viel schauen zählt also mehr, aber abnehmend. Bei Gleichstand entscheidet bei Filmen, wie viel vom Film gesehen wurde, bei Serien die Schauzeit. „Am häufigsten geschaut“ sortiert weiter nach der Zahl der Zuschauer. Ein Info-Knopf (i) neben „Top 10 Serien/Filme“ erklärt das kurz in der Oberfläche. Er erscheint nur mit einem Worker ab 1.21.0.
 
 ## Meine Statistik (optional)
 

@@ -89,6 +89,38 @@ export async function resolveSeries(env, episodeIds) {
   return map;
 }
 
+/**
+ * Film-IDs -> Map<normId, Laufzeit in Sekunden> (100er-Blöcke, höchstens 5 Blöcke = 500 Filme).
+ * RunTimeTicks steckt standardmäßig im Item-DTO (kein Fields nötig). Jeder Fehler -> leere Map (Lauf bricht nie ab).
+ */
+export const RUNTIME_MAX_CHUNKS = 5;
+export async function resolveRuntimes(env, movieIds) {
+  const map = new Map();
+  try {
+    const all = movieIds.slice(0, CHUNK * RUNTIME_MAX_CHUNKS);
+    if (!all.length) return map;
+    const userId = await getAdminUserId(env);
+    const userParam = userId ? `&userId=${userId}` : '';
+    for (let i = 0; i < all.length; i += CHUNK) {
+      const ids = all.slice(i, i + CHUNK);
+      const url = `${base(env)}/Items?Ids=${ids.join(',')}&EnableImages=false${userParam}`;
+      const res = await fetch(url, {
+        headers: { Authorization: auth(env.JELLYFIN_API_KEY) },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`runtime lookup failed: HTTP ${res.status}`);
+      const data = await res.json();
+      for (const it of data?.Items ?? []) {
+        const sec = Number(it?.RunTimeTicks) / 10_000_000;
+        if (it?.Id && Number.isFinite(sec) && sec > 0) map.set(normId(it.Id), sec);
+      }
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 /** true = gültig, false = ungültig (401/403), wirft bei Nichterreichbarkeit/5xx. */
 export async function checkToken(env, token) {
   const res = await fetch(`${base(env)}/Users/Me`, {

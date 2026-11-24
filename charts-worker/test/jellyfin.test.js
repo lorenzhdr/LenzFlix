@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { checkToken, parseCustomQuery, resolveSeries, runCustomQuery } from '../src/jellyfin.js';
+import { checkToken, parseCustomQuery, resolveRuntimes, resolveSeries, runCustomQuery } from '../src/jellyfin.js';
 
 const env = { JELLYFIN_URL: 'https://jf.example/', JELLYFIN_API_KEY: 'KEY' };
 afterEach(() => vi.restoreAllMocks());
@@ -78,6 +78,34 @@ describe('Jellyfin-Aufrufe', () => {
     expect(map.get('e1')).toBe('s1');
     expect(map.has('e0')).toBe(false);
     expect(map.has('e100')).toBe(false);
+  });
+
+  it('resolveRuntimes: 100er-Blöcke, höchstens 5, Ticks -> Sekunden', async () => {
+    const f = vi.fn().mockImplementation(async (url) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/Users')) return new Response('[]');
+      const ids = u.searchParams.get('Ids').split(',');
+      return new Response(JSON.stringify({ Items: ids.map((id, i) => ({ Id: id, RunTimeTicks: i === 0 ? 0 : 54_000_000_000 })) }));
+    });
+    vi.stubGlobal('fetch', f);
+    const ids = Array.from({ length: 700 }, (_, i) => `M${i}`);
+    const map = await resolveRuntimes(env, ids);
+    expect(f).toHaveBeenCalledTimes(6); // 1× /Users + 5× /Items
+    expect(map.get('m1')).toBe(5400);
+    expect(map.has('m0')).toBe(false); // 0 Ticks = keine Laufzeit
+    expect(map.has('m500')).toBe(false); // jenseits der 500
+    expect(map.has('m499')).toBe(true);
+  });
+
+  it('resolveRuntimes: Fehler -> leere Map, leere Eingabe ohne Aufruf', async () => {
+    const f = vi.fn().mockResolvedValue(new Response('', { status: 500 }));
+    vi.stubGlobal('fetch', f);
+    expect((await resolveRuntimes(env, ['a'])).size).toBe(0);
+    f.mockClear();
+    expect((await resolveRuntimes(env, [])).size).toBe(0);
+    expect(f).not.toHaveBeenCalled();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('net')));
+    expect((await resolveRuntimes(env, ['a'])).size).toBe(0);
   });
 
   it('checkToken: 200 true, 401 false, 500 wirft', async () => {
