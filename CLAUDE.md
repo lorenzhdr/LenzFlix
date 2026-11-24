@@ -120,7 +120,7 @@ Stand 25.11.2026 (1.21.1 veröffentlicht). Bei jedem Release aktualisieren, knap
   - **Geprüft:**
     - 4950 Root-Tests, 541 Worker-Tests, Lint 0, TV/Store/Upnext byte-gleich.
     - Live im Claude-Tab über den Tunnel: alle 4 Designs und alle Orte am Desktop.
-    - Handy nur per Headless (375 px, flix und retro). Das Claude-Fenster ist maximiert, `resize_window` wirkt nicht.
+    - Handy nur per Headless (375 px, alle 4 Designs: Zeilenkopf und Kästchen; iframe-Trick, weil Headless-Chrome mindestens 526 px breit ist). Das Claude-Fenster ist maximiert, `resize_window` wirkt nicht.
     - Echte `/charts` nach dem Cron: `rules` da, Film-Score ≤ viewers, `all` nach viewers sortiert.
   - **Offen:**
     - Der Server lädt per Injector/Custom-CSS noch `@v1.20.1`. Der Nutzer muss auf `@v1.21.0` umstellen (CSS-Import, `lenzflix.min.js`, `lenzupnext.min.js`) – Ziel inzwischen `@v1.21.1`.
