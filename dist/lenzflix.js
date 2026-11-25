@@ -420,7 +420,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.21.1";
+  var VERSION = "1.21.2";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -7920,11 +7920,16 @@
     const win = windowText(chart.windowDays);
     if (chart.kind === "movies") {
       const min2 = minutes(rules.minSecondsMovie);
+      const byDay = rules.ageUnit === "day";
       return [
         para(`Gez\xE4hlt wird, wer einen Film ${win} geschaut hat${min2 ? `, ab ${min2}` : "."} Jede Person bringt h\xF6chstens 1 Punkt, mehrmals schauen z\xE4hlt nicht extra.`),
         heading("Neues z\xE4hlt mehr"),
         bars(half),
-        hint(`Wer den Film ${daysAgo(half)} gesehen hat, z\xE4hlt nur noch halb.`)
+        hint(`${byDay ? "Abrufe vom selben Tag z\xE4hlen gleich. " : ""}Wer den Film ${daysAgo(half)} gesehen hat, z\xE4hlt nur noch halb.`),
+        ...byDay ? [
+          heading("Bei Gleichstand"),
+          para("Entscheidet, wie viel vom Film gesehen wurde: Zweimal ganz geschaut liegt vor zweimal halb geschaut, egal wie lang der Film ist.")
+        ] : []
       ];
     }
     const min = minutes(rules.minSecondsEpisode);

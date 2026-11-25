@@ -100,7 +100,8 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 25.11.2026 (1.21.1 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
+Stand 25.11.2026 (1.21.2 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
+- **1.21.2 (Tag `v1.21.2`):** Das Info-Kästchen der Filme nennt zwei Regeln: „Abrufe vom selben Tag zählen gleich“ und „Bei Gleichstand“ (gesehener Anteil). Beide stehen nur da, wenn `rules.ageUnit === 'day'`; ein älterer Worker ohne diesen Wert zeigt den Text von 1.21.0. Geprüft: 4951 Tests, Lint 0, TV/Store/Upnext byte-gleich, Kästchen per Headless bei 375 px (prime und retro). Der Server muss auf `@v1.21.2` umgestellt werden.
 - **Charts-Worker nach 1.21.1 (Commit 3ad5f07, Worker b972402e, kein Theme-Release nötig):**
   - Das Alter zählt in ganzen Kalendertagen (`'start of day'` bzw. `substr(…,1,10)`), Abrufe vom selben Tag zählen also gleich. `rules.ageUnit: 'day'`.
   - Gleichstand bei Filmen: Zuschauer, dann `completion` (Σ je Person min(1, Sekunden/Laufzeit); Laufzeiten per `resolveRuntimes`, höchstens 5 Blöcke; ein Fehler fällt auf die Sekunden zurück), dann Sekunden, Wiedergaben, ID. Bei Serien: Zuschauer, Sekunden, Wiedergaben, ID.

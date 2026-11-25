@@ -83,6 +83,20 @@ describe('chartInfoButton', () => {
     expect(t).toContain('Wer den Film vor 7 Tagen gesehen hat, zählt nur noch halb.');
     expect(document.querySelectorAll('.lfx-chartinfo__step').length).toBe(0);
     expect(document.querySelectorAll('.lfx-chartinfo__bar').length).toBe(3);
+    // Worker ohne ageUnit (1.21.0): kein Hinweis auf Tage/Gleichstand
+    expect(t).not.toContain('selben Tag');
+    expect(t).not.toContain('Bei Gleichstand');
+  });
+
+  it('Filme mit ageUnit day: gleicher Tag zählt gleich, Gleichstand nach gesehenem Anteil', () => {
+    openFor(chart('movies', { rules: { ageUnit: 'day' } }));
+    const t = sheetText();
+    expect(t).toContain('Abrufe vom selben Tag zählen gleich. Wer den Film vor 7 Tagen gesehen hat, zählt nur noch halb.');
+    expect(t).toContain('Bei Gleichstand');
+    expect(t).toContain('Zweimal ganz geschaut liegt vor zweimal halb geschaut');
+    closeChooser();
+    openFor(chart('series', { rules: { ageUnit: 'day' } }));
+    expect(sheetText()).not.toContain('Bei Gleichstand');
   });
 
   it('andere rules-Werte fließen ein; Plural und Minuten-Auslassung', () => {

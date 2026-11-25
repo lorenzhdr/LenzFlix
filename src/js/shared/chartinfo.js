@@ -53,11 +53,17 @@ function content(chart) {
   const win = windowText(chart.windowDays);
   if (chart.kind === 'movies') {
     const min = minutes(rules.minSecondsMovie);
+    // Tagesgenaues Alter und Gleichstand nach gesehenem Anteil gibt es erst ab dem Worker mit rules.ageUnit 'day'.
+    const byDay = rules.ageUnit === 'day';
     return [
       para(`Gezählt wird, wer einen Film ${win} geschaut hat${min ? `, ab ${min}` : '.'} Jede Person bringt höchstens 1 Punkt, mehrmals schauen zählt nicht extra.`),
       heading('Neues zählt mehr'),
       bars(half),
-      hint(`Wer den Film ${daysAgo(half)} gesehen hat, zählt nur noch halb.`),
+      hint(`${byDay ? 'Abrufe vom selben Tag zählen gleich. ' : ''}Wer den Film ${daysAgo(half)} gesehen hat, zählt nur noch halb.`),
+      ...(byDay ? [
+        heading('Bei Gleichstand'),
+        para('Entscheidet, wie viel vom Film gesehen wurde: Zweimal ganz geschaut liegt vor zweimal halb geschaut, egal wie lang der Film ist.'),
+      ] : []),
     ];
   }
   const min = minutes(rules.minSecondsEpisode);
