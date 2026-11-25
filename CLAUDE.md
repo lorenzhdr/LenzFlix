@@ -101,6 +101,11 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 
 ## Aktueller Stand und offene Punkte
 Stand 25.11.2026 (1.21.1 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
+- **Charts-Worker nach 1.21.1 (Commit 3ad5f07, Worker b972402e, kein Theme-Release nötig):**
+  - Das Alter zählt in ganzen Kalendertagen (`'start of day'` bzw. `substr(…,1,10)`), Abrufe vom selben Tag zählen also gleich. `rules.ageUnit: 'day'`.
+  - Gleichstand bei Filmen: Zuschauer, dann `completion` (Σ je Person min(1, Sekunden/Laufzeit); Laufzeiten per `resolveRuntimes`, höchstens 5 Blöcke; ein Fehler fällt auf die Sekunden zurück), dann Sekunden, Wiedergaben, ID. Bei Serien: Zuschauer, Sekunden, Wiedergaben, ID.
+  - Höchstens 28 Subrequests je Lauf.
+  - Live geprüft: 44/44 Filme mit `completion` (`RunTimeTicks` kommt ohne `Fields`). Alle Einzel-Scores liegen auf dem Tagesraster, es gibt 20 echte Gleichstände.
 - **1.21.1 (Tag `v1.21.1` auf b4e5698):** Handy-Feinschliff nach der Headless-Prüfung bei 375 px.
   - Die Balken-Beschriftung im Info-Kästchen hat jetzt `8em` statt px und steht damit auch in der LENZ//84-Schrift bündig.
   - Der LENZ//84-Info-Knopf ist am Handy 28 px groß mit `margin-left:-10px`, der Titel wird dadurch weniger gekürzt.
