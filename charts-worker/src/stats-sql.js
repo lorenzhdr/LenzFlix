@@ -25,6 +25,15 @@ export const RANGES = Object.freeze({
   all: { where: '1=1', unit: 'month', bucket: 'substr(DateCreated,1,7)' },
 });
 
+/** Kalender-Untergrenzen für die Datenvolumen-Abfrage Qv (nicht die rollierenden RANGES-Fenster; siehe docs/stats-api.md). */
+export const VOLUME_FROM = Object.freeze({
+  '7d': "DateCreated >= date('now','localtime','-6 days')",
+  '30d': "DateCreated >= date('now','localtime','-29 days')",
+  year: "DateCreated >= date('now','localtime','start of year')",
+  all: '1=1',
+});
+export const VOLUME_ROW_CAP = 5000;
+
 export const isRange = (v) => typeof v === 'string' && Object.prototype.hasOwnProperty.call(RANGES, v);
 
 /** Strikte Prüfung; wirft bei allem außer 32 Kleinbuchstaben-Hex. */
@@ -149,5 +158,16 @@ export function buildQ7(uid, range) {
     'SELECT UserId, SUM(PlayDuration) AS t FROM PlaybackActivity ' +
     `WHERE ${MV_EP} AND ${r.where} AND UserId NOT IN (SELECT UserId FROM UserList) ` +
     'GROUP BY UserId)'
+  );
+}
+
+/** Qv: Sekunden je Bucket und Item (Kalenderfenster), ItemType als Zusatzspalte für den Bitraten-Rückfall. */
+export function buildQv(uid, range) {
+  const { u, r } = frag(uid, range);
+  return (
+    `SELECT ${r.bucket} AS b, ItemId AS i, MAX(ItemType) AS t, SUM(PlayDuration) AS s ` +
+    'FROM PlaybackActivity ' +
+    `WHERE UserId = '${u}' AND ${MV_EP} AND ${VOLUME_FROM[range]} ` +
+    `GROUP BY b, i LIMIT ${VOLUME_ROW_CAP}`
   );
 }

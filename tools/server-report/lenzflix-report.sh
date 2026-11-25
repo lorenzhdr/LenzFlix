@@ -113,11 +113,11 @@ fi
 
 # --- vnstat ------------------------------------------------------------------
 vn_run() {
-  # $1 = m|d, $2 = Anzahl
+  # $1 = m|d|h, $2 = Anzahl (leer = ohne Limit)
   if [ -n "${LFX_IFACE:-}" ]; then
-    out=$(vnstat --json "$1" "$2" -i "$LFX_IFACE" 2>/dev/null)
+    out=$(vnstat --json "$1" ${2:+"$2"} -i "$LFX_IFACE" 2>/dev/null)
   else
-    out=$(vnstat --json "$1" "$2" 2>/dev/null)
+    out=$(vnstat --json "$1" ${2:+"$2"} 2>/dev/null)
   fi
   rc=$?
   [ "$rc" -eq 0 ] || return 1
@@ -125,19 +125,36 @@ vn_run() {
 }
 
 vn=""
+vnh=""
 if command -v vnstat >/dev/null 2>&1; then
   if vn_run m 13; then vn="\"m\":$out"; fi
   if vn_run d 62; then
     if [ -z "$vn" ]; then vn="\"d\":$out"; else vn="$vn,\"d\":$out"; fi
   fi
+  if vn_run h ""; then vnh="\"h\":$out"; fi
 fi
 
 # --- JSON --------------------------------------------------------------------
-body='{"v":1'
-[ -n "$host" ] && body="$body,\"host\":{$host}"
-[ -n "$disks" ] && body="$body,\"disks\":[$disks]"
-[ -n "$vn" ] && body="$body,\"vnstat\":{$vn}"
-body="$body}"
+# build_body $1 = vnstat-Teile (kann leer sein)
+build_body() {
+  b='{"v":1'
+  [ -n "$host" ] && b="$b,\"host\":{$host}"
+  [ -n "$disks" ] && b="$b,\"disks\":[$disks]"
+  [ -n "$1" ] && b="$b,\"vnstat\":{$1}"
+  body="$b}"
+}
+
+vnall="$vn"
+if [ -n "$vnh" ]; then
+  if [ -z "$vnall" ]; then vnall="$vnh"; else vnall="$vnall,$vnh"; fi
+fi
+build_body "$vnall"
+# Der Worker nimmt hoechstens 64 KB an: zu grosse Stundenwerte weglassen.
+size=$(printf '%s' "$body" | wc -c | tr -d ' ')
+if [ -n "$vnh" ] && isnum "$size" && [ "$size" -gt 60000 ]; then
+  warn "Stundenwerte zu gross, werden weggelassen"
+  build_body "$vn"
+fi
 
 if [ -n "$dry" ]; then
   printf '%s\n' "$body"

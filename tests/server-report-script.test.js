@@ -103,6 +103,41 @@ describe.skipIf(!hasSh)('server-report: Ausfuehrung (DRY)', () => {
     if (j.disks) expect(j.disks.map((d) => d.l)).toEqual(['Ok Name']);
   }, 30000);
 
+  it('vnstat m, d, h: vnstat.h vorhanden', () => {
+    const r = run({}, `#!/bin/sh
+echo '{"jsonversion":"2","interfaces":[]}'
+`);
+    const j = JSON.parse(r.stdout);
+    expect(j.vnstat.m).toBeDefined();
+    expect(j.vnstat.d).toBeDefined();
+    expect(j.vnstat.h.jsonversion).toBe('2');
+  }, 30000);
+
+  it('h scheitert: m und d vorhanden, h fehlt', () => {
+    const r = run({}, `#!/bin/sh
+[ "$2" = h ] && exit 1
+echo '{"jsonversion":"2","interfaces":[]}'
+`);
+    expect(r.status).toBe(0);
+    const j = JSON.parse(r.stdout);
+    expect(j.vnstat.m).toBeDefined();
+    expect(j.vnstat.d).toBeDefined();
+    expect(j.vnstat).not.toHaveProperty('h');
+  }, 30000);
+
+  it('riesiges h (> 60 KB): h fehlt, Body gueltig', () => {
+    const big = 'x'.repeat(70000);
+    const r = run({}, `#!/bin/sh
+if [ "$2" = h ]; then echo '{"big":"${big}"}'; else echo '{"jsonversion":"2"}'; fi
+`);
+    expect(r.status).toBe(0);
+    expect(r.stdout.length).toBeLessThan(60000);
+    const j = JSON.parse(r.stdout);
+    expect(j.vnstat.m).toBeDefined();
+    expect(j.vnstat.d).toBeDefined();
+    expect(j.vnstat).not.toHaveProperty('h');
+  }, 30000);
+
   it('ohne LFX_URL/LFX_SECRET (kein DRY): Fehlzeile, Exit 0', () => {
     const r = spawnSync('sh', [`${dir}/lenzflix-report.sh`], { encoding: 'utf8', env: { ...process.env, LFX_DRY: '', LFX_URL: '', LFX_SECRET: '' } });
     expect(r.status).toBe(0);

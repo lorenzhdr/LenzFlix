@@ -1170,3 +1170,103 @@ describe('Statistik-Seite: Beschriftung, Teilen und Abmelden', () => {
     });
   });
 });
+
+describe('Datenvolumen', () => {
+  const base = (volume) => ({
+    version: 1, range: '30d', computedAt: '2026-11-10T12:00:00Z', stale: false, approx: false, ignored: false,
+    totals: { seconds: 123456, plays: 9, episodes: 7, movies: 2, series: 2, activeDays: 5 },
+    topSeries: [], topMovies: [], timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 3600 }] },
+    heatmap: [], binge: { topDay: null, seriesDay: null }, devices: [],
+    methods: { directPlay: { plays: 0, seconds: 0 }, directStream: { plays: 0, seconds: 0 }, transcode: { plays: 0, seconds: 0 }, other: { plays: 0, seconds: 0 } },
+    compare: { rank: 3, of: 12, avgSeconds: 98000 },
+    volume,
+  });
+  const vol = (extra) => Object.assign({ bytes: 38e9, share: 0.07, scaled: true, upBytes: 540e9, cov: 0.95, timeline: [{ bucket: '2026-11-09', bytes: 12e9 }] }, extra || {});
+  const draw = (stats) => {
+    document.body.innerHTML = '<main id="lfx-app"></main>';
+    L.state.range = '30d';
+    L.drawDashboard(stats);
+    return document.querySelector('#lfx-app');
+  };
+  afterEach(() => L.applyTheme('flix'));
+
+  it('Formatierung: MB, GB mit/ohne Nachkommastelle, TB, deutsches Komma', () => {
+    expect(L.fmtBytes(0)).toBe('0 MB');
+    expect(L.fmtBytes(400e6)).toBe('400 MB');
+    expect(L.fmtBytes(3.84e9)).toBe('3,8 GB');
+    expect(L.fmtBytes(38e9)).toBe('38 GB');
+    expect(L.fmtBytes(1.25e12)).toBe('1,3 TB');
+  });
+
+  it('Kachel mit Wert und Anteil; ohne volume keine Kachel, kein Panel', () => {
+    const root = draw(base(vol()));
+    const k = root.querySelector('.kpi-vol');
+    expect(k.querySelector('.kpi-v').textContent).toBe('ca. 38 GB');
+    expect(k.querySelector('.kpi-s').textContent).toBe('7 % des Streamings');
+    expect(k.getAttribute('title')).toContain('ohne Backup');
+    const none = draw(base(undefined));
+    expect(none.querySelector('.kpi-vol')).toBeNull();
+    expect(Array.from(none.querySelectorAll('h2')).some((h) => h.textContent === 'Datenvolumen')).toBe(false);
+  });
+
+  it('scaled:false zeigt „geschätzt“, unter 1 % „< 1 %“', () => {
+    expect(draw(base(vol({ scaled: false }))).querySelector('.kpi-s').textContent).toBe('geschätzt');
+    expect(draw(base(vol({ share: 0.004 }))).querySelector('.kpi-s').textContent).toBe('< 1 % des Streamings');
+  });
+
+  it('Verlauf-Panel mit GB-Achse und Hinweis; Watchtime-Verlauf bleibt', () => {
+    const root = draw(base(vol()));
+    const h = Array.from(root.querySelectorAll('h2')).find((x) => x.textContent === 'Datenvolumen');
+    const pnl = h.parentNode;
+    expect(pnl.querySelector('svg.chart').getAttribute('aria-label')).toBe('Datenvolumen im Verlauf');
+    expect(pnl.querySelectorAll('rect.bar').length).toBeGreaterThan(0);
+    expect(pnl.textContent).toContain('Achse in GB');
+    expect(pnl.textContent).toContain('Der TV-Modus verteilt sich anteilig auf alle Konten.');
+    expect(root.querySelector('svg.chart[aria-label="Watchtime im Verlauf"]')).not.toBeNull();
+    expect(L.niceBytesAxis(12e9)).toEqual({ step: 5e9, count: 3, max: 15e9 });
+  });
+
+  it('Vergleichszeile im Vergleich-Panel bzw. eigenes Panel', () => {
+    const cmp = { rank: 3, of: 13, avgBytes: 21e9 };
+    expect(L.volumeCompareText(cmp)).toBe('Platz 3 von 13 · Ø 21 GB');
+    const root = draw(base(vol({ compare: cmp })));
+    expect(root.querySelector('.vol-compare').textContent).toBe('Datenvolumen: Platz 3 von 13 · Ø 21 GB');
+    expect(root.querySelector('.vol-compare').parentNode.textContent).toContain('Dein Platz nach Watchtime');
+    L.applyTheme('plus');
+    const themed = draw(base(vol({ compare: cmp })));
+    expect(themed.querySelector('.vol-compare').textContent).toContain('Platz 3 von 13');
+    expect(themed.querySelector('.vol-compare').parentNode.textContent).toContain('nach Datenvolumen');
+  });
+
+  it('Share-Übersicht in allen 4 Designs mit Volumen ohne Ausnahme; ohne volume keine Zeile', () => {
+    const orig = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function () {
+      if (!this.__ctx) {
+        const rec = { calls: [] };
+        ['fillRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'quadraticCurveTo', 'closePath', 'fill', 'clip', 'save', 'restore', 'drawImage', 'arc', 'stroke'].forEach((m) => {
+          rec[m] = (...args) => rec.calls.push({ m, args });
+        });
+        rec.createLinearGradient = () => ({ addColorStop() {} });
+        rec.measureText = (t) => ({ width: String(t).length * 10 });
+        this.__ctx = rec;
+      }
+      return this.__ctx;
+    };
+    try {
+      ['flix', 'plus', 'prime', 'retro'].forEach((theme) => {
+        ['4:5', 'story'].forEach((format) => {
+          const c = document.createElement('canvas');
+          const s = base(vol());
+          expect(() => L.drawShare(c, { variant: 'overview', format, stats: s, items: {}, theme })).not.toThrow();
+          const txt = c.__ctx.calls.filter((x) => x.m === 'fillText').map((x) => String(x.args[0]));
+          expect(txt.some((t) => t.indexOf('Datenvolumen ca. 38 GB') >= 0)).toBe(true);
+          const c2 = document.createElement('canvas');
+          L.drawShare(c2, { variant: 'overview', format, stats: base(undefined), items: {}, theme });
+          expect(c2.__ctx.calls.some((x) => x.m === 'fillText' && String(x.args[0]).indexOf('Datenvolumen') >= 0)).toBe(false);
+        });
+      });
+    } finally {
+      HTMLCanvasElement.prototype.getContext = orig;
+    }
+  });
+});

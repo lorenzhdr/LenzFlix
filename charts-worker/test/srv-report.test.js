@@ -232,3 +232,189 @@ describe('sanitizeReport', () => {
     expect(r.traffic.days).toHaveLength(62);
   });
 });
+
+describe('Backup-Abzug (bk, bkm, since)', () => {
+  const GiB = 1024 ** 3;
+  const hour = (y, m, d, h, tx) => ({ date: { year: y, month: m, day: d }, time: { hour: h, minute: 0 }, rx: 1, tx });
+  const created = { date: { year: 2026, month: 10, day: 7 }, timestamp: 1791331200 };
+  const vnH = (list, c = created) => ({ jsonversion: '2', interfaces: [{ name: 'eth0', created: c, traffic: { hour: list } }] });
+  /** Stunden vom 21.11. 20:00 bis (Tag, Stunde) inklusive; am 22.11. Stunden 5/6/7 mit den Messwerten, sonst 0,1 GiB. */
+  function hoursUntil(endD, endH) {
+    const out = [];
+    const spec = { 5: 4.54 * GiB, 6: 7.2 * GiB, 7: 5.25 * GiB };
+    for (const [d, from] of [
+      [21, 20],
+      [22, 0],
+      [23, 0],
+    ]) {
+      for (let h = from; h < 24; h++) {
+        if (d > endD || (d === endD && h > endH)) return out;
+        out.push(hour(2026, 11, d, h, d === 22 && spec[h] ? spec[h] : 0.1 * GiB));
+      }
+    }
+    return out;
+  }
+
+  it('Backup aus Stunden: 22.11. Stunden 5/6/7 ergeben ≈ 16,99 GiB (src h), bkm dazu, since übernommen', () => {
+    const r = sanitizeReport({ vnstat: { h: vnH(hoursUntil(23, 10)) } }, null, NOW);
+    expect(r.traffic.bk).toHaveLength(1);
+    expect(r.traffic.bk[0].d).toBe('2026-11-22');
+    expect(r.traffic.bk[0].src).toBe('h');
+    expect(r.traffic.bk[0].tx / GiB).toBeCloseTo(16.99, 2);
+    expect(r.traffic.bkm).toEqual([{ ym: '2026-11', tx: r.traffic.bk[0].tx }]);
+    expect(r.traffic.since).toBe('2026-10-07');
+  });
+
+  it('laufender Sonntag im Fenster ergibt keinen Wert, erst ab der Stunde nach dem Fenster', () => {
+    for (const h of [4, 6, 7]) {
+      const r = sanitizeReport({ vnstat: { h: vnH(hoursUntil(22, h)) } }, null, NOW);
+      expect(r.traffic.bk).toBeUndefined();
+    }
+    const done = sanitizeReport({ vnstat: { h: vnH(hoursUntil(22, 8)) } }, null, NOW);
+    expect(done.traffic.bk[0].tx / GiB).toBeCloseTo(16.99, 2);
+  });
+
+  it('Stundenreihe setzt erst im Fenster ein (Vorhaltezeit) -> kein halber Wert', () => {
+    const list = hoursUntil(23, 10).filter((x) => !(x.date.day === 21 || (x.date.day === 22 && x.time.hour < 6)));
+    expect(sanitizeReport({ vnstat: { h: vnH(list) } }, null, NOW).traffic.bk).toBeUndefined();
+  });
+
+  it('Backup-Fenster aus der Var; ungültig -> Standard; handleReport reicht env.SRV_BACKUP_WINDOW durch', async () => {
+    const h = vnH(hoursUntil(23, 10));
+    const mon = sanitizeReport({ vnstat: { h } }, null, NOW, '1:0-3'); // Montag 23.11. Stunden 0-2
+    expect(mon.traffic.bk).toHaveLength(1);
+    expect(mon.traffic.bk[0].d).toBe('2026-11-23');
+    expect(mon.traffic.bk[0].tx / GiB).toBeCloseTo(0.3, 6);
+    for (const bad of [undefined, 'x', '7:1-2', '0:8-5', '0:5-25', '']) {
+      expect(sanitizeReport({ vnstat: { h } }, null, NOW, bad).traffic.bk[0].d).toBe('2026-11-22');
+    }
+    const env = makeEnv({ SRV_BACKUP_WINDOW: '1:0-3' });
+    await handleReport(post({ vnstat: { h } }), env);
+    expect(JSON.parse(env.CHARTS.store.get('srv:report:v1')).traffic.bk[0].d).toBe('2026-11-23');
+  });
+
+  /** Woche Mo 09.11. bis So 15.11., dazu Mo 16.11. (damit der Sonntag nicht der neueste Tag ist). */
+  const week = (sun, monToSat = [10, 12, 11, 13, 9, 10]) => [
+    ...monToSat.map((g, i) => day(2026, 11, 9 + i, 1, g * GiB)),
+    day(2026, 11, 15, 1, sun * GiB),
+    day(2026, 11, 16, 1, 10 * GiB),
+  ];
+
+  it('est-Heuristik: Sonntag minus Median Mo–Sa, gedeckelt auf 60 GiB, mind. 3 Vergleichstage', () => {
+    const r = sanitizeReport({ vnstat: { d: vn({ day: week(30) }) } }, null, NOW);
+    expect(r.traffic.bk).toEqual([{ d: '2026-11-15', tx: Math.round(19.5 * GiB), src: 'est' }]);
+    expect(r.traffic.bkm).toEqual([{ ym: '2026-11', tx: Math.round(19.5 * GiB) }]);
+    expect(sanitizeReport({ vnstat: { d: vn({ day: week(200) }) } }, null, NOW).traffic.bk[0].tx).toBe(64424509440);
+    expect(sanitizeReport({ vnstat: { d: vn({ day: week(5) }) } }, null, NOW).traffic.bk[0].tx).toBe(0);
+    const few = [day(2026, 11, 13, 1, GiB), day(2026, 11, 14, 1, GiB), day(2026, 11, 15, 1, 30 * GiB), day(2026, 11, 16, 1, GiB)];
+    expect(sanitizeReport({ vnstat: { d: vn({ day: few }) } }, null, NOW).traffic.bk).toBeUndefined();
+    // Sonntag als neuester Tag (läuft womöglich noch) -> kein Wert
+    expect(sanitizeReport({ vnstat: { d: vn({ day: week(30).slice(0, 7) }) } }, null, NOW).traffic.bk).toBeUndefined();
+  });
+
+  it("Merge: 'h' ersetzt 'est', neuer 'est' lässt 'h' stehen, zwei 'h' -> Maximum, zwei 'est' -> neuer Wert", () => {
+    const days22 = [16, 17, 18, 19, 20, 21]
+      .map((d) => day(2026, 11, d, 1, 10 * GiB))
+      .concat([day(2026, 11, 22, 1, 40 * GiB), day(2026, 11, 23, 1, GiB)]);
+    const estOnly = sanitizeReport({ vnstat: { d: vn({ day: days22 }) } }, null, NOW - 3600e3);
+    expect(estOnly.traffic.bk).toEqual([{ d: '2026-11-22', tx: 30 * GiB, src: 'est' }]);
+    const withH = sanitizeReport({ vnstat: { d: vn({ day: days22 }), h: vnH(hoursUntil(23, 10)) } }, estOnly, NOW);
+    expect(withH.traffic.bk).toHaveLength(1);
+    expect(withH.traffic.bk[0].src).toBe('h');
+    expect(withH.traffic.bk[0].tx / GiB).toBeCloseTo(16.99, 2);
+    expect(withH.traffic.bkm).toEqual([{ ym: '2026-11', tx: 30 * GiB }]); // Monats-Merge per Maximum
+    const again = sanitizeReport({ vnstat: { d: vn({ day: days22 }) } }, withH, NOW);
+    expect(again.traffic.bk[0]).toEqual(withH.traffic.bk[0]);
+    const smaller = hoursUntil(23, 10).map((x) => ({ ...x, tx: x.tx / 2 }));
+    expect(sanitizeReport({ vnstat: { h: vnH(smaller) } }, withH, NOW).traffic.bk[0].tx).toBe(withH.traffic.bk[0].tx);
+    const bigger = hoursUntil(23, 10).map((x) => ({ ...x, tx: x.tx * 2 }));
+    expect(sanitizeReport({ vnstat: { h: vnH(bigger) } }, withH, NOW).traffic.bk[0].tx).toBe(withH.traffic.bk[0].tx * 2);
+    // Vortage wachsen nachträglich (Tageswerte mergen per Maximum) -> kleinere neue Schätzung ersetzt die alte
+    const days22b = days22.map((x) => (x.date.day < 22 ? day(2026, 11, x.date.day, 1, 15 * GiB) : x));
+    const est2 = sanitizeReport({ vnstat: { d: vn({ day: days22b }) } }, estOnly, NOW);
+    expect(est2.traffic.bk).toEqual([{ d: '2026-11-22', tx: 25 * GiB, src: 'est' }]);
+  });
+
+  it('bkm: voll abgedeckter Monat wird ersetzt (früher est 30 GiB, danach h 16,99 GiB), nicht per Maximum', () => {
+    // Tage 01.11.-23.11.: 10 GiB, So 15.11. 30 GiB (est 20 GiB), So 22.11. 40 GiB (est 30 GiB)
+    const tx = (d) => (d === 15 ? 30 : d === 22 ? 40 : 10) * GiB;
+    const daysNov = Array.from({ length: 23 }, (_, i) => day(2026, 11, i + 1, 1, tx(i + 1)));
+    const estOnly = sanitizeReport({ vnstat: { d: vn({ day: daysNov }) } }, null, NOW - 3600e3);
+    expect(estOnly.traffic.bk).toEqual([
+      { d: '2026-11-08', tx: 0, src: 'est' },
+      { d: '2026-11-15', tx: 20 * GiB, src: 'est' },
+      { d: '2026-11-22', tx: 30 * GiB, src: 'est' },
+    ]);
+    expect(estOnly.traffic.bkm).toEqual([{ ym: '2026-11', tx: 50 * GiB }]);
+    const withH = sanitizeReport({ vnstat: { d: vn({ day: daysNov }), h: vnH(hoursUntil(23, 10)) } }, estOnly, NOW);
+    const h22 = withH.traffic.bk.find((x) => x.d === '2026-11-22');
+    expect(h22.src).toBe('h');
+    expect(h22.tx / GiB).toBeCloseTo(16.99, 2);
+    expect(withH.traffic.bkm).toEqual([{ ym: '2026-11', tx: 20 * GiB + h22.tx }]);
+    // Monat, dessen Anfang aus den Tagen gefallen ist: Maximum bleibt
+    const dropped = { ...estOnly, traffic: { ...estOnly.traffic, days: estOnly.traffic.days.slice(1) } };
+    const partial = sanitizeReport({ vnstat: { d: vn({ day: daysNov.slice(1) }), h: vnH(hoursUntil(23, 10)) } }, dropped, NOW);
+    expect(partial.traffic.bkm).toEqual([{ ym: '2026-11', tx: 50 * GiB }]);
+    // since später als der Monatsanfang zählt als Beginn
+    const withSince = { ...dropped, traffic: { ...dropped.traffic, since: '2026-11-02' } };
+    const s = sanitizeReport({ vnstat: { d: vn({ day: daysNov.slice(1) }), h: vnH(hoursUntil(23, 10), null) } }, withSince, NOW);
+    expect(s.traffic.bkm).toEqual([{ ym: '2026-11', tx: 20 * GiB + h22.tx }]);
+  });
+
+  it('bkm überlebt das Herausfallen der Tage; bk höchstens 62, bkm höchstens 120; Ungültiges im alten bk fällt raus', () => {
+    const prev = {
+      v: 1,
+      at: 1,
+      traffic: {
+        at: 1,
+        days: [],
+        months: [],
+        since: '2026-10-07',
+        bk: [
+          { d: '2026-11-01', tx: 5, src: 'h' },
+          { d: 'kaputt', tx: 1, src: 'h' },
+          { d: '2026-11-08', tx: 1, src: 'x' },
+        ],
+        bkm: [
+          { ym: '2026-08', tx: 17 * GiB },
+          { ym: '2026-11', tx: 3 },
+          { ym: 'nope', tx: 1 },
+        ],
+      },
+    };
+    const r = sanitizeReport({ vnstat: { h: vnH(hoursUntil(23, 10)) } }, prev, NOW);
+    expect(r.traffic.bk.map((x) => x.d)).toEqual(['2026-11-01', '2026-11-22']);
+    expect(r.traffic.bkm[0]).toEqual({ ym: '2026-08', tx: 17 * GiB });
+    expect(r.traffic.bkm[1]).toEqual({ ym: '2026-11', tx: 5 + r.traffic.bk[1].tx });
+    expect(r.traffic.since).toBe('2026-10-07');
+    const p2 = (n) => String(n).padStart(2, '0');
+    const many = Array.from({ length: 80 }, (_, i) => ({ d: `2026-${p2(1 + Math.floor(i / 28))}-${p2((i % 28) + 1)}`, tx: 1, src: 'h' }));
+    const manyM = Array.from({ length: 130 }, (_, i) => ({ ym: `${2010 + Math.floor(i / 12)}-${p2((i % 12) + 1)}`, tx: 1 }));
+    const r2 = sanitizeReport({ vnstat: { h: vnH(hoursUntil(23, 10)) } }, { traffic: { at: 1, days: [], months: [], bk: many, bkm: manyM } }, NOW);
+    expect(r2.traffic.bk).toHaveLength(62);
+    expect(r2.traffic.bk.at(-1).d).toBe('2026-11-22');
+    expect(r2.traffic.bkm).toHaveLength(120);
+    expect(r2.traffic.bkm.at(-1).ym).toBe('2026-11');
+  });
+
+  it('since: aus created jeder Teilausgabe, bleibt ohne neue Angabe erhalten, ungültig -> keins', () => {
+    const withC = (traffic, c) => ({ jsonversion: '2', interfaces: [{ name: 'eth0', created: c, traffic }] });
+    const r = sanitizeReport({ vnstat: { m: withC({ month: [month(2026, 11, 1, 2)] }, created) } }, null, NOW);
+    expect(r.traffic.since).toBe('2026-10-07');
+    const keep = sanitizeReport({ vnstat: { d: vn({ day: [day(2026, 11, 25, 1, 2)] }) } }, r, NOW);
+    expect(keep.traffic.since).toBe('2026-10-07');
+    const bad = sanitizeReport({ vnstat: { m: withC({ month: [month(2026, 11, 1, 2)] }, { date: { year: 'x' } }) } }, null, NOW);
+    expect(bad.traffic.since).toBeUndefined();
+  });
+
+  it('Stunden nur bei jsonversion 2; rohe Stunden nicht im Datensatz; Datensatz ohne neue Felder bleibt wie bisher', () => {
+    expect(sanitizeReport({ vnstat: { h: { ...vnH(hoursUntil(23, 10)), jsonversion: '1' } } }, null, NOW)).toBeNull();
+    const r = sanitizeReport({ vnstat: { h: vnH(hoursUntil(23, 10)) } }, null, NOW);
+    expect(Object.keys(r.traffic).sort()).toEqual(['at', 'bk', 'bkm', 'days', 'months', 'since']);
+    expect(JSON.stringify(r)).not.toContain('hour');
+    expect(Object.keys(sanitizeReport(GOOD, null, NOW).traffic).sort()).toEqual(['at', 'days', 'months']);
+    const legacy = { v: 1, at: 1, traffic: { at: 1, days: [{ d: '2026-11-24', rx: 1, tx: 2 }], months: [] } };
+    const merged = sanitizeReport(GOOD, legacy, NOW);
+    expect(merged.traffic.days.map((x) => x.d)).toEqual(['2026-11-24', '2026-11-25']);
+  });
+});

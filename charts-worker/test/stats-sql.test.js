@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  RANGES, assertUid, buildQ1, buildQ2, buildQ2b, buildQ3, buildQ4, buildQ5a, buildQ5b, buildQ6a, buildQ6b, buildQ7,
+  RANGES, assertUid, buildQ1, buildQ2, buildQ2b, buildQ3, buildQ4, buildQ5a, buildQ5b, buildQ6a, buildQ6b, buildQ7, buildQv,
 } from '../src/stats-sql.js';
 import { normId } from '../src/jellyfin.js';
 
@@ -44,6 +44,21 @@ describe('stats-sql', () => {
     expect(buildQ3(UID, '7d')).toContain('substr(DateCreated,1,10) AS bucket');
     expect(buildQ3(UID, 'year')).toContain("strftime('%Y-%W', substr(DateCreated,1,19)) AS bucket");
     expect(buildQ3(UID, 'all')).toContain('substr(DateCreated,1,7) AS bucket');
+  });
+
+  it('Qv: Kalendergrenzen, Validierung, ein Statement', () => {
+    expect(buildQv(UID, '7d')).toContain("DateCreated >= date('now','localtime','-6 days')");
+    expect(buildQv(UID, '30d')).toContain("DateCreated >= date('now','localtime','-29 days')");
+    expect(buildQv(UID, 'year')).toContain("DateCreated >= date('now','localtime','start of year')");
+    expect(buildQv(UID, 'all')).not.toContain('DateCreated >=');
+    expect(buildQv(UID, 'year')).toContain("strftime('%Y-%W', substr(DateCreated,1,19)) AS b");
+    const sql = buildQv(UID, '30d');
+    expect(sql).toContain("ItemType IN ('Movie','Episode')");
+    expect(sql).toContain('GROUP BY b, i LIMIT 5000');
+    expect(sql).not.toContain('HAVING');
+    expect(sql).not.toMatch(/;/);
+    expect(() => buildQv("a' OR '1'='1", '30d')).toThrow();
+    expect(() => buildQv(UID, "30d'--")).toThrow();
   });
 
   it('Schwelle 300 als Zahl', () => {

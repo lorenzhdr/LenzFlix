@@ -6,7 +6,8 @@ import { handleOnline, handleTicket, handleUpgrade } from './mp/route.js';
 export { MpWorld } from './mp/world.js';
 import { buildSql, minSeconds, minSecondsMovie, windowDays } from './sql.js';
 import { runSlot } from './srv/daily.js';
-import { SRV_CRON, routeSrv } from './srv/route.js';
+import { SRV_CRON, VOL_CRON, routeSrv } from './srv/route.js';
+import { runVol } from './srv/vol.js';
 import { handleWx } from './wx.js';
 
 const KV_KEY = 'charts:v1';
@@ -186,6 +187,13 @@ export default {
       const slot = Promise.resolve(runSlot(env, ctx)).catch(() => {});
       ctx?.waitUntil?.(slot);
       await slot;
+      return;
+    }
+    if (event?.cron === VOL_CRON) {
+      // Datenvolumen-Lauf; wirft nie, der Charts-Lauf ist davon unberührt.
+      const vol = Promise.resolve(runVol(env, ctx)).catch(() => {});
+      ctx?.waitUntil?.(vol);
+      await vol;
       return;
     }
     const job = refresh(env).catch((err) => {

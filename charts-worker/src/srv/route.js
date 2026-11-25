@@ -10,6 +10,8 @@ import { getServer, readSrvKv } from './server.js';
 
 /** Cron-Slot des Server-Statistik-Laufs (wrangler.jsonc). */
 export const SRV_CRON = '23 */6 * * *';
+/** Cron-Slot des stündlichen Volumen-Laufs (srv/vol.js). */
+export const VOL_CRON = '7 * * * *';
 
 const PROBE_MS = 60 * 1000;
 const REPORT_FRESH_MS = 7 * 24 * 3600 * 1000;

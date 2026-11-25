@@ -3,6 +3,7 @@ import { getMe, normId, resolveSeriesForUser, runCustomQueryRows } from './jelly
 import {
   RANGES,
   ROW_CAP,
+  VOLUME_ROW_CAP,
   buildQ1,
   buildQ2,
   buildQ2b,
@@ -13,6 +14,7 @@ import {
   buildQ6a,
   buildQ6b,
   buildQ7,
+  buildQv,
   isRange,
 } from './stats-sql.js';
 
@@ -126,7 +128,87 @@ function base(range, extra) {
   };
 }
 
+/* ---------- Datenvolumen (optional, Fehler nie fatal) ---------- */
+
+const VOLUME_KEY = 'srv:vol:v1';
+const FB_DEFAULT = { movie: 8000, episode: 4000 };
+const pos = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+async function readVolumeKv(env) {
+  try {
+    if (!env?.CHARTS || typeof env.CHARTS.get !== 'function') return null;
+    const kv = await env.CHARTS.get(VOLUME_KEY, 'json');
+    return kv && typeof kv === 'object' ? kv : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readVolumeRows(env, uid, range) {
+  try {
+    return await runCustomQueryRows(env, buildQv(uid, range));
+  } catch {
+    return null;
+  }
+}
+
+/** Gibt das `volume`-Objekt oder null zurück (dann fehlt das Feld). */
+function computeVolume(kv, rows, uid, range) {
+  try {
+    if (!kv || kv.v !== 1 || !Array.isArray(rows) || rows.length >= VOLUME_ROW_CAP) return null;
+    const rg = kv.ranges?.[range];
+    const est = pos(rg?.est);
+    const cov = Number(rg?.cov);
+    if (!rg || !(est > 0) || !Number.isFinite(cov) || cov < 0.9) return null;
+    const k = pos(rg.k) || 1;
+    const br = kv.br && typeof kv.br === 'object' ? kv.br : {};
+    const fbMovie = pos(kv.fb?.movie) || FB_DEFAULT.movie;
+    const fbEp = pos(kv.fb?.episode) || FB_DEFAULT.episode;
+    let e = 0;
+    const perBucket = new Map();
+    for (const r of rows) {
+      const kbps = pos(br[normId(r.i)]) || (r.t === 'Movie' ? fbMovie : fbEp);
+      const bytes = num(r.s) * kbps * 125;
+      e += bytes;
+      const key = String(r.b);
+      perBucket.set(key, (perBucket.get(key) ?? 0) + bytes);
+    }
+    const bytes = Math.round(e * k);
+    const out = {
+      bytes,
+      share: Math.min(1, Math.max(0, e / est)),
+      scaled: rg.scaled === true,
+      upBytes: Math.round(est * k),
+      cov,
+      timeline: [...perBucket.entries()]
+        .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+        .map(([bucket, v]) => ({ bucket, bytes: Math.round(v * k) })),
+    };
+    const users = kv.users?.[range];
+    if (users && typeof users === 'object') {
+      const me = normId(uid);
+      const others = Object.entries(users)
+        .filter(([id, v]) => normId(id) !== me && Number.isFinite(Number(v)))
+        .map(([, v]) => Number(v));
+      if (others.length + 1 >= 3) {
+        out.compare = {
+          rank: 1 + others.filter((v) => v > bytes).length,
+          of: others.length + 1,
+          avgBytes: Math.round((others.reduce((a, b) => a + b, 0) + bytes) / (others.length + 1)),
+        };
+      }
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 async function compute(env, token, uid, range) {
+  const volumeJob = Promise.all([readVolumeKv(env), readVolumeRows(env, uid, range)]);
   const [q1, q2, q2b, q3, q4, q5a, q5b, q6a, q6b, q7] = await Promise.all([
     runCustomQueryRows(env, buildQ1(uid, range)),
     runCustomQueryRows(env, buildQ2(uid, range)),
@@ -211,7 +293,11 @@ async function compute(env, token, uid, range) {
       ? { rank: 1 + num(c.ahead), of: n, avgSeconds: Math.round(num(c.avgSecs)) }
       : null;
 
+  const [volKv, volRows] = await volumeJob;
+  const volume = computeVolume(volKv, volRows, uid, range);
+
   return base(range, {
+    ...(volume ? { volume } : {}),
     approx,
     totals: {
       seconds,

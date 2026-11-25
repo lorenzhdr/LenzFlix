@@ -167,6 +167,12 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 .kpi.wide { flex: 2 1 12rem; }
 .kpi-v { font-size: 1.5rem; font-weight: 800; color: var(--lfx-text); line-height: 1.15; }
 .kpi-l { margin-top: 4px; font-size: 0.8125rem; color: var(--lfx-text-muted); }
+.kpi-s { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; font-size: 0.75rem; color: var(--lfx-text-muted); }
+.kpi-vol .kpi-v { font-size: 1.25rem; }
+.vol-note { margin: 10px 0 0; font-size: 0.75rem; }
+.theme-plus .kpi-vol .kpi-v, .theme-prime .kpi-vol .kpi-v { font-size: 1.5rem; }
+.theme-retro .kpi-vol .kpi-v { font-size: 2rem; }
+.theme-retro .kpi-s { color: var(--rt-lo); }
 
 .panel {
   width: calc(100% - 12px);
@@ -239,6 +245,7 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 .chart.has-sel .bar:not(.sel) { opacity: 0.45; }
 .tl-detail { margin-top: 10px; min-height: 5.5em; font-size: 0.875rem; }
 .tl-detail .sub { margin: 0; }
+.tl-detail.slim { min-height: 0; }
 .tl-detail .tl-t { font-weight: 600; margin-bottom: 4px; }
 .tl-detail .tl-r { color: var(--lfx-text-muted); line-height: 1.5; }
 .hm-cell { fill: var(--lfx-red); }

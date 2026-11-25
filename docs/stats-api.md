@@ -30,7 +30,10 @@ Eigene Statistik pro Jellyfin-Nutzer aus dem Plugin Playback Reporting. Die Seit
   "devices": [{ "client": "Jellyfin Web", "device": "Chrome", "plays": 40, "seconds": 70000 }],
   "methods": { "directPlay": { "plays": 60, "seconds": 90000 }, "directStream": { "plays": 0, "seconds": 0 },
                "transcode": { "plays": 20, "seconds": 33456 }, "other": { "plays": 0, "seconds": 0 } },
-  "compare": { "rank": 2, "of": 7, "avgSeconds": 98000 }
+  "compare": { "rank": 2, "of": 7, "avgSeconds": 98000 },
+  "volume": { "bytes": 52000000000, "share": 0.31, "scaled": true, "upBytes": 168000000000, "cov": 0.97,
+              "timeline": [{ "bucket": "2026-11-09", "bytes": 3100000000 }],
+              "compare": { "rank": 2, "of": 5, "avgBytes": 41000000000 } }
 }
 ```
 - `devices` max. 5 (nach Sekunden). `topSeries`/`topMovies` max. 10, IDs normalisiert (32 Hex ohne Bindestriche, klein). Titel/Poster lädt die Seite selbst mit dem Nutzer-Token.
@@ -41,6 +44,14 @@ Eigene Statistik pro Jellyfin-Nutzer aus dem Plugin Playback Reporting. Die Seit
 - `ignored: true` (Nutzer steht auf der Ignorierliste von Playback Reporting): alle Zahlen 0/leer, `compare: null`.
 - `approx: true`, wenn mehr als 3000 Episoden für die Serien-Zuordnung angefallen sind (Subrequest-Limit) oder die Abfrage der gezählten Items (Filme und Folgen) bzw. der Tagesfolgen bei 3000 Zeilen abgeschnitten wurde (auch durch Filme). Dann sind `topSeries`/`binge.seriesDay` Näherungen; `totals.episodes`/`movies`/`seconds` bleiben exakt.
 - `stale: true`: Neuberechnung ist fehlgeschlagen (Jellyfin/Tunnel down), ausgeliefert wird der letzte Stand aus dem Cache; `computedAt` zeigt dessen Alter.
+
+## Feld `volume` (optional, Datenvolumen)
+Geschätzter Datenverbrauch des Kontos. Das Feld **fehlt**, wenn das KV `srv:vol:v1` (schreibt der Cron) fehlt oder nicht lesbar ist, `ranges[range].cov < 0,9`, `ranges[range].est` nicht > 0 ist, Qv fehlschlägt oder bei 5000 Zeilen abgeschnitten wurde. Die übrige Antwort bleibt dann unverändert.
+- **Kalenderfenster** (nicht die rollierenden Fenster der übrigen Abfragen, Lokalzeit der DB): `7d` = `date('now','localtime','-6 days')`, `30d` = `'-29 days'`, `year` = `'start of year'`, `all` = keine Grenze. Buckets wie `timeline` (Tag/Woche/Monat).
+- Qv: `SELECT <bucket> b, ItemId i, MAX(ItemType) t, SUM(PlayDuration) s … GROUP BY b, i LIMIT 5000`, ohne Mindestdauer.
+- Formel: Bytes je Zeile = `s * kbps * 125`; `kbps` = `br[normId(ItemId)]` aus dem KV, sonst `fb.movie` bzw. `fb.episode` (ohne Wert 8000/4000). `e` = Summe.
+- `bytes = e * k` (k = `ranges[range].k`, Skalierung auf den echten Upload); `share = e / ranges[range].est` (auf 0..1 geklemmt); `upBytes = est * k`; `scaled`, `cov` aus dem KV; `timeline[]` = je Bucket Σ `s*kbps*125*k`, aufsteigend.
+- `compare` (optional): Liste = `users[range]` des KV, der eigene Eintrag durch `bytes` ersetzt bzw. hinzugefügt; nur ab 3 Konten. `rank = 1 + Anzahl Werte > bytes`, `of`, `avgBytes` = Mittelwert. Die Antwort enthält **nie** UIDs oder Werte anderer Konten.
 
 ## Zählregeln
 - **Watchtime, Plays, Verlauf, Heatmap, Geräte, Methoden:** jede Zeile aus `PlaybackActivity` des Nutzers (`ItemType IN ('Movie','Episode')`), ohne Mindestdauer.
@@ -62,4 +73,4 @@ Eigene Statistik pro Jellyfin-Nutzer aus dem Plugin Playback Reporting. Die Seit
 - Token → UserId: Key = SHA-256(Token), frisch 10 min. Als Fallback 24 h **nur** bei Netzwerkfehler/5xx/Nicht-JSON von `/Users/Me`, **nie** bei 401/403. Bekannte Grenze: Ein widerrufenes Token sieht während eines Ausfalls (bis ca. 10 min danach) noch den eigenen Altstand.
 
 ## Subrequest-Budget (Free: 50 pro Request)
-`/Users/Me` 1 + Cache API 4 + SQL 10 = 15 → für `/Items` bleiben höchstens 30 Blöcke à 100 Episoden (= 3000). Darüber hinaus nur die 3000 mit den meisten Sekunden zuordnen, `approx: true`.
+`/Users/Me` 1 + Cache API 4 + SQL 11 (inkl. Qv) + KV-Get 1 = 17 → für `/Items` bleiben höchstens 30 Blöcke à 100 Episoden (= 3000). Darüber hinaus nur die 3000 mit den meisten Sekunden zuordnen, `approx: true`.

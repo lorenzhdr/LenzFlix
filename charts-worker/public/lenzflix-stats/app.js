@@ -64,6 +64,67 @@
     return Number(sec) >= 2 * 86400 ? fmtDuration(sec) : fmtDurationShort(sec);
   }
 
+  /** Dezimalzahl mit deutschem Komma, höchstens `digits` Nachkommastellen. */
+  function fmtDec(n, digits) {
+    var v = Number(n) || 0;
+    try {
+      return v.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: digits });
+    } catch (e) {
+      var p = Math.pow(10, digits);
+      return String(Math.round(v * p) / p).replace('.', ',');
+    }
+  }
+
+  /** Datenmenge dezimal: unter 1 GB in MB, ab 1000 GB in TB, sonst GB (unter 10 GB mit einer Nachkommastelle). */
+  function fmtBytes(b) {
+    var v = Number(b) || 0;
+    if (v <= 0) return '0 MB';
+    var mb = Math.round(v / 1e6);
+    if (mb < 1) return '< 1 MB';
+    if (mb < 1000) return fmtInt(mb) + ' MB';
+    if (v >= 1e12) return fmtDec(v / 1e12, 1) + ' TB';
+    var g = v / 1e9;
+    return fmtDec(g, g < 10 ? 1 : 0) + ' GB';
+  }
+
+  var VOLUME_NOTE = 'Geschätzt aus Schauzeit × Bitrate der Titel und mit dem gemessenen Upload des Servers abgeglichen (ohne Backup). Der TV-Modus verteilt sich anteilig auf alle Konten.';
+
+  /** Zusatz unter der Kachel: Anteil am Streaming-Upload, ohne Abgleich nur „geschätzt“. */
+  function volumeSubText(v) {
+    if (!v || v.scaled === false) return 'geschätzt';
+    var s = Number(v.share) || 0;
+    return (s < 0.01 ? '< 1' : Math.round(s * 100)) + ' % des Streamings';
+  }
+
+  function volumeCompareText(c) {
+    if (!c) return '';
+    return 'Platz ' + c.rank + ' von ' + c.of + ' · Ø ' + fmtBytes(c.avgBytes);
+  }
+
+  /** Runde Y-Achse für Bytes (Schritte in GB), gleiche Form wie niceAxis. */
+  function niceBytesAxis(maxBytes) {
+    var gb = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500];
+    var step = 0;
+    var i;
+    for (i = 0; i < gb.length; i++) {
+      if (maxBytes <= gb[i] * 1e9 * 4) {
+        step = gb[i] * 1e9;
+        break;
+      }
+    }
+    if (!step) {
+      step = 1e12;
+      while (maxBytes > step * 4) step *= 2;
+    }
+    var count = Math.max(2, Math.ceil(maxBytes / step));
+    return { step: step, count: count, max: step * count };
+  }
+
+  function bytesTick(bytes, step) {
+    if (bytes === 0) return '0';
+    return fmtDec(bytes / 1e9, step < 1e9 ? 1 : 0);
+  }
+
   /** "2026-11-02" (auch mit Uhrzeit) → "2. November 2026". Manuell, damit alte Browser identisch ausgeben. */
   function fmtDate(str) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
@@ -623,15 +684,24 @@
     timelineSvg = null;
   }
 
-  function renderTimeline(container, stats) {
+  var TIMELINE_WATCH = { aria: 'Watchtime im Verlauf', label: 'Watchtime', what: 'der Watchtime', fmt: fmtDuration };
+
+  /**
+   * Balkenverlauf. Ohne cfg: Watchtime (Sekunden). Mit cfg (Datenvolumen): cfg.buckets [{key, seconds}] trägt
+   * hier die Bytes, cfg.axis(max) → {step,count,max}, cfg.tick(wert, step), cfg.fmt, cfg.aria/label/what.
+   */
+  function renderTimeline(container, stats, cfg) {
+    var c = cfg || TIMELINE_WATCH;
+    var axisFn = c.axis || niceAxis;
+    var tickFn = c.tick || axisTickShort;
     var unit = (stats.timeline && stats.timeline.unit) || 'day';
     var days = S.range === '7d' ? 7 : S.range === '30d' ? 30 : 0;
-    var data = fillTimeline(unit, (stats.timeline && stats.timeline.buckets) || [], { days: days, now: new Date() });
+    var data = fillTimeline(unit, c.buckets || (stats.timeline && stats.timeline.buckets) || [], { days: days, now: new Date() });
     if (!data.length) {
       container.appendChild(el('p', 'sub', 'Keine Daten im Zeitraum.'));
       return;
     }
-    var W = 600;
+    var W = c.width || 600;
     var H = 140;
     var LM = 58; // linker Rand für die Y-Achsen-Beschriftung (bis „120m“/„192h“, 20 Einheiten Schrift)
     var TM = 14; // oberer Rand, damit das oberste Label (Schrift 20) nicht abgeschnitten wird
@@ -640,8 +710,8 @@
     data.forEach(function (b) {
       if (b.seconds > max) max = b.seconds;
     });
-    var axis = niceAxis(max);
-    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + (TM + H + 22), class: 'chart', role: 'group', 'aria-label': 'Watchtime im Verlauf', preserveAspectRatio: 'xMidYMid meet' });
+    var axis = axisFn(max);
+    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + (TM + H + 22), class: 'chart', role: 'group', 'aria-label': c.aria, preserveAspectRatio: 'xMidYMid meet' });
     // Gitternetz + Y-Achse (hinter den Balken)
     for (var t = 1; t <= axis.count; t++) {
       var ty = TM + H - (t / axis.count) * H;
@@ -649,7 +719,7 @@
     }
     for (var u = 0; u <= axis.count; u++) {
       var uy = TM + H - (u / axis.count) * H;
-      svg.appendChild(svgEl('text', { x: LM - 6, y: (uy + 4).toFixed(1), 'text-anchor': 'end', class: 'ytick' }, axisTickShort(u * axis.step, axis.step)));
+      svg.appendChild(svgEl('text', { x: LM - 6, y: (uy + 4).toFixed(1), 'text-anchor': 'end', class: 'ytick' }, tickFn(u * axis.step, axis.step)));
     }
     var slot = PW / data.length;
     var bw = Math.max(1, slot * 0.72);
@@ -668,7 +738,7 @@
     if (last >= 1) svg.appendChild(svgEl('text', { x: W, y: TM + H + 16, 'text-anchor': 'end' }, axisLabel(unit, data[last].key)));
 
     // Detailbox: Klick/Tipp (oder Enter/Leertaste) auf einen Balken, erneut = abwählen
-    var detail = el('div', 'tl-detail');
+    var detail = el('div', c.second ? 'tl-detail slim' : 'tl-detail');
     var selected = -1;
     var hits = [];
     function showDetail() {
@@ -683,13 +753,13 @@
       }
       var d = bucketDetails(unit, data, selected);
       detail.appendChild(el('div', 'tl-t', d.title));
-      detail.appendChild(el('div', 'tl-r', d.seconds > 0 ? 'Watchtime: ' + fmtDuration(d.seconds) : 'Keine Wiedergabe'));
-      if (d.share != null) detail.appendChild(el('div', 'tl-r', (d.share < 0.01 ? '< 1' : Math.round(d.share * 100)) + ' % der Watchtime im Zeitraum'));
+      detail.appendChild(el('div', 'tl-r', d.seconds > 0 ? c.label + ': ' + c.fmt(d.seconds) : 'Keine Wiedergabe'));
+      if (d.share != null) detail.appendChild(el('div', 'tl-r', (d.share < 0.01 ? '< 1' : Math.round(d.share * 100)) + ' % ' + c.what + ' im Zeitraum'));
       if (d.rank != null && d.active > 1) detail.appendChild(el('div', 'tl-r', 'Platz ' + d.rank + ' von ' + d.active + ' aktiven ' + UNIT_PLURAL[unit]));
       if (d.vsAvg != null && d.active > 1) {
         var pct = Math.round(Math.abs(d.vsAvg) * 100);
         detail.appendChild(
-          el('div', 'tl-r', (pct < 5 ? 'Etwa im Schnitt' : pct + ' % ' + (d.vsAvg > 0 ? 'über' : 'unter') + ' dem Schnitt') + ' (Ø ' + fmtDuration(d.avg) + ' pro ' + UNIT_ACTIVE[unit] + ')')
+          el('div', 'tl-r', (pct < 5 ? 'Etwa im Schnitt' : pct + ' % ' + (d.vsAvg > 0 ? 'über' : 'unter') + ' dem Schnitt') + ' (Ø ' + c.fmt(d.avg) + ' pro ' + UNIT_ACTIVE[unit] + ')')
         );
       }
     }
@@ -700,8 +770,8 @@
       });
     }
     data.forEach(function (b, i) {
-      var hit = svgEl('rect', { class: 'hit', x: (LM + i * slot).toFixed(2), y: TM, width: slot.toFixed(2), height: H, tabindex: i === 0 ? 0 : -1, role: 'button', 'aria-label': bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds) });
-      hit.appendChild(svgEl('title', {}, bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds)));
+      var hit = svgEl('rect', { class: 'hit', x: (LM + i * slot).toFixed(2), y: TM, width: slot.toFixed(2), height: H, tabindex: i === 0 ? 0 : -1, role: 'button', 'aria-label': bucketLabel(unit, b.key) + ': ' + c.fmt(b.seconds) });
+      hit.appendChild(svgEl('title', {}, bucketLabel(unit, b.key) + ': ' + c.fmt(b.seconds)));
       var pick = function () {
         selected = selected === i ? -1 : i;
         showDetail();
@@ -726,20 +796,23 @@
       hits.push(hit);
     });
     // Klick irgendwo außerhalb der Balken → zurück zur Gesamtansicht
-    dropTimelineOutside();
-    var outside = function (e) {
-      if (!document.body.contains(svg)) {
-        dropTimelineOutside();
-        return;
-      }
-      if (selected >= 0 && hits.indexOf(e.target) < 0) {
-        selected = -1;
-        showDetail();
-      }
-    };
-    timelineOutside = outside;
-    timelineSvg = svg;
-    document.addEventListener('click', outside);
+    // (der document-Listener gehört nur dem Watchtime-Verlauf; ein zweites Diagramm lässt ihn in Ruhe)
+    if (!c.second) {
+      dropTimelineOutside();
+      var outside = function (e) {
+        if (!document.body.contains(svg)) {
+          dropTimelineOutside();
+          return;
+        }
+        if (selected >= 0 && hits.indexOf(e.target) < 0) {
+          selected = -1;
+          showDetail();
+        }
+      };
+      timelineOutside = outside;
+      timelineSvg = svg;
+      document.addEventListener('click', outside);
+    }
     showDetail();
     container.appendChild(svg);
     container.appendChild(detail);
@@ -842,11 +915,35 @@
     container.appendChild(svg);
   }
 
-  function kpi(label, value, wide) {
+  function kpi(label, value, wide, note, title) {
     var k = el('div', wide ? 'kpi wide' : 'kpi');
     k.appendChild(el('div', 'kpi-v', value));
     k.appendChild(el('div', 'kpi-l', label));
+    if (note) k.appendChild(el('div', 'kpi-s', note));
+    if (title) k.setAttribute('title', title);
     return k;
+  }
+
+  /** Datenvolumen-Kachel; null ohne `volume`. */
+  function volumeKpi(v) {
+    if (!v) return null;
+    var full = v.scaled === false ? 'Geschätzt' : volumeSubText(v).replace('Streamings', 'Streaming-Uploads') + ' (ohne Backup)';
+    var k = kpi('Datenvolumen', 'ca. ' + fmtBytes(v.bytes), false, volumeSubText(v), full + '. ' + VOLUME_NOTE);
+    k.className += ' kpi-vol';
+    return k;
+  }
+
+  /** Panel „Datenvolumen“ mit Balkenverlauf und Hinweiszeile. */
+  function volumePanel(stats) {
+    var v = stats.volume;
+    var pv = panel('Datenvolumen', false);
+    pv.appendChild(el('p', 'sub', (RANGE_TITLES[stats.range] || '') + ' · Achse in GB'));
+    var buckets = (v.timeline || []).map(function (b) {
+      return { key: b.bucket, seconds: Number(b.bytes) || 0 };
+    });
+    renderTimeline(pv, stats, { buckets: buckets, aria: 'Datenvolumen im Verlauf', label: 'Datenvolumen', what: 'des Datenvolumens', fmt: fmtBytes, axis: niceBytesAxis, tick: bytesTick, second: true, width: window.innerWidth >= 800 ? 1200 : 600 });
+    pv.appendChild(el('p', 'sub vol-note', VOLUME_NOTE));
+    return pv;
   }
 
   /** Kopfbereich für LENZ+/LENZPRIME: große Watchtime, Zeitraum und Platz als Chips. */
@@ -1156,13 +1253,28 @@
     kp.appendChild(kpi('Filme', fmtInt(t.movies)));
     kp.appendChild(kpi('Serien', fmtInt(t.series)));
     kp.appendChild(kpi('Aktive Tage', fmtInt(t.activeDays)));
+    var vk = volumeKpi(stats.volume);
+    if (vk) kp.appendChild(vk);
     wrap.appendChild(kp);
 
+    var cp = null;
     if (stats.compare && !themed) {
-      var cp = el('div', 'panel');
+      cp = el('div', 'panel');
       cp.appendChild(el('p', 'big', compareText(stats.compare)));
       cp.appendChild(el('p', 'sub', 'Dein Platz nach Watchtime unter allen aktiven Nutzern. Mehr Details über andere gibt es nicht.'));
       wrap.appendChild(cp);
+    }
+    var vc = stats.volume && stats.volume.compare;
+    if (vc) {
+      var vline = el('p', cp ? 'sub vol-compare' : 'big vol-compare', 'Datenvolumen: ' + volumeCompareText(vc));
+      if (cp) {
+        cp.insertBefore(vline, cp.lastChild);
+      } else {
+        var vcp = el('div', 'panel');
+        vcp.appendChild(vline);
+        vcp.appendChild(el('p', 'sub', 'Dein Platz nach Datenvolumen unter allen aktiven Nutzern.'));
+        wrap.appendChild(vcp);
+      }
     }
     if (stats.approx) wrap.appendChild(el('p', 'notice warn', 'Die Serien-Zuordnung ist bei sehr vielen Folgen nur näherungsweise.'));
 
@@ -1189,6 +1301,8 @@
     renderHeatmap(ph, stats);
     row.appendChild(ph);
     wrap.appendChild(row);
+
+    if (stats.volume) wrap.appendChild(volumePanel(stats));
 
     var b = stats.binge || {};
     if (b.topDay || b.seriesDay) {
@@ -1655,7 +1769,8 @@
     stxt(g, counts, g.x, y + 320 * f, 52, 600, p.text, g.cw);
     stxt(g, fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + 395 * f, 44, 500, p.muted, g.cw);
     if (g.stats.compare) stxt(g, compareText(g.stats.compare), g.x, y + 465 * f, 44, 500, p.muted, g.cw);
-    var top = topEntries(g.stats.topSeries, g.items, 1)[0];
+    if (g.stats.volume) stxt(g, 'Datenvolumen ca. ' + fmtBytes(g.stats.volume.bytes), g.x, y + 535 * f, 44, 500, p.muted, g.cw);
+    var top =topEntries(g.stats.topSeries, g.items, 1)[0];
     if (top) {
       stxt(g, 'Top-Serie', g.x, y + 620 * f, 44, 500, p.muted);
       stxt(g, top.name, g.x, y + 710 * f, 72, 700, p.text, g.cw);
@@ -1709,7 +1824,7 @@
       stxt(g, tl[0], tx + 30, ty + th * 0.56, 66, plus ? 800 : 700, p.text, tw - 40);
       stxt(g, tl[1], tx + 30, ty + th * 0.84, 30, 500, p.muted, tw - 40);
     });
-    stxt(g, fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + Math.round(600 * f), 40, 500, p.muted, g.cw);
+    stxt(g, fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage') + (g.stats.volume ? ' · Datenvolumen ca. ' + fmtBytes(g.stats.volume.bytes) : ''), g.x, y + Math.round(600 * f), 40, 500, p.muted, g.cw);
     var top = topEntries(g.stats.topSeries, g.items, 1)[0];
     if (top) {
       var cy2 = y + Math.round(650 * f);
@@ -1763,7 +1878,7 @@
       pixelText(g, tl[0], tx + 30, ty + th * 0.6, 96, p.hi, tw - 50);
       stxt(g, tl[1].toUpperCase(), tx + 30, ty + th * 0.86, 30, 400, p.muted, tw - 50);
     });
-    stxt(g, '> ' + fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + Math.round(600 * f), 40, 400, p.muted, g.cw);
+    stxt(g, '> ' + fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage') + (g.stats.volume ? ' · Datenvolumen ca. ' + fmtBytes(g.stats.volume.bytes) : ''), g.x, y + Math.round(600 * f), 40, 400, p.muted, g.cw);
     var top = topEntries(g.stats.topSeries, g.items, 1)[0];
     if (top) {
       var cy2 = y + Math.round(650 * f);
@@ -2453,6 +2568,10 @@
     deviceShares: deviceShares,
     episodeLabel: episodeLabel,
     compareText: compareText,
+    fmtBytes: fmtBytes,
+    volumeSubText: volumeSubText,
+    volumeCompareText: volumeCompareText,
+    niceBytesAxis: niceBytesAxis,
     collectIds: collectIds,
     normId: normId,
     renderTopList: renderTopList,

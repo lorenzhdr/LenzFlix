@@ -48,6 +48,7 @@ const table = (colums, results) => json({ colums, results, message: '' });
 
 const kindOf = (sql) => {
   if (/AS ignored/.test(sql)) return 'q1';
+  if (/AS i, MAX\(ItemType\)/.test(sql)) return 'qv';
   if (/AVG\(t\)/.test(sql)) return 'q7';
   if (/^SELECT ItemType, COUNT\(\*\) AS n/.test(sql)) return 'q2b';
   if (/AS day, ItemId/.test(sql)) return 'q5b';
@@ -129,6 +130,7 @@ const ageTokenCache = (at) => {
 beforeEach(() => {
   clearTokenCache();
   calls = [];
+  env.CHARTS.get.mockReset();
   vi.stubGlobal('caches', fakeCaches());
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -267,7 +269,7 @@ describe('GET /lenzflix-stats/api/me/stats', () => {
     );
     expect(res.status).toBe(200);
     const all = sentSql();
-    expect(all).toHaveLength(10);
+    expect(all).toHaveLength(11);
     for (const sql of all) {
       expect(sql).not.toContain(evil);
       const hexes = sql.match(/[0-9a-f]{32}/g) ?? [];
@@ -391,5 +393,162 @@ describe('GET /lenzflix-stats/api/me/stats', () => {
     const res = await worker.fetch(reqOf(), env);
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: 'internal' });
+  });
+
+  describe('volume', () => {
+    const OTHER1 = '1111111111111111111111111111111a';
+    const OTHER2 = '2222222222222222222222222222222b';
+    const qv = (rs) => () => table(['b', 'i', 't', 's'], rs);
+    const kvOf = (over = {}) => ({
+      v: 1,
+      at: 1,
+      br: { [EP(1)]: 8000 },
+      fb: { movie: 6000, episode: 2000 },
+      ranges: { '30d': { est: 4_000_000_000, up: 1, k: 2, scaled: true, cov: 0.95 } },
+      users: { '30d': { [OTHER1]: 1_000_000_000, [OTHER2]: 3_000_000_000, [UID]: 1 } },
+      ...over,
+    });
+    const get = async (range = '30d') => (await worker.fetch(reqOf(`?range=${range}`), env)).json();
+    // EP(1): 1000 s * 8000 kbps; EP(2): 500 s Rückfall Episode 2000; MOVIE: 100 s Rückfall Film 6000
+    const rows = [
+      ['2026-11-01', EP(1), 'Episode', '1000'],
+      ['2026-11-02', EP(2), 'Episode', '500'],
+      ['2026-11-02', MOVIE, 'Movie', '100'],
+    ];
+    const e = 1000 * 8000 * 125 + 500 * 2000 * 125 + 100 * 6000 * 125;
+
+    it('Qv-SQL: Kalendergrenzen je Bereich, ein Statement, UID nur aus /Users/Me', async () => {
+      const bounds = {
+        '7d': "date('now','localtime','-6 days')",
+        '30d': "date('now','localtime','-29 days')",
+        year: "date('now','localtime','start of year')",
+      };
+      for (const [range, frag] of Object.entries(bounds)) {
+        calls = [];
+        cacheMap.clear();
+        vi.stubGlobal('fetch', makeFetch());
+        env.CHARTS.get.mockResolvedValue(null);
+        await get(range);
+        const sql = sentSql().find((x) => /AS i, MAX/.test(x));
+        expect(sql).toContain(frag);
+        expect(sql).toContain(`UserId = '${UID}'`);
+        expect(sql).toContain('LIMIT 5000');
+        expect(sql).not.toContain('HAVING');
+      }
+    });
+
+    it('ohne KV / KV-Fehler / ohne Binding -> kein volume, Rest unverändert', async () => {
+      vi.stubGlobal('fetch', makeFetch({ q: { ...full, qv: qv(rows) } }));
+      env.CHARTS.get.mockResolvedValue(null);
+      const a = await get();
+      expect('volume' in a).toBe(false);
+      expect(a.totals.seconds).toBe(3000);
+      cacheMap.clear();
+      env.CHARTS.get.mockRejectedValue(new Error('kv down'));
+      const b = await get();
+      expect('volume' in b).toBe(false);
+      expect(b.totals.seconds).toBe(3000);
+      cacheMap.clear();
+      const res = await worker.fetch(reqOf('?range=30d'), { ...env, CHARTS: undefined });
+      expect('volume' in (await res.json())).toBe(false);
+    });
+
+    it('Qv-Fehler -> kein volume, Rest unverändert', async () => {
+      vi.stubGlobal('fetch', makeFetch({ q: { ...full, qv: () => new Response('boom', { status: 500 }) } }));
+      env.CHARTS.get.mockResolvedValue(kvOf());
+      const b = await get();
+      expect(b.totals.seconds).toBe(3000);
+      expect('volume' in b).toBe(false);
+    });
+
+    it('cov < 0,9 oder est 0 -> kein volume', async () => {
+      vi.stubGlobal('fetch', makeFetch({ q: { ...full, qv: qv(rows) } }));
+      env.CHARTS.get.mockResolvedValue(kvOf({ ranges: { '30d': { est: 4e9, k: 1, scaled: false, cov: 0.89 } } }));
+      expect('volume' in (await get())).toBe(false);
+      cacheMap.clear();
+      env.CHARTS.get.mockResolvedValue(kvOf({ ranges: { '30d': { est: 0, k: 1, scaled: false, cov: 1 } } }));
+      expect('volume' in (await get())).toBe(false);
+    });
+
+    it('Bytes, Rückfall-Bitrate, share, upBytes, timeline', async () => {
+      vi.stubGlobal('fetch', makeFetch({ q: { ...full, qv: qv(rows) } }));
+      env.CHARTS.get.mockResolvedValue(kvOf());
+      const v = (await get()).volume;
+      expect(v.bytes).toBe(e * 2);
+      expect(v.share).toBeCloseTo(e / 4e9, 10);
+      expect(v.upBytes).toBe(8e9);
+      expect(v.scaled).toBe(true);
+      expect(v.cov).toBe(0.95);
+      expect(v.timeline).toEqual([
+        { bucket: '2026-11-01', bytes: 1000 * 8000 * 125 * 2 },
+        { bucket: '2026-11-02', bytes: (500 * 2000 * 125 + 100 * 6000 * 125) * 2 },
+      ]);
+    });
+
+    it('Standard-Rückfall 8000/4000 ohne fb, br 0 = unbekannt, share auf 1 geklemmt', async () => {
+      vi.stubGlobal(
+        'fetch',
+        makeFetch({
+          q: { ...full, qv: qv([['2026-11-01', MOVIE, 'Movie', '10'], ['2026-11-01', EP(1), 'Episode', '10']]) },
+        }),
+      );
+      env.CHARTS.get.mockResolvedValue(
+        kvOf({ br: { [EP(1)]: 0 }, fb: undefined, ranges: { '30d': { est: 1000, k: 1, scaled: false, cov: 1 } }, users: undefined }),
+      );
+      const v = (await get()).volume;
+      expect(v.bytes).toBe(10 * 8000 * 125 + 10 * 4000 * 125);
+      expect(v.share).toBe(1);
+      expect('compare' in v).toBe(false);
+    });
+
+    it('compare ab 3 Konten, eigener Wert ersetzt, keine fremden UIDs/Werte in der Antwort', async () => {
+      vi.stubGlobal('fetch', makeFetch({ q: { ...full, qv: qv(rows) } }));
+      env.CHARTS.get.mockResolvedValue(kvOf());
+      const text = await (await worker.fetch(reqOf('?range=30d'), env)).text();
+      const v = JSON.parse(text).volume;
+      expect(v.compare).toEqual({ rank: 2, of: 3, avgBytes: Math.round((1e9 + 3e9 + e * 2) / 3) });
+      expect(Object.keys(v.compare).sort()).toEqual(['avgBytes', 'of', 'rank']);
+      for (const x of [OTHER1, OTHER2, UID, '1000000000', '3000000000']) expect(text).not.toContain(x);
+    });
+
+    it('compare fehlt bei weniger als 3 Konten; eigenes Konto wird hinzugefügt', async () => {
+      vi.stubGlobal('fetch', makeFetch({ q: { ...full, qv: qv(rows) } }));
+      env.CHARTS.get.mockResolvedValue(kvOf({ users: { '30d': { [OTHER1]: 5e9 } } }));
+      expect('compare' in (await get()).volume).toBe(false);
+      cacheMap.clear();
+      env.CHARTS.get.mockResolvedValue(kvOf({ users: { '30d': { [OTHER1]: 5e9, [OTHER2]: 1 } } }));
+      expect((await get()).volume.compare).toMatchObject({ of: 3, rank: 2 });
+    });
+
+    it('share-Summe dreier Konten = 1 (est = Summe der Schätzungen)', async () => {
+      const ids = [UID, OTHER1, OTHER2];
+      const secs = [1000, 2500, 4000];
+      const est = secs.reduce((a, s) => a + s * 8000 * 125, 0);
+      env.CHARTS.get.mockResolvedValue(
+        kvOf({ ranges: { '30d': { est, k: 1, scaled: false, cov: 1 } }, users: undefined }),
+      );
+      let sum = 0;
+      for (let i = 0; i < 3; i++) {
+        cacheMap.clear();
+        clearTokenCache();
+        vi.stubGlobal(
+          'fetch',
+          makeFetch({
+            me: () => json({ Id: ids[i] }),
+            q: { ...full, qv: qv([['2026-11-01', EP(1), 'Episode', String(secs[i])]]) },
+          }),
+        );
+        sum += (await get()).volume.share;
+      }
+      expect(sum).toBeCloseTo(1, 10);
+    });
+
+    it('Normalfall inkl. volume bleibt <= 50 Subrequests', async () => {
+      const f = makeFetch({ q: { ...full, qv: qv(rows) } });
+      vi.stubGlobal('fetch', f);
+      env.CHARTS.get.mockResolvedValue(kvOf());
+      await get();
+      expect(subrequests(f) + env.CHARTS.get.mock.calls.length).toBeLessThanOrEqual(50);
+    });
   });
 });

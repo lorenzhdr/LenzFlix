@@ -4,6 +4,7 @@ vi.mock('../src/auth.js', async (orig) => ({ ...(await orig()), resolveUser: vi.
 vi.mock('../src/srv/now.js', () => ({ getNow: vi.fn(), clearNowCache: vi.fn() }));
 vi.mock('../src/srv/month.js', () => ({ getMonth: vi.fn(), getMonthMeta: vi.fn(), clearMonthCache: vi.fn() }));
 vi.mock('../src/srv/daily.js', () => ({ runDaily: vi.fn(), runSlot: vi.fn() }));
+vi.mock('../src/srv/vol.js', () => ({ runVol: vi.fn(), VOL_KEY: 'srv:vol:v1' }));
 
 import { resolveUser } from '../src/auth.js';
 import worker from '../src/index.js';
@@ -11,7 +12,8 @@ import { runDaily, runSlot } from '../src/srv/daily.js';
 import { getMonth, getMonthMeta } from '../src/srv/month.js';
 import { getNow } from '../src/srv/now.js';
 import { clearReportState } from '../src/srv/report.js';
-import { SRV_CRON, clearSrvRoute, routeSrv } from '../src/srv/route.js';
+import { SRV_CRON, VOL_CRON, clearSrvRoute, routeSrv } from '../src/srv/route.js';
+import { runVol } from '../src/srv/vol.js';
 import { clearServerCache } from '../src/srv/server.js';
 
 const ORIGIN = 'https://stream.example';
@@ -38,6 +40,7 @@ beforeEach(() => {
   vi.mocked(getMonthMeta).mockReset().mockResolvedValue({ ym: '2026-11', maxM: 14 });
   vi.mocked(runDaily).mockReset().mockResolvedValue({ ok: true });
   vi.mocked(runSlot).mockReset().mockResolvedValue(undefined);
+  vi.mocked(runVol).mockReset().mockResolvedValue(undefined);
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -213,6 +216,25 @@ describe('scheduled', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('Volumen-Cron ruft runVol und weder runSlot noch den Charts-Lauf', async () => {
+    const env = makeEnv();
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const waited = [];
+    await worker.scheduled({ cron: VOL_CRON }, env, { waitUntil: (p) => waited.push(p) });
+    expect(VOL_CRON).toBe('7 * * * *');
+    expect(runVol).toHaveBeenCalledTimes(1);
+    expect(runSlot).not.toHaveBeenCalled();
+    expect(waited).toHaveLength(1);
+    expect(env.CHARTS.put).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('Volumen-Cron: ein werfender runVol bricht scheduled nicht ab', async () => {
+    vi.mocked(runVol).mockRejectedValue(new Error('x'));
+    await expect(worker.scheduled({ cron: VOL_CRON }, makeEnv(), {})).resolves.toBeUndefined();
+  });
+
   it('anderer Cron und leeres Event bleiben der Charts-Lauf', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ colums: [], results: [] }))));
     for (const ev of [{}, { cron: '0 * * * *' }, undefined]) {
@@ -221,5 +243,6 @@ describe('scheduled', () => {
       expect(env.CHARTS.put).toHaveBeenCalledTimes(1);
     }
     expect(runSlot).not.toHaveBeenCalled();
+    expect(runVol).not.toHaveBeenCalled();
   });
 });

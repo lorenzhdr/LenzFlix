@@ -98,3 +98,5 @@ sudo systemctl daemon-reload
 
 Neustarts und Updates des Servers sind unkritisch: Ausgefallene Läufe holt `Persistent=true`
 nach, und fehlende Meldungen zeigt die Oberfläche neutral an.
+
+Zusätzlich zu Monats- und Tageswerten werden auch die Stundenwerte (`vnstat --json h`) übertragen; sie dienen dem Herausrechnen eines regelmäßigen Backups aus dem Upload.
