@@ -19,7 +19,7 @@ Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkl
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.css");
 ```
 
 - Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,14 +29,14 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.2/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
 **Auto-Weiter auf älteren Fernsehern (optional):** Das Hauptskript läuft auf älteren Fernsehern (z. B. Chromium 53, LG webOS 4) nicht. Damit dort trotzdem „Auto-Weiter“ (siehe „Bedienung“) funktioniert, gibt es das kleine Zusatzskript `dist/lenzupnext.min.js`. Es kommt als **eigener** JavaScript-Injector-Eintrag mit externer URL, nicht als Inline-Inhalt:
 
 ```
-https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.2/dist/lenzupnext.min.js
+https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzupnext.min.js
 ```
 
 Inline-Einträge landen im Plugin in einer gemeinsamen Datei; passt darin etwas nicht zum alten Browser, fällt die ganze Datei aus. Auf PC und Handy ist der Eintrag unnötig, dort steckt Auto-Weiter im Hauptskript. Sind beide eingetragen, läuft Auto-Weiter trotzdem nur einmal.
@@ -54,7 +54,7 @@ window.LenzFlixConfig = Object.assign(window.LenzFlixConfig || {}, {
 
 ### 4. Reverse-Proxy mit CSP
 
-Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`, `lenzstore.min.css`, `lenzstore.min.js`, `lenztvmode.min.css`, `lenztvmode.min.js`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig. Für den Mehrspieler der VIDEOTHEK LENZ (siehe unten) muss zusätzlich `connect-src` die Adresse des Charts-Workers als `wss://<charts-url>` erlauben (neben `https://<charts-url>`, das für die Charts schon nötig ist).
+Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`, `lenzstore.min.css`, `lenzstore.min.js`, `lenztvmode.min.css`, `lenztvmode.min.js`, `lenzserverstats.min.css`, `lenzserverstats.min.js`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig. Für den Mehrspieler der VIDEOTHEK LENZ (siehe unten) muss zusätzlich `connect-src` die Adresse des Charts-Workers als `wss://<charts-url>` erlauben (neben `https://<charts-url>`, das für die Charts schon nötig ist).
 
 ## Designs
 
@@ -105,7 +105,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.css");
 :root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -231,7 +231,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.21.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;
@@ -260,7 +260,7 @@ npm run serve   # Dev-Server http://localhost:5179/dist/ (liefert dist/ und asse
 
 ```
 build/        build.mjs (lightningcss + esbuild), serve.mjs (Dev-Server), dev-inject.js und dev-boot.js (Dev-Loader), *-dev.html/js (Dev-Harnesses)
-dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css, lenzretro[.min].css, lenzstore[.min].css/.js, lenztvmode[.min].css/.js)
+dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css, lenzretro[.min].css, lenzstore[.min].css/.js, lenztvmode[.min].css/.js, lenzserverstats[.min].css/.js)
 assets/       Schriften Inter und LenzRetro (woff2) und Logo-SVGs, jeweils mit Lizenzdatei
 docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features), store3d.md, tvmode.md, charts-api.md, stats-api.md
 src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css, logo.css

@@ -98,6 +98,12 @@ export function createMonthTab(deps, ctx) {
     const t = d.totals || {};
     const secs = pos0(t.secs);
     const ps = d.prev ? pos0(d.prev.secs) : 0;
+    // Laufender Monat: Tagesschnitt gegen den Tagesschnitt des ganzen Vormonats (sonst vergleicht man z. B. 25 mit 31 Tagen).
+    const elapsed = d.partial && Array.isArray(d.days) ? d.days.length : 0;
+    const prevYm = d.prev && typeof d.prev.ym === 'string' ? d.prev.ym : '';
+    const prevDays = /^\d{4}-\d{2}$/.test(prevYm) ? new Date(Date.UTC(+prevYm.slice(0, 4), +prevYm.slice(5, 7), 0)).getUTCDate() : 0;
+    const avg = elapsed > 0 && prevDays > 0;
+    const delta = avg ? fmtDelta(secs / elapsed, ps / prevDays) : fmtDelta(secs, ps);
     const tx = d.tx && isNum(d.tx.tx) ? fmtBytes(d.tx.tx) : '–';
     if (stale) body.append(note(T.downStale));
     if (d.partial) body.append(note('Der Monat läuft noch, die Werte wachsen weiter.'));
@@ -105,7 +111,7 @@ export function createMonthTab(deps, ctx) {
       h('div', { class: 'lfx-srv-kpis' }, [
         kpi('Schauzeit', fmtHm(secs)),
         kpi('Upload', tx),
-        kpi('ggü. Vormonat', fmtDelta(secs, ps)),
+        kpi(avg ? 'Tagesschnitt ggü. Vormonat' : 'ggü. Vormonat', delta),
         kpi('Aktive Konten', isNum(t.users) ? num(t.users) : '–'),
       ]),
     );

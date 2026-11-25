@@ -299,7 +299,7 @@
       legend.append(
         h("li", {}, [
           h("i", { class: "lfx-srv-split__dot c" + i }),
-          `${p.label} ${num(Math.round(p.value / total * 100))} %`
+          `${p.label} ${Math.round(p.value / total * 100) < 1 ? "< 1" : num(Math.round(p.value / total * 100))} %`
         ])
       );
     });
@@ -469,6 +469,11 @@
       const t = d.totals || {};
       const secs = pos0(t.secs);
       const ps = d.prev ? pos0(d.prev.secs) : 0;
+      const elapsed = d.partial && Array.isArray(d.days) ? d.days.length : 0;
+      const prevYm = d.prev && typeof d.prev.ym === "string" ? d.prev.ym : "";
+      const prevDays = /^\d{4}-\d{2}$/.test(prevYm) ? new Date(Date.UTC(+prevYm.slice(0, 4), +prevYm.slice(5, 7), 0)).getUTCDate() : 0;
+      const avg = elapsed > 0 && prevDays > 0;
+      const delta = avg ? fmtDelta(secs / elapsed, ps / prevDays) : fmtDelta(secs, ps);
       const tx = d.tx && isNum(d.tx.tx) ? fmtBytes(d.tx.tx) : "\u2013";
       if (stale) body.append(note(T.downStale));
       if (d.partial) body.append(note("Der Monat l\xE4uft noch, die Werte wachsen weiter."));
@@ -476,7 +481,7 @@
         h("div", { class: "lfx-srv-kpis" }, [
           kpi("Schauzeit", fmtHm(secs)),
           kpi("Upload", tx),
-          kpi("gg\xFC. Vormonat", fmtDelta(secs, ps)),
+          kpi(avg ? "Tagesschnitt gg\xFC. Vormonat" : "gg\xFC. Vormonat", delta),
           kpi("Aktive Konten", isNum(t.users) ? num(t.users) : "\u2013")
         ])
       );

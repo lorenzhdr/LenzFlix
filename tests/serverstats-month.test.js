@@ -71,7 +71,7 @@ describe('serverstats Reiter Monat', () => {
     const kpis = [...el.querySelectorAll('.lfx-srv-kpi')].map((k) => k.textContent);
     expect(kpis[0]).toBe('182 h 15 minSchauzeit');
     expect(kpis[1]).toBe('1,42 TBUpload');
-    expect(kpis[2]).toBe('+14 %ggü. Vormonat');
+    expect(kpis[2]).toBe('+1.666 %Tagesschnitt ggü. Vormonat'); // laufender Monat: Tagesschnitt (2 Tage) gegen Oktober (31 Tage)
     expect(kpis[3]).toBe('4Aktive Konten');
     const top = el.querySelector('.lfx-srv-day.is-top');
     expect(top.getAttribute('title')).toBe('Do., 12.11.: 6 h 20 min');
@@ -130,7 +130,7 @@ describe('serverstats Reiter Monat', () => {
     await open(app);
     const kpis = [...app.el.querySelectorAll('.lfx-srv-kpi')].map((k) => k.textContent);
     expect(kpis[1]).toBe('–Upload');
-    expect(kpis[2]).toBe('neuggü. Vormonat');
+    expect(kpis[2]).toBe('neuTagesschnitt ggü. Vormonat');
     app.dispose();
   });
 

@@ -119,7 +119,7 @@ export function splitBar(parts) {
     legend.append(
       h('li', {}, [
         h('i', { class: 'lfx-srv-split__dot c' + i }),
-        `${p.label} ${num(Math.round((p.value / total) * 100))} %`,
+        `${p.label} ${Math.round((p.value / total) * 100) < 1 ? '< 1' : num(Math.round((p.value / total) * 100))} %`,
       ]),
     );
   });
