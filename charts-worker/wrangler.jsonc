@@ -6,7 +6,7 @@
   "main": "src/index.js",
   "compatibility_date": "2026-11-01",
   "workers_dev": false,
-  "triggers": { "crons": ["0 * * * *"] },
+  "triggers": { "crons": ["0 * * * *", "23 */6 * * *"] },
   "routes": [{ "pattern": "charts.example.com", "custom_domain": true }],
   "kv_namespaces": [
     {
@@ -28,7 +28,8 @@
     "WX_LAT": "",
     "WX_LON": ""
   },
-  // Secrets (nicht hier!): JELLYFIN_API_KEY, optional REFRESH_SECRET, MP_SECRET (Mehrspieler, mindestens 32 Zeichen) -> `npx wrangler secret put <NAME>`
+  // Secrets (nicht hier!): JELLYFIN_API_KEY, optional REFRESH_SECRET, MP_SECRET (Mehrspieler, mindestens 32 Zeichen),
+  // SERVER_REPORT_SECRET (Server-Statistik: Meldung des Servers per POST /srv/report, mindestens 32 Zeichen; ohne Secret 404) -> `npx wrangler secret put <NAME>`
   "assets": { "directory": "./public", "html_handling": "auto-trailing-slash" },
   "durable_objects": { "bindings": [{ "name": "WORLD", "class_name": "MpWorld" }] },
   "migrations": [{ "tag": "mp1", "new_sqlite_classes": ["MpWorld"] }],

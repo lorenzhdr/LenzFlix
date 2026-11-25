@@ -1,0 +1,45 @@
+[
+  {
+    "Id": "SESSIONID-SECRET-1", "UserId": "11111111-1111-1111-1111-111111111111", "UserName": "Klaus_Geheim",
+    "UserPrimaryImageTag": "USERIMGTAG-77", "DeviceName": "Lorenz' iPhone", "DeviceId": "DEVID-ABC-999",
+    "Client": "Jellyfin iOS", "RemoteEndPoint": "203.0.113.77", "ServerId": "SERVERID-XYZ",
+    "NowPlayingQueue": [{ "Id": "QUEUEITEM-1", "PlaylistItemId": "PLAYLIST-QQ" }],
+    "NowPlayingQueueFullItems": [{ "Name": "QUEUETITLE-LEAK" }],
+    "PlayState": { "PositionTicks": 6000000000, "IsPaused": false, "PlayMethod": "DirectPlay", "AudioStreamIndex": 2, "MediaSourceId": "MEDIASRC-1" },
+    "NowPlayingItem": {
+      "Id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1", "Name": "Pilot", "Type": "Episode", "SeriesName": "Tolle Serie",
+      "SeriesId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1", "ParentIndexNumber": 2, "IndexNumber": 5, "RunTimeTicks": 24000000000,
+      "ImageTags": { "Primary": "EPTAG" }, "SeriesPrimaryImageTag": "SERTAG", "Path": "/media/PATH-LEAK/x.mkv",
+      "MediaStreams": [
+        { "Type": "Video", "Index": 0, "BitRate": 4000000 },
+        { "Type": "Audio", "Index": 1, "BitRate": 128000 },
+        { "Type": "Audio", "Index": 2, "BitRate": 640000 }
+      ]
+    }
+  },
+  {
+    "Id": "SESSIONID-SECRET-2", "UserId": "22222222-2222-2222-2222-222222222222", "UserName": "Zweite_Person",
+    "DeviceName": "Wohnzimmer Samsung", "DeviceId": "DEVID-TV-555", "Client": "Samsung Smart TV", "RemoteEndPoint": "198.51.100.5",
+    "ServerId": "SERVERID-XYZ",
+    "PlayState": { "PositionTicks": 300000000, "IsPaused": true, "PlayMethod": "Transcode" },
+    "TranscodingInfo": { "Bitrate": 8000000, "IsVideoDirect": false, "IsAudioDirect": true },
+    "NowPlayingItem": {
+      "Id": "cccccccc-cccc-cccc-cccc-ccccccccccc1", "Name": "Anderer Film", "Type": "Movie", "RunTimeTicks": 72000000000,
+      "ImageTags": { "Primary": "MOVTAG" }, "MediaStreams": []
+    }
+  },
+  {
+    "Id": "SESSIONID-SECRET-3", "UserId": "33333333-3333-3333-3333-333333333333", "UserName": "Dritter_Nutzer",
+    "DeviceName": "Chrome", "DeviceId": "DEVID-WEB-123", "Client": "Jellyfin Web", "RemoteEndPoint": "192.0.2.9",
+    "PlayState": { "PositionTicks": 100000000, "IsPaused": false, "PlayMethod": "Transcode" },
+    "TranscodingInfo": { "Bitrate": 2000000, "IsVideoDirect": true, "IsAudioDirect": true },
+    "NowPlayingItem": {
+      "Id": "dddddddd-dddd-dddd-dddd-ddddddddddd1", "Name": "Geheimfilm", "Type": "Movie", "RunTimeTicks": 36000000000,
+      "ImageTags": { "Primary": "SECRETTAG" }, "MediaStreams": []
+    }
+  },
+  {
+    "Id": "SESSIONID-SECRET-4", "UserId": "44444444-4444-4444-4444-444444444444", "UserName": "Idle_Person",
+    "DeviceName": "Idle-Gerät", "DeviceId": "DEVID-IDLE", "Client": "Jellyfin Web", "PlayState": {}
+  }
+]

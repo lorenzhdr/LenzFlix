@@ -5,6 +5,8 @@ import { handleMeStats } from './me-stats.js';
 import { handleOnline, handleTicket, handleUpgrade } from './mp/route.js';
 export { MpWorld } from './mp/world.js';
 import { buildSql, minSeconds, minSecondsMovie, windowDays } from './sql.js';
+import { runSlot } from './srv/daily.js';
+import { SRV_CRON, routeSrv } from './srv/route.js';
 import { handleWx } from './wx.js';
 
 const KV_KEY = 'charts:v1';
@@ -127,6 +129,11 @@ async function handle(request, env, ctx) {
   if (pathname === '/mp/online' && request.method === 'GET') return handleOnline(request, env, ctx);
   if (pathname === '/mp' && request.method === 'GET') return handleUpgrade(request, env);
 
+  if (pathname === '/srv' || pathname.startsWith('/srv/')) {
+    const r = await routeSrv(request, env, ctx, url);
+    if (r) return r;
+  }
+
   if (pathname === '/health' && request.method === 'GET') {
     const data = await env.CHARTS.get(KV_KEY, 'json');
     return jsonResponse({ ok: true, generatedAt: data?.generatedAt ?? null }, 200, request, env);
@@ -173,7 +180,14 @@ export default {
     });
   },
 
-  async scheduled(_event, env, ctx) {
+  async scheduled(event, env, ctx) {
+    if (event?.cron === SRV_CRON) {
+      // Server-Statistik-Slot; wirft nie, der Charts-Lauf ist davon unberührt.
+      const slot = Promise.resolve(runSlot(env, ctx)).catch(() => {});
+      ctx?.waitUntil?.(slot);
+      await slot;
+      return;
+    }
     const job = refresh(env).catch((err) => {
       // Altes KV-Ergebnis bleibt erhalten; keine Secrets loggen.
       console.error('cron refresh failed, keeping previous result:', err?.message);

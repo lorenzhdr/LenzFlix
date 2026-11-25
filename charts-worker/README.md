@@ -73,6 +73,15 @@ Zahl der gerade in der VIDEOTHEK anwesenden Konten für die Pille „N online“
 - Limits: 12/min je Token, 60/min je IP (eigener Zähler). Ein Isolate-Cache von 45 s sorgt dafür, dass das Durable Object höchstens alle 45 s geweckt wird.
 - 503 bei ausgeschaltetem Mehrspieler (`MP_SECRET` fehlt) oder Fehler des Durable Objects; ein älterer Worker ohne die Route antwortet 404, der Client zeigt dann nichts an.
 
+## Server-Statistik (`/srv`, ab 1.22.0)
+
+Zeigt allen angemeldeten Konten ohne Nutzernamen, was auf dem Server läuft (Jetzt, Monat, Server). Vertrag: [`../docs/server-stats.md`](../docs/server-stats.md).
+
+- **Lesen (Header `X-Emby-Token`):** `GET /srv` (Probe: Reiter und ältester Monat), `GET /srv/now`, `GET /srv/month?m=0..35`, `GET /srv/server`. Reihenfolge: 401 ohne Token, IP-Limit vor der Anmeldung, 401/502 bei der Anmeldung, dann das Token-Limit (429 `rate`). Limits je Minute (Token/IP): Probe 20/60, Jetzt 12/60, Monat 30/90, Server 12/60.
+- **Melden:** `POST /srv/report` mit `Authorization: Bearer <SERVER_REPORT_SECRET>` und JSON (höchstens 64 KB). Das Secret mit mindestens 32 Zeichen per `npx wrangler secret put SERVER_REPORT_SECRET` setzen; ohne Secret antwortet die Route 404 `srv-off`. Der Worker übernimmt nur Whitelist-Felder, führt Meldungen zusammen (Traffic: je Monat/Tag das Maximum, fehlende Teile behalten den alten Stand) und schreibt höchstens alle 10 min ins KV. Das Skript für den Server liegt in [`../tools/server-report/`](../tools/server-report/).
+- **Tageslauf:** `POST /srv/refresh[?full=1]` mit `X-Refresh-Secret` (wie `/refresh`). Der Cron `23 */6 * * *` führt ihn nur aus, wenn der letzte Erfolg älter als 20 h ist, und lädt je Slot einen Abschnitt der Bibliothek. In `wrangler.local.jsonc` ebenfalls eintragen.
+- Antworten enthalten nie Konto- oder Gerätenamen, IDs oder IPs.
+
 ## Entwicklung
 
 ```
