@@ -126,6 +126,19 @@ Header `X-Refresh-Secret` (wie `/refresh`; gleiches `REFRESH_SECRET`): 401 `unau
 - **Rekorde (Tageslauf, nicht `full`):** je Rekord das Maximum aus Alt und Neu (Rekordtag/-monat: bei Gleichstand der neue Wert; gleichzeitige Streams und Marathon: bei Gleichstand der alte); nur der laufende und der Vormonat werden neu gescannt. `full=1` rechnet die ganze Historie und ersetzt. Scheitert ein Teil, bleibt sein alter Wert.
 - **Rekord-Definitionen** (`sql.js`): Rekordtag/-monat nach Schauzeit; gleichzeitige Streams (nur Wiedergaben ≥ 60 s; Sweep per SQL, Rückfall auf Zeilen bis 5000 im Worker mit `approx`); Marathon = meiste Folgen **derselben Serie** durch ein Konto an einem Tag (je Folge ≥ 300 s; Serien über `resolveSeries`, höchstens 300 IDs, sonst `approx`).
 
+## Backup-Abzug und Datenvolumen pro Konto
+
+- Das Melde-Skript schickt zusätzlich die vnstat-Stundenwerte (`vnstat --json h`, alle vorgehaltenen ~96 Stunden; über 60 KB lässt es sie weg).
+- `report.js` bildet daraus `traffic.bk = [{d, tx, src}]`: Upload im Backup-Fenster `SRV_BACKUP_WINDOW` (Standard `"0:5-8"` = Sonntag 05:00–07:59, Lokalzeit von vnstat).
+  - `src:'h'` = Summe der Stundenwerte, erst wenn das Fenster abgeschlossen ist. `src:'est'` für Sonntage ohne Stundenwerte = Überschuss gegenüber dem Median Mo–Sa derselben Woche (Deckel 60 GiB).
+  - `'h'` ersetzt `'est'`. `traffic.bkm` (Monatssummen) wird bei voll abgedeckten Monaten neu gerechnet, sonst per Maximum gehalten. `traffic.since` = erster vnstat-Messtag.
+- Streaming-Upload = Upload − Backup. Die Reiter der Server-Statistik zeigen weiterhin den Roh-Upload.
+- Stündlicher Cron `7 * * * *` (`srv/vol.js`, `runVol`, wirft nie) schreibt KV `srv:vol:v1`:
+  - Bitrate je gespieltem Titel (`/Items?Fields=MediaSources`, höchstens 4 Blöcke à 50 je Lauf, 2-MB-Deckel; fehlgeschlagene Blöcke schreiben nichts), Mediane je Typ als Rückfall.
+  - Schätzung aller Konten je Zeitraum (7d/30d/Jahr/Gesamt als Kalenderfenster), Abgleich-Faktor `k` = Streaming-Upload / Schätzung über die Überlappung ab `since` (gültig 0,5–2,5, sonst unskaliert), Abdeckung `cov`, skalierte Werte je Konto ohne Ignorierliste.
+- `/me/stats` liefert daraus `volume` (Vertrag `docs/stats-api.md`); der Anteil ist eigene Schätzung / Schätzung aller, die Summe aller Konten ergibt 100 %. Ausgeliefert erst ab `cov ≥ 0,9`.
+- Grenzen: Der TV-Modus meldet keine Wiedergaben, sein Upload verteilt sich anteilig. „Gesamt“ rechnet Wiedergaben vor dem vnstat-Start mit demselben `k` hoch.
+
 ## Cron-Slot und Nachholen
 
 - `wrangler.jsonc`: `"crons": ["0 * * * *", "23 */6 * * *"]`. `scheduled()` unterscheidet über `event.cron === '23 */6 * * *'` (`SRV_CRON`); alles andere bleibt der Charts-Lauf (unberührt). In `wrangler.local.jsonc` ebenfalls eintragen.
