@@ -2,7 +2,7 @@
 import { bundleAsync } from 'lightningcss';
 import { build, context } from 'esbuild';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,6 +24,7 @@ const cssEntries = [
   ['src/css/themes/retro/index.css', 'lenzretro'],
   ['src/css/themes/store/index.css', 'lenzstore'],
   ['src/css/tvmode/index.css', 'lenztvmode'], // TV-Modus (flix/plus/prime/retro, lazy über core/addoncss.js, docs/tvmode.md)
+  ['src/css/serverstats/index.css', 'lenzserverstats'], // Server-Statistik im Geheimmenü (lazy über core/addoncss.js)
 ];
 
 // Zeilenenden normalisieren: lightningcss übernimmt unaufgelöste Werte (z. B. mehrzeilige var()-Listen) roh.
@@ -40,11 +41,17 @@ async function buildCss() {
   }
 }
 
+// Server-Statistik: Nachlade-Bundle; nur dieser Eintrag liefert ein esbuild-metafile für den Wächter der Importgrenze.
+const SRV_ENTRY = 'src/js/serverstats/entry.js';
+const SRV_MARK = '__LFX_SRVSTATS_UI__';
+let srvMetafile = null;
+
 // JS-Bundles: Hauptbundle (immer geladen) + 3D-Bundle der VIDEOTHEK LENZ und TV-Modus-Engine (lazy, siehe core/themejs.js, docs/store3d.md, docs/tvmode.md).
 const jsEntries = [
   ['src/js/main.js', 'lenzflix'],
   ['src/js/store3d/entry.js', 'lenzstore'],
   ['src/js/tv/tvmode/entry.js', 'lenztvmode'], // TV-Modus: Engine (lazy, docs/tvmode.md)
+  [SRV_ENTRY, 'lenzserverstats'], // Server-Statistik im Geheimmenü (lazy über core/themejs.js, Hülle features/secretmenu/serverstats.js)
 ];
 
 // Auto-Weiter als Extra-Skript für Fernseher (Chromium 53): eigener Entry, Ziel chrome53 (esbuild senkt nur Syntax, keine APIs → Wächter unten).
@@ -63,7 +70,8 @@ async function buildJs() {
     return;
   }
   for (const [file, name] of jsEntries) {
-    await build({ ...common, entryPoints: [resolve(root, file)], outfile: resolve(dist, `${name}.js`) });
+    const res = await build({ ...common, ...(file === SRV_ENTRY ? { metafile: true } : {}), entryPoints: [resolve(root, file)], outfile: resolve(dist, `${name}.js`) });
+    if (file === SRV_ENTRY) srvMetafile = res.metafile;
     await build({ ...common, entryPoints: [resolve(root, file)], minify: true, outfile: resolve(dist, `${name}.min.js`) });
   }
   await build({ ...upnextOpts, entryPoints: [resolve(root, UPNEXT_ENTRY)], outfile: resolve(dist, 'lenzupnext.js') });
@@ -84,6 +92,9 @@ function checkMainBundle() {
   }
   if (code.includes('__LFX_TVMODE_ENGINE__')) {
     throw new Error('dist/lenzflix.min.js enthält die TV-Modus-Engine – sie darf nur lazy (lenztvmode.min.js) geladen werden');
+  }
+  if (code.includes(SRV_MARK)) {
+    throw new Error('dist/lenzflix.min.js enthält das Nachlade-Bundle der Server-Statistik – es darf nur lazy (lenzserverstats.min.js) geladen werden');
   }
   // Mehrspieler (docs/mp-api.md 11.1): WebSocket-Code gehört ausschließlich ins 3D-Bundle.
   if (/new WebSocket|lfx-mp\.|\bthree\b/.test(code)) {
@@ -114,6 +125,29 @@ function checkStoreBundle() {
     throw new Error('dist/lenzstore.min.js enthält Token-Zugriffe (X-Emby-Token/accessToken/api_key) – das Jellyfin-Token darf nie ins 3D-Bundle');
   }
   if (code.length > STORE_MIN_BUDGET) console.warn(`WARNUNG: lenzstore.min.js ist ${code.length} B (Budget ${STORE_MIN_BUDGET} B)`);
+}
+
+// Wächter: Nachlade-Bundle der Server-Statistik (Marker da, kein Token-Zugriff, Warnung ab 48 KiB, Importgrenze src/js/serverstats/).
+const SRV_MIN_BUDGET = 48 * 1024;
+function checkServerStatsBundle() {
+  const code = readFileSync(resolve(dist, 'lenzserverstats.min.js'), 'utf8');
+  if (!code.includes(SRV_MARK)) {
+    throw new Error('dist/lenzserverstats.min.js trägt die Kennung des Bundles nicht – entry.js muss sie als mark setzen');
+  }
+  // Das Token setzt nur die Hülle im Hauptbundle (deps.get); das Nachlade-Bundle sieht es nie.
+  if (/X-Emby-Token|accessToken|api_key|MediaBrowser Token/.test(code)) {
+    throw new Error('dist/lenzserverstats.min.js enthält Token-Zugriffe (X-Emby-Token/accessToken/api_key) – das Token darf nie in dieses Bundle');
+  }
+  if (code.length > SRV_MIN_BUDGET) console.warn(`WARNUNG: lenzserverstats.min.js ist ${code.length} B (Budget ${SRV_MIN_BUDGET} B)`);
+  if (!srvMetafile) throw new Error('Importgrenze der Server-Statistik nicht prüfbar: kein metafile vom Build');
+  const srvDir = resolve(root, 'src/js/serverstats');
+  const outside = Object.keys(srvMetafile.inputs).filter((f) => {
+    const rel = relative(srvDir, resolve(process.cwd(), f));
+    return rel.startsWith('..') || isAbsolute(rel);
+  });
+  if (outside.length) {
+    throw new Error(`Server-Statistik importiert außerhalb von src/js/serverstats/: ${outside.join(', ')}`);
+  }
 }
 
 // Wächter: lenzupnext.min.js läuft auf Chromium 53 → muss als ES2016-Skript parsen und darf keine neueren APIs enthalten.
@@ -161,6 +195,7 @@ if (watch) {
   checkMainBundle();
   checkTvModeBundle();
   checkStoreBundle();
+  checkServerStatsBundle();
   await checkUpnextBundle();
   console.log(`built dist/ (${readFileSync(resolve(dist, 'lenzflix.min.css')).length} B css min)`);
 }

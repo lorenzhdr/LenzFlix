@@ -18,7 +18,9 @@ const extra = { '/store-dev.html': 'build/store-dev.html', '/store-dev.js': 'bui
   // VR-Kino-Harness: echte Bridge der Hülle (Modul) und der lokale Emulator (nur .tmp/, nie im Repo; fehlt er, gibt es 404)
   '/cinema-bridge.js': 'src/js/features/store/cinema-bridge.js', '/xr-emu.js': '.tmp/xr-emu.js',
   // Sicht-Harness des Design-Menüs: lädt den echten Picker als ES-Modul aus src/js/ (siehe srcJs)
-  '/picker-dev.html': 'build/picker-dev.html', '/picker-dev.js': 'build/picker-dev.js' };
+  '/picker-dev.html': 'build/picker-dev.html', '/picker-dev.js': 'build/picker-dev.js',
+  // Sicht-Harness der Server-Statistik (Fake-deps, lädt src/js/serverstats/entry.js als Modul)
+  '/serverstats-dev.html': 'build/serverstats-dev.html', '/serverstats-dev.js': 'build/serverstats-dev.js' };
 
 createServer(async (req, res) => {
   const headers = {

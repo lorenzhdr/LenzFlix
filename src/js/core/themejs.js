@@ -3,8 +3,8 @@
 import { resolveThemeCssBase } from './themecss.js';
 
 const CLASS = 'lfx-theme-js';
-const FILES = { store: 'lenzstore', tvmode: 'lenztvmode' };
-const GLOBALS = { store: 'LenzFlixStore3D', tvmode: 'LenzFlixTvMode' };
+const FILES = { store: 'lenzstore', tvmode: 'lenztvmode', serverstats: 'lenzserverstats' };
+const GLOBALS = { store: 'LenzFlixStore3D', tvmode: 'LenzFlixTvMode', serverstats: 'LenzFlixServerStats' };
 
 const inflight = new Map(); // id -> Promise<boolean>
 

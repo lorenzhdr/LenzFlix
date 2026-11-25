@@ -8285,18 +8285,21 @@ html.lfx-js:not(.layout-tv) .lfx-secret__head {
   border-bottom: 1px solid var(--lfx-border);
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 14px 18px;
   display: flex;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-secret__title {
+  min-width: 0;
   font-size: 20px;
   font-weight: var(--lfx-fw-row-title);
   color: var(--lfx-text);
+  flex: auto;
   margin: 0;
 }
 
-html.lfx-js:not(.layout-tv) .lfx-secret__close {
+html.lfx-js:not(.layout-tv) .lfx-secret__close, html.lfx-js:not(.layout-tv) .lfx-secret__back {
   background: var(--lfx-icon-circle);
   width: 40px;
   height: 40px;
@@ -8304,7 +8307,12 @@ html.lfx-js:not(.layout-tv) .lfx-secret__close {
   cursor: pointer;
   border: 0;
   border-radius: 50%;
+  flex: none;
   font-size: 18px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__back[hidden] {
+  display: none;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-secret__body {
@@ -8392,7 +8400,7 @@ html.lfx-js:not(.layout-tv) .lfx-secret__switch {
   display: flex;
 }
 
-html.lfx-js:not(.layout-tv) .lfx-secret__btn:hover, html.lfx-js:not(.layout-tv) .lfx-secret__close:hover {
+html.lfx-js:not(.layout-tv) .lfx-secret__btn:hover, html.lfx-js:not(.layout-tv) .lfx-secret__close:hover, html.lfx-js:not(.layout-tv) .lfx-secret__back:hover {
   background: var(--lfx-glass-hover);
 }
 

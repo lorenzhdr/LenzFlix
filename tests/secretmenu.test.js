@@ -7,7 +7,7 @@ vi.mock('../src/js/core/layout.js', () => ({ isModern: () => st.modern, isTv: ()
 vi.mock('../src/js/core/api.js', () => ({ isReady: () => st.ready, getUserId: () => 'u1', setImageScale: () => {} }));
 
 import secretmenu, { resetSecretClicks } from '../src/js/features/secretmenu.js';
-import { isSecretMenuOpen, closeSecretMenu } from '../src/js/features/secretmenu/panel.js';
+import { isSecretMenuOpen, closeSecretMenu, pushView, popView } from '../src/js/features/secretmenu/panel.js';
 import { getNormalScale, getSaverScale } from '../src/js/core/imgscale.js';
 import { getDataSaverParts } from '../src/js/core/datasaver.js';
 
@@ -155,6 +155,102 @@ describe('Geheimmenü', () => {
     it('TV-Schalter schreiben in den Speicher', () => {
       document.querySelector('button[data-key="zapstats"]').click();
       expect(Object.values(localStorage).length).toBeGreaterThan(0);
+    });
+
+    describe('Ansichten-Stapel', () => {
+      const key = (k, extra = {}) => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...extra }));
+      const mkView = () => {
+        const a = document.createElement('button');
+        a.type = 'button';
+        a.textContent = 'A';
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = 'B';
+        const node = document.createElement('div');
+        node.append(a, b);
+        return { a, b, node, off: vi.fn() };
+      };
+      const back = () => document.querySelector('.lfx-secret__back');
+      const title = () => document.querySelector('.lfx-secret__title').textContent;
+
+      it('Server-Abschnitt steht zuerst und bleibt ohne Probe verborgen', () => {
+        const first = document.querySelector('.lfx-secret__body > section');
+        expect(first.querySelector('h3').textContent).toBe('Server');
+        expect(first.hidden).toBe(true);
+        expect([...first.querySelectorAll('button')].every((b) => b.hidden)).toBe(true);
+      });
+
+      it('pushView hängt die Hauptansicht aus, popView hängt dieselben Knoten wieder ein', () => {
+        expect(back().hidden).toBe(true);
+        const slider = document.getElementById('lfx-secret-normal');
+        const v = mkView();
+        pushView({ title: 'Unten', node: v.node, offs: [v.off] });
+        expect(document.getElementById('lfx-secret-normal')).toBeNull();
+        expect(document.querySelector('.lfx-secret__body').firstChild).toBe(v.node);
+        expect(back().hidden).toBe(false);
+        expect(back().getAttribute('aria-label')).toBe('Zurück');
+        expect(title()).toBe('Unten');
+        expect(document.activeElement).toBe(back());
+        expect(popView()).toBe(true);
+        expect(v.off).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('lfx-secret-normal')).toBe(slider);
+        expect(back().hidden).toBe(true);
+        expect(title()).toBe('Geheimmenü');
+        expect(popView()).toBe(false);
+        expect(isSecretMenuOpen()).toBe(true);
+      });
+
+      it('Zurück-Knopf wirkt wie popView', () => {
+        const v = mkView();
+        pushView({ title: 'Unten', node: v.node, offs: [v.off] });
+        back().click();
+        expect(v.off).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('lfx-secret-normal')).not.toBeNull();
+      });
+
+      it('Esc: Unteransicht zuerst, danach das Menü', () => {
+        const v = mkView();
+        pushView({ title: 'Unten', node: v.node, offs: [v.off] });
+        key('Escape');
+        expect(isSecretMenuOpen()).toBe(true);
+        expect(v.off).toHaveBeenCalledTimes(1);
+        expect(title()).toBe('Geheimmenü');
+        key('Escape');
+        expect(isSecretMenuOpen()).toBe(false);
+      });
+
+      it('Fokusfalle nur in Kopf und aktiver Ansicht', () => {
+        const v = mkView();
+        pushView({ title: 'Unten', node: v.node });
+        // Reihenfolge: Zurück, Schließen, A, B (die ausgehängte Hauptansicht zählt nicht)
+        v.b.focus();
+        key('Tab');
+        expect(document.activeElement).toBe(back());
+        key('Tab', { shiftKey: true });
+        expect(document.activeElement).toBe(v.b);
+      });
+
+      it('Fokus nach popView auf den auslösenden Knopf', () => {
+        const trigger = document.getElementById('lfx-secret-normal');
+        const v = mkView();
+        pushView({ title: 'Unten', node: v.node, trigger });
+        popView();
+        expect(document.activeElement).toBe(trigger);
+      });
+
+      it('closeSecretMenu ruft erst die offs der Ansicht, dann die des Menüs', () => {
+        const order = [];
+        const v = mkView();
+        pushView({ title: 'Unten', node: v.node, offs: [() => order.push('view')] });
+        const orig = document.removeEventListener.bind(document);
+        const spy = vi.spyOn(document, 'removeEventListener').mockImplementation((...a) => { order.push(`rm:${a[0]}`); return orig(...a); });
+        closeSecretMenu();
+        spy.mockRestore();
+        expect(order[0]).toBe('rm:keydown');
+        expect(order).toContain('view');
+        expect(isSecretMenuOpen()).toBe(false);
+        expect(pushView({ title: 'x', node: document.createElement('div') })).toBeNull();
+      });
     });
 
     it('Esc schließt, Hintergrundklick schließt', () => {

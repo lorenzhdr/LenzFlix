@@ -1,0 +1,92 @@
+/* Server-Statistik: Reiter „Monat“. */
+html.lfx-js:not(.layout-tv) .lfx-srv-monthnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-monthnav__l {
+  font-size: 16px;
+  font-weight: var(--lfx-fw-row-title);
+  color: var(--lfx-text);
+  text-align: center;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--lfx-popup-radius);
+  background: var(--lfx-surface-2);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-kpi__v {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lfx-text);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-kpi__l {
+  font-size: 12px;
+  color: var(--lfx-text-muted);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-days {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 90px;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-day {
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  height: 100%;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-day__fill {
+  display: block;
+  flex: 1 1 0;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--lfx-text-soft);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-day.is-top .lfx-srv-day__fill {
+  background: var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-day__fill.is-up {
+  background: var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-day__fill.is-down {
+  background: var(--lfx-gold);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-heat {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-heat__c {
+  fill: var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-heat__c.is-0 {
+  fill: var(--lfx-surface-3);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-heat__l {
+  fill: var(--lfx-text-muted);
+  font-size: 8px;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-mixg {
+  margin-bottom: 10px;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-mixg__t {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--lfx-text-muted);
+}

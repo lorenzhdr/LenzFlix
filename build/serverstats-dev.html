@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de" class="lfx-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Server-Statistik · Dev-Harness</title>
+  <!-- Sicht-Harness der Server-Statistik (src/js/serverstats/**) ohne Jellyfin und ohne Worker; Fake-deps, kein Netzwerk.
+       Start: npm run build && npm run serve → http://localhost:5179/serverstats-dev.html
+       Parameter siehe Kopfkommentar von build/serverstats-dev.js. -->
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #0b0b0e; color: #eee; font-family: system-ui, sans-serif; }
+    #dev-log { position: fixed; left: 8px; bottom: 8px; z-index: 99999; max-width: 40vw; padding: 4px 8px; font: 12px/1.4 monospace;
+      background: rgba(0, 0, 0, .8); color: #9f9; border-radius: 4px; pointer-events: none; }
+    #dev-log:empty { display: none; }
+    /* Harness-Hilfe: Panel ohne Overlay-Verschiebung im Dokumentfluss halten, falls das Haupt-CSS fehlt */
+    .lfx-secret__back { cursor: pointer; }
+  </style>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/dist/lenzflix.css">
+  <link rel="stylesheet" href="/dist/lenzserverstats.css">
+</head>
+<body>
+  <div id="dev-log" role="log"></div>
+  <script type="module" src="/serverstats-dev.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+/* Server-Statistik: Reiter „Jetzt“. */
+html.lfx-js:not(.layout-tv) .lfx-srv-now__head {
+  margin: 4px 0 10px;
+  font-size: 15px;
+  font-weight: var(--lfx-fw-row-title);
+  color: var(--lfx-text);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 8px;
+  border: 1px solid var(--lfx-border);
+  border-radius: var(--lfx-popup-radius);
+  background: var(--lfx-surface-2);
+  color: inherit;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+html.lfx-js:not(.layout-tv) button.lfx-srv-row {
+  cursor: pointer;
+}
+html.lfx-js:not(.layout-tv) button.lfx-srv-row:hover {
+  background: var(--lfx-surface-3);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-row.is-hidden {
+  opacity: 0.85;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-row__cover {
+  display: block;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 72px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--lfx-surface-3);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-row__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-row__title {
+  overflow: hidden;
+  font-weight: var(--lfx-fw-row-title);
+  color: var(--lfx-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-row__sub,
+html.lfx-js:not(.layout-tv) .lfx-srv-row__time {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--lfx-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-badge {
+  display: inline-block;
+  height: var(--lfx-badge-h);
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 4px;
+  background: var(--lfx-red);
+  color: var(--lfx-text);
+  font-size: var(--lfx-fs-badge);
+  font-weight: 700;
+  line-height: var(--lfx-badge-h);
+  vertical-align: 1px;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-bar {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--lfx-border);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-chip {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: var(--lfx-pill-soft);
+  font-size: 12px;
+  color: var(--lfx-text-body);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-chip.is-tc {
+  color: var(--lfx-gold);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-pause {
+  font-size: 10px;
+  letter-spacing: -1px;
+  color: var(--lfx-text-muted);
+}

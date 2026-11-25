@@ -1,0 +1,41 @@
+/* Server-Statistik: Reiter „Server“ (Traffic-Monatsliste). */
+html.lfx-js:not(.layout-tv) .lfx-srv-months {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-months__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  font-size: 13px;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-months__l {
+  color: var(--lfx-text-body);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-months__v {
+  grid-row: 1;
+  grid-column: 2;
+  color: var(--lfx-text-muted);
+  text-align: right;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-months__track {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--lfx-border);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-months__fill {
+  display: flex;
+  height: 100%;
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-months__up {
+  background: var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .lfx-srv-months__down {
+  background: var(--lfx-gold);
+}

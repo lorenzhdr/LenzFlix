@@ -6131,9 +6131,9 @@
       toast("Download nicht m\xF6glich");
       return;
     }
-    const probe = await probeDownload(url);
-    if (!probe.ok) {
-      failToast(probe.status);
+    const probe2 = await probeDownload(url);
+    if (!probe2.ok) {
+      failToast(probe2.status);
       return;
     }
     triggerDownload(item);
@@ -6179,10 +6179,10 @@
         manyTimer = null;
         const item = list[i];
         const url = downloadUrl(item.Id);
-        const probe = url ? await probeDownload(url, ac.signal) : { ok: false };
+        const probe2 = url ? await probeDownload(url, ac.signal) : { ok: false };
         if (ac.signal.aborted) return;
-        if (!probe.ok) {
-          failToast(probe.status);
+        if (!probe2.ok) {
+          failToast(probe2.status);
           finish3();
           return;
         }
@@ -10875,8 +10875,8 @@
 
   // src/js/core/themejs.js
   var CLASS4 = "lfx-theme-js";
-  var FILES2 = { store: "lenzstore", tvmode: "lenztvmode" };
-  var GLOBALS = { store: "LenzFlixStore3D", tvmode: "LenzFlixTvMode" };
+  var FILES2 = { store: "lenzstore", tvmode: "lenztvmode", serverstats: "lenzserverstats" };
+  var GLOBALS = { store: "LenzFlixStore3D", tvmode: "LenzFlixTvMode", serverstats: "LenzFlixServerStats" };
   var inflight4 = /* @__PURE__ */ new Map();
   function themeJsUrl(id) {
     const file = FILES2[id];
@@ -11946,6 +11946,133 @@
   };
   var contextmenu_default = contextmenuFeature;
 
+  // src/js/features/secretmenu/serverstats.js
+  var ADDON2 = "lenzserverstats";
+  var PROBE_TIMEOUT_MS = 4e3;
+  var GET_TIMEOUT_MS = 8e3;
+  var PROBE_CACHE_MS = 6e4;
+  var TABS = ["now", "month", "server"];
+  var probeCache = null;
+  async function request(path, signal, timeoutMs) {
+    let timer2 = null;
+    let onAbort2 = null;
+    try {
+      const base = getChartsUrl();
+      const token2 = base ? getAuth().token : null;
+      if (!base || !token2) return { ok: false, status: 0 };
+      const ctrl = new AbortController();
+      if (signal) {
+        if (signal.aborted) return { ok: false, status: 0 };
+        onAbort2 = () => ctrl.abort();
+        signal.addEventListener("abort", onAbort2, { once: true });
+      }
+      timer2 = setTimeout(() => ctrl.abort(), timeoutMs);
+      const res = await fetch(`${base}${path}`, {
+        headers: { "X-Emby-Token": token2, Accept: "application/json" },
+        credentials: "omit",
+        cache: "no-store",
+        signal: ctrl.signal
+      });
+      if (!res.ok) return { ok: false, status: res.status };
+      return { ok: true, status: res.status, data: await res.json() };
+    } catch {
+      return { ok: false, status: 0 };
+    } finally {
+      if (timer2) clearTimeout(timer2);
+      if (signal && onAbort2) signal.removeEventListener("abort", onAbort2);
+    }
+  }
+  async function probe(signal) {
+    let token2 = null;
+    try {
+      token2 = getAuth().token;
+    } catch {
+    }
+    if (!token2) return null;
+    const now = Date.now();
+    if (probeCache && probeCache.token === token2 && now - probeCache.at >= 0 && now - probeCache.at < PROBE_CACHE_MS) return probeCache.info;
+    const r = await request("/srv", signal, PROBE_TIMEOUT_MS);
+    const d = r.ok ? r.data : null;
+    if (!d || d.v !== 1 || !Array.isArray(d.tabs)) return null;
+    const tabs = TABS.filter((t) => d.tabs.includes(t));
+    if (!tabs.length) return null;
+    const info = { tabs, maxM: Number.isInteger(d.maxM) && d.maxM > 0 ? d.maxM : 0 };
+    probeCache = { token: token2, at: Date.now(), info };
+    return info;
+  }
+  function serverSection(offs, ctx2) {
+    const ctrl = new AbortController();
+    offs.push(() => ctrl.abort());
+    offs.push(() => removeAddonCss(ADDON2));
+    const btn3 = h("button", { type: "button", class: "lfx-secret__btn", hidden: true }, "Server-Statistik");
+    const sec = h("section", { class: "lfx-secret__sec", hidden: true }, [h("h3", { class: "lfx-secret__h" }, "Server"), btn3]);
+    let info = null;
+    const open4 = () => {
+      const host = h("div", { class: "lfx-srv-host" });
+      const viewOffs = [];
+      let alive = true;
+      let inst4 = null;
+      viewOffs.push(() => {
+        alive = false;
+        if (inst4) {
+          try {
+            inst4.dispose();
+          } catch {
+          }
+          inst4 = null;
+        }
+      });
+      const deps = {
+        get: (path, { signal } = {}) => request(path, signal, GET_TIMEOUT_MS),
+        img: (id, tag, w) => id && tag ? imageUrlFor(id, { type: "Primary", maxWidth: w, tag }) : null,
+        openItem: (id) => {
+          ctx2.close();
+          openModal(id);
+        },
+        tabs: info.tabs,
+        maxM: info.maxM
+      };
+      const load6 = async () => {
+        host.replaceChildren(h("p", { class: "lfx-secret__note", role: "status" }, "Wird geladen \u2026"));
+        let ok = false;
+        try {
+          const [css, js] = await Promise.all([ensureAddonCss(ADDON2), ensureThemeJs("serverstats")]);
+          ok = Boolean(css && js);
+        } catch {
+        }
+        if (!alive) return;
+        const g = window.LenzFlixServerStats;
+        if (ok && g && g.version === 1 && typeof g.create === "function") {
+          try {
+            const made = g.create(deps);
+            inst4 = made;
+            host.replaceChildren(made.el);
+            return;
+          } catch {
+            inst4 = null;
+          }
+        }
+        host.replaceChildren(
+          h("p", { class: "lfx-secret__note", role: "status" }, "Konnte nicht geladen werden."),
+          h("button", { type: "button", class: "lfx-secret__btn", onclick: () => {
+            load6();
+          } }, "Erneut versuchen")
+        );
+      };
+      ctx2.pushView({ title: "Server-Statistik", node: host, offs: viewOffs, trigger: btn3 });
+      load6();
+    };
+    btn3.addEventListener("click", open4);
+    probe(ctrl.signal).then((res) => {
+      if (!res || ctrl.signal.aborted) return;
+      info = res;
+      sec.hidden = false;
+      btn3.hidden = false;
+    }, () => {
+    });
+    return sec;
+  }
+
   // src/js/features/secretmenu/panel.js
   var PANEL_ID = "lfx-secret";
   var POSTER_BASE = 300;
@@ -11953,6 +12080,7 @@
   var WIDE_BASE_NARROW = 420;
   var NARROW_PX = 800;
   var state7 = null;
+  var BASE_TITLE = "Geheimmen\xFC";
   var pct = (v) => `${Math.round(v * 100)} %`;
   var isNarrowView = () => (window.innerWidth || 1024) < NARROW_PX;
   var wideBase = () => isNarrowView() ? WIDE_BASE_NARROW : WIDE_BASE_DESKTOP;
@@ -12103,17 +12231,57 @@
     }, "Cache leeren");
     return section("Info", [...rows, clear, msg, reload3]);
   }
-  function closeSecretMenu() {
-    if (!state7) return;
-    const s = state7;
-    state7 = null;
-    document.removeEventListener("keydown", s.onKey, true);
-    for (const off of s.offs) {
+  var runOffs = (list) => {
+    for (const off of list) {
       try {
         off();
       } catch {
       }
     }
+  };
+  function showTitle(s) {
+    const top = s.views[s.views.length - 1];
+    s.title.textContent = top ? top.title : BASE_TITLE;
+    s.back.hidden = !top;
+  }
+  function pushView({ title: viewTitle, node, offs = [], trigger = null }) {
+    const s = state7;
+    if (!s) return null;
+    const view = {
+      title: String(viewTitle || ""),
+      node,
+      offs,
+      trigger: trigger || document.activeElement,
+      prev: [...s.body.childNodes],
+      scroll: s.body.scrollTop
+    };
+    s.views.push(view);
+    s.body.replaceChildren(node);
+    s.body.scrollTop = 0;
+    showTitle(s);
+    s.back.focus();
+    return view;
+  }
+  function popView() {
+    const s = state7;
+    if (!s || !s.views.length) return false;
+    const view = s.views.pop();
+    runOffs(view.offs);
+    s.body.replaceChildren(...view.prev);
+    s.body.scrollTop = view.scroll;
+    showTitle(s);
+    const t = view.trigger;
+    if (t && t.isConnected && typeof t.focus === "function") t.focus();
+    else s.panel.focus();
+    return true;
+  }
+  function closeSecretMenu() {
+    if (!state7) return;
+    const s = state7;
+    state7 = null;
+    document.removeEventListener("keydown", s.onKey, true);
+    while (s.views.length) runOffs(s.views.pop().offs);
+    runOffs(s.offs);
     s.root.remove();
     document.documentElement.classList.remove("lfx-secret-open");
     const prev = s.prevFocus;
@@ -12123,11 +12291,20 @@
     if (state7) return;
     const offs = [];
     const close2 = () => closeSecretMenu();
-    const title = h("h2", { class: "lfx-secret__title", id: `${PANEL_ID}-title` }, "Geheimmen\xFC");
+    const title = h("h2", { class: "lfx-secret__title", id: `${PANEL_ID}-title` }, BASE_TITLE);
+    const back = h("button", { type: "button", class: "lfx-secret__back", "aria-label": "Zur\xFCck", hidden: true, onclick: () => popView() }, "\u2190");
     const closeBtn = h("button", { type: "button", class: "lfx-secret__close", "aria-label": "Schlie\xDFen", onclick: close2 }, "\u2715");
+    const body = h("div", { class: "lfx-secret__body" }, [
+      serverSection(offs, { pushView, close: close2 }),
+      imageSection(offs),
+      playbackSection(),
+      tvSection(),
+      saverSection(offs),
+      infoSection()
+    ]);
     const panel = h("div", { class: "lfx-secret__panel", role: "dialog", "aria-modal": "true", "aria-labelledby": title.id, tabindex: "-1" }, [
-      h("div", { class: "lfx-secret__head" }, [title, closeBtn]),
-      h("div", { class: "lfx-secret__body" }, [imageSection(offs), playbackSection(), tvSection(), saverSection(offs), infoSection()])
+      h("div", { class: "lfx-secret__head" }, [back, title, closeBtn]),
+      body
     ]);
     const root6 = h("div", { id: PANEL_ID, class: "lfx-secret" }, [panel]);
     root6.addEventListener("mousedown", (e) => {
@@ -12140,11 +12317,11 @@
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        close2();
+        if (!popView()) close2();
         return;
       }
       if (e.key !== "Tab") return;
-      const f = [...panel.querySelectorAll("button:not([hidden]), input")];
+      const f = [...panel.querySelectorAll("button:not([hidden]):not([disabled]), input")];
       if (!f.length) return;
       const first2 = f[0];
       const last = f[f.length - 1];
@@ -12157,7 +12334,7 @@
       }
     };
     document.addEventListener("keydown", onKey4, true);
-    state7 = { root: root6, prevFocus: document.activeElement, offs, onKey: onKey4 };
+    state7 = { root: root6, prevFocus: document.activeElement, offs, onKey: onKey4, body, title, back, panel, views: [] };
     document.body.append(root6);
     document.documentElement.classList.add("lfx-secret-open");
     panel.focus();
@@ -15186,7 +15363,7 @@
   var HIDE_CLASS = "lfx-plus-tabbar-hide";
   var EXCLUDED9 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var TEXT_INPUT = "input:not([type=button]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=range]), textarea, select";
-  var TABS = [
+  var TABS2 = [
     { key: "home", label: "Startseite", href: "#/home", icon: "home" },
     { key: "list", label: "Meine Liste", href: "#/home?tab=1", icon: "list" },
     { key: "search", label: "Suche", href: searchHref(), icon: "search" }
@@ -15318,7 +15495,7 @@
       const root6 = mountPoint(ROOT_ID14, { tag: "nav", className: "lfx-plus-tabbar" });
       root6.textContent = "";
       root6.setAttribute("aria-label", "Hauptnavigation");
-      for (const t of TABS) {
+      for (const t of TABS2) {
         root6.append(h("a", { class: "lfx-plus-tabbar__tab", href: t.href, "aria-label": t.label, dataset: { key: t.key } }, [iconEl(t.icon)]));
       }
       const profileBtn = h("button", {

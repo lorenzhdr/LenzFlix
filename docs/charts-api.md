@@ -75,3 +75,6 @@ mit einem Admin-API-Key und liefert sie nur an eingeloggte Jellyfin-Nutzer aus.
   3. keine → Charts aus, bisheriger Fallback.
 - Verwendung: „Top 10 Serien“, „Top 10 Filme“ (Neu und beliebt) und „Am häufigsten geschaut“ (`all`). Auf der Startseite: Top-10-Zeile(n) aus den Charts, sobald je ≥ 5 Titel vorhanden; sonst „Top 10: Neu auf LENZFLIX“ wie bisher.
 - Items lädt das Theme mit dem Nutzer-Token selbst (`/Items?Ids=…`); IDs ohne Zugriff fallen dabei weg; danach auf 10 kürzen.
+
+## Server-Statistik (`/srv/*`, ab 1.22.0)
+Die Endpunkte `GET /srv`, `/srv/now`, `/srv/month`, `/srv/server` sowie `POST /srv/report` und `/srv/refresh` gehören nicht zu den Charts. Sie sind in `docs/server-stats.md` beschrieben (ebenso KV-Schlüssel `srv:*` und der Cron `23 */6 * * *`).
