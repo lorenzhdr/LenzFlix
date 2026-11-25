@@ -102,7 +102,7 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 
 ## Aktueller Stand und offene Punkte
 Stand 25.11.2026 (1.23.0 veröffentlicht). Bei jedem Release aktualisieren, knapp halten.
-- **Datenvolumen pro Konto in „Meine Statistik“ (25.11., kein Theme-Release; Worker 89898045; Vertrag `docs/stats-api.md` Feld `volume`, `docs/server-stats.md` „Backup-Abzug und Datenvolumen“; Arbeitsdateien `.tmp/vol/`):**
+- **Datenvolumen pro Konto in „Meine Statistik“ (25.11., kein Theme-Release; Worker f3d1e321; Vertrag `docs/stats-api.md` Feld `volume`, `docs/server-stats.md` „Backup-Abzug und Datenvolumen“; Arbeitsdateien `.tmp/vol/`):**
   - Schätzung Schauzeit × Bitrate je Titel, abgeglichen mit dem Streaming-Upload (vnstat minus Sonntags-Backup So 05–08, `SRV_BACKUP_WINDOW`), Zeiträume 7d/30d/Jahr/Gesamt als Kalenderfenster; Anteil = eigene/alle (Summe 100 %), Kachel „ca. X GB · Y % des Streamings“, Verlauf, Vergleich (Platz/Ø), Share-Bild. Cron `7 * * * *` (`srv/vol.js`) → KV `srv:vol:v1`; `volume` erst ab Bitraten-Abdeckung ≥ 0,9.
   - Melde-Skript schickt vnstat-Stundenwerte (auf dem Pi aktualisiert, Backup des alten Skripts `~/.local/bin/lenzflix-report.sh.bak`). Erster Backup-Abzug live: 22.11. aus Stunden 16,99 GiB, frühere Sonntage geschätzt.
   - Geprüft: 700 Worker-Tests, 5067 Root-Tests, Lint 0, `dist/` unverändert; Opus-Prüfung (Σ Anteile = 1, k, Backup, Datenschutz) PASS; Statistik-Seite headless alle 4 Designs 1280/390 + Share-Bild.

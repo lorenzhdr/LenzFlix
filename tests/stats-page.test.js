@@ -1202,7 +1202,7 @@ describe('Datenvolumen', () => {
     const root = draw(base(vol()));
     const k = root.querySelector('.kpi-vol');
     expect(k.querySelector('.kpi-v').textContent).toBe('ca. 38 GB');
-    expect(k.querySelector('.kpi-s').textContent).toBe('7 % des Streamings');
+    expect(k.querySelector('.kpi-s').textContent).toBe('7 % Anteil');
     expect(k.getAttribute('title')).toContain('ohne Backup');
     const none = draw(base(undefined));
     expect(none.querySelector('.kpi-vol')).toBeNull();
@@ -1211,7 +1211,7 @@ describe('Datenvolumen', () => {
 
   it('scaled:false zeigt „geschätzt“, unter 1 % „< 1 %“', () => {
     expect(draw(base(vol({ scaled: false }))).querySelector('.kpi-s').textContent).toBe('geschätzt');
-    expect(draw(base(vol({ share: 0.004 }))).querySelector('.kpi-s').textContent).toBe('< 1 % des Streamings');
+    expect(draw(base(vol({ share: 0.004 }))).querySelector('.kpi-s').textContent).toBe('< 1 % Anteil');
   });
 
   it('Verlauf-Panel mit GB-Achse und Hinweis; Watchtime-Verlauf bleibt', () => {

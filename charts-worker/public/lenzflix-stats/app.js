@@ -93,7 +93,7 @@
   function volumeSubText(v) {
     if (!v || v.scaled === false) return 'geschätzt';
     var s = Number(v.share) || 0;
-    return (s < 0.01 ? '< 1' : Math.round(s * 100)) + ' % des Streamings';
+    return (s < 0.01 ? '< 1' : Math.round(s * 100)) + ' % Anteil';
   }
 
   function volumeCompareText(c) {
@@ -927,7 +927,7 @@
   /** Datenvolumen-Kachel; null ohne `volume`. */
   function volumeKpi(v) {
     if (!v) return null;
-    var full = v.scaled === false ? 'Geschätzt' : volumeSubText(v).replace('Streamings', 'Streaming-Uploads') + ' (ohne Backup)';
+    var full = v.scaled === false ? 'Geschätzt' : volumeSubText(v) + ' am Streaming-Upload des Servers (ohne Backup)';
     var k = kpi('Datenvolumen', 'ca. ' + fmtBytes(v.bytes), false, volumeSubText(v), full + '. ' + VOLUME_NOTE);
     k.className += ' kpi-vol';
     return k;
