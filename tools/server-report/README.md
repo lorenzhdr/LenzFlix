@@ -60,6 +60,22 @@ sudo systemctl enable --now lenzflix-report.timer
 systemctl list-timers lenzflix-report.timer
 ```
 
+## Ohne sudo (Crontab des eigenen Benutzers)
+
+Hat der Benutzer kein sudo ohne Passwort, geht es auch ohne systemd-Units:
+
+```sh
+mkdir -p ~/.local/bin ~/.config/lenzflix
+install -m 0755 lenzflix-report.sh ~/.local/bin/lenzflix-report.sh
+install -m 0600 lenzflix-report.env.example ~/.config/lenzflix/report.env
+nano ~/.config/lenzflix/report.env
+sh -c 'set -a; . ~/.config/lenzflix/report.env; LFX_DRY=1 ~/.local/bin/lenzflix-report.sh'
+(crontab -l 2>/dev/null; echo '0,30 * * * * sh -c '"'"'set -a; . "$HOME/.config/lenzflix/report.env"; exec "$HOME/.local/bin/lenzflix-report.sh"'"'"' 2>&1 | logger -t lenzflix-report') | crontab -
+```
+
+Fehlerzeilen landen im Journal unter `lenzflix-report` (`journalctl -t lenzflix-report`). Einen nach einem
+Neustart verpassten Lauf holt cron nicht nach; die nächste Meldung kommt zum nächsten :00 bzw. :30.
+
 ## Deinstallation
 
 ```sh

@@ -1,2 +1,3 @@
 # Das Server-Skript braucht LF, CRLF bricht das sh-Skript (core.autocrlf=true).
 tools/server-report/* text eol=lf
+/.gitattributes text eol=lf
