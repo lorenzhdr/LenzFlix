@@ -59,7 +59,7 @@
     margin-left: -8px;
   }
   /* Profil: 32 px Avatar, Tap-Ziel 40 px, kein Caret */
-  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup] {
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) {
     min-width: 40px;
     min-height: 40px;
     margin: 0 0 0 4px;
@@ -67,7 +67,7 @@
     display: inline-grid;
     place-items: center;
   }
-  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup]::after {
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root))::after {
     display: none;
   }
   /* Bibliotheks-Toolbar (2. Zeile): umbrechen statt überlaufen */

@@ -19,7 +19,7 @@ Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkl
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.23.0/dist/lenzflix.min.css");
 ```
 
 - Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,14 +29,14 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.23.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
 **Auto-Weiter auf älteren Fernsehern (optional):** Das Hauptskript läuft auf älteren Fernsehern (z. B. Chromium 53, LG webOS 4) nicht. Damit dort trotzdem „Auto-Weiter“ (siehe „Bedienung“) funktioniert, gibt es das kleine Zusatzskript `dist/lenzupnext.min.js`. Es kommt als **eigener** JavaScript-Injector-Eintrag mit externer URL, nicht als Inline-Inhalt:
 
 ```
-https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzupnext.min.js
+https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.23.0/dist/lenzupnext.min.js
 ```
 
 Inline-Einträge landen im Plugin in einer gemeinsamen Datei; passt darin etwas nicht zum alten Browser, fällt die ganze Datei aus. Auf PC und Handy ist der Eintrag unnötig, dort steckt Auto-Weiter im Hauptskript. Sind beide eingetragen, läuft Auto-Weiter trotzdem nur einmal.
@@ -84,7 +84,7 @@ In LENZFLIX führen „Serien“ und „Filme“ auf eigene Seiten, die alle Ser
 
 ### Datensparmodus (LENZFLIX, LENZ+, LENZPRIME, LENZ//84)
 
-Für Mobilfunk und knappe Leitungen: Die Zeile **Datensparmodus** mit Schieber steht direkt unter „Design-Einstellungen“ (LENZFLIX: „Mehr“ bzw. Handy-Menü, LENZ+/LENZPRIME: Profilmenü, LENZ//84: Profilmenü am Desktop bzw. „MEHR“-Blatt am Handy). Solange er an ist, zeigt die Kopfleiste ein kleines Tacho-Symbol zum schnellen Ausschalten.
+Für Mobilfunk und knappe Leitungen: Die Zeile **Datensparmodus** mit Schieber steht direkt unter „Design-Einstellungen“ (LENZFLIX, LENZ+, LENZPRIME: Profilmenü, LENZ//84: Profilmenü am Desktop bzw. „MEHR“-Blatt am Handy). Solange er an ist, zeigt die Kopfleiste ein kleines Tacho-Symbol zum schnellen Ausschalten.
 
 - **Weniger Daten im Hintergrund:** keine automatischen Trailer (die Trailer-Knöpfe funktionieren weiter), nur 5 Titel in der Hero-Rotation, Bilder in 2/3 der Größe, keine Vorladung unterer Startseiten-Zeilen, im TV-Modus kein Vorwärmen der Nachbarsender (Umschalten dauert dadurch etwas länger).
 - **Unverändert:** Videoqualität beim Abspielen. Der Modus gilt pro Gerät und Benutzer und ist standardmäßig aus; in VIDEOTHEK LENZ gibt es ihn nicht.
@@ -105,7 +105,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.23.0/dist/lenzflix.min.css");
 :root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -189,7 +189,7 @@ So wird gerechnet (seit 1.21.0): Filme zählen ab 800 Sekunden Wiedergabe, Folge
 
 ## Meine Statistik (optional)
 
-Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Domain eine eigenständige Statistik-Seite (z. B. `/lenzflix-stats/`), erscheint „Meine Statistik“ im „Mehr“-Menü der Navigation und im „Mehr“-Overlay am Handy. Die URL im Custom-CSS eintragen:
+Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Domain eine eigenständige Statistik-Seite (z. B. `/lenzflix-stats/`), erscheint „Meine Statistik“ im Profilmenü der Kopfleiste (Klick auf das Profilbild; am Handy als Blatt). Die URL im Custom-CSS eintragen:
 
 ```css
 :root { --lfx-stats-url: "/lenzflix-stats/"; }
@@ -211,6 +211,7 @@ Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (h
 - **Daumen (Gefällt mir):** aktiv gefüllt in Rot.
 - **Gesehen-Button (Detail-Modal):** eckiger Button mit Auge, aktiv = weiß. Im Kopf bei Filmen und Folgen direkt, bei Serien für die ganze Serie (mit Rückfrage). In jeder Folgenzeile für die einzelne Folge und im Folgen-Kopf als ein Block mit der Staffel-Auswahl (links daneben, gemeinsame Kontur) für die ganze Staffel (mit Rückfrage). Auch im Hover-Popup unten rechts im Bild. Die Startseite zeigt die Änderung nach dem nächsten Laden.
 - **Auto-Weiter:** Im Jellyfin-Overlay „Nächste Folge“ füllt sich der Knopf „Jetzt starten“ über 5 s und startet dann die nächste Folge (Standard: An, gilt pro Jellyfin-Konto und auf allen Geräten). Abbruch für diese Folge: „Verbergen“, Pause oder Zurückspulen. Es springt auch, wenn Jellyfins eigene Autoplay-Einstellung aus ist. In VIDEOTHEK LENZ (3D-Kino) ist die Funktion aus. Für ältere Fernseher siehe „JavaScript (optional)“.
+- **Profilmenü (LENZFLIX):** Das Profilbild in der Kopfleiste öffnet ein eigenes Menü im Stil des „Mehr“-Menüs: Statistik (falls konfiguriert), Design-Einstellungen, Datensparmodus, Profil, Einstellungen, für Administratoren Übersicht und Metadaten-Manager, dazu Quick Connect (nur wenn am Server aktiv) und Abmelden. Am Desktop öffnet es per Maus-Hover oder Klick, am Handy (< 800 px) als Blatt. In LENZ+, LENZPRIME, LENZ//84 und VIDEOTHEK LENZ gibt es dieselben Punkte in deren Profilmenü. Auf den Verwaltungsseiten („Übersicht“) bleibt Jellyfins eigenes Menü.
 - **Neu und beliebt:** eigene Ansicht unter `#/home?lfx=new`.
 - Handy (< 800 px): Logo, Filter-Pills und Mehr-Overlay im App-Stil.
 
@@ -231,7 +232,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.22.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.23.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

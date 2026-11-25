@@ -160,7 +160,7 @@ const statshintFeature = {
     return isTheme('flix') && isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED.test(route.path);
   },
   mount(route) {
-    // Ein Klick auf irgendeinen Statistik-Link (Nav, Mehr-Overlay, Hinweis) beendet den Hinweis dauerhaft.
+    // Ein Klick auf irgendeinen Statistik-Link (Mehr-Menü ohne Profil-Knopf, Profilmenü, Hinweis) beendet den Hinweis dauerhaft.
     state.onClick = (e) => {
       const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
       if (a && isStatsHref(a.getAttribute('href'))) {

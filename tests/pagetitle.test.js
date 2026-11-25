@@ -43,6 +43,9 @@ describe('pageName', () => {
   it('native Seiten', () => {
     expect(name('#/mypreferencesdisplay')).toBe('Anzeige');
     expect(name('#/search')).toBe('Suche');
+    expect(name('#/quickconnect')).toBe('Quick Connect');
+    expect(name('#/metadata')).toBe('Metadaten-Manager');
+    expect(name('#/userprofile?userId=u1')).toBe('Profil');
     expect(name('#/usermenu')).toBe('Einstellungen');
     expect(name('#/movies?topParentId=L1')).toBe('Filme-Bibliothek');
     expect(name('#/movies')).toBe('Filme');

@@ -420,7 +420,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.22.0";
+  var VERSION = "1.23.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -847,14 +847,14 @@
     clearTimers();
     const msg = String(text);
     announce(msg);
-    const root6 = mountPoint(ID, { className: "lfx-toast" });
-    root6.classList.remove("is-leaving");
-    root6.setAttribute("aria-hidden", "true");
-    root6.replaceChildren(h("div", { class: "lfx-toast__msg" }, [msg]));
+    const root7 = mountPoint(ID, { className: "lfx-toast" });
+    root7.classList.remove("is-leaving");
+    root7.setAttribute("aria-hidden", "true");
+    root7.replaceChildren(h("div", { class: "lfx-toast__msg" }, [msg]));
     hideTimer = setTimeout(() => {
-      root6.classList.add("is-leaving");
+      root7.classList.add("is-leaving");
       removeTimer = setTimeout(() => {
-        unmountPoint(root6);
+        unmountPoint(root7);
         const live = document.getElementById(LIVE_ID);
         if (live) live.textContent = "";
         hideTimer = removeTimer = null;
@@ -1667,6 +1667,8 @@
     "/mypreferencessubtitles": "Untertitel",
     "/mypreferencescontrols": "Steuerung",
     "/mypreferencesquickconnect": "Quick Connect",
+    "/quickconnect": "Quick Connect",
+    "/metadata": "Metadaten-Manager",
     "/userprofile": "Profil",
     "/search": "Suche",
     "/queue": "Warteschlange"
@@ -2249,7 +2251,7 @@
     const holdBackdrop = Boolean(opts.holdBackdrop);
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
-    let state24 = "idle";
+    let state25 = "idle";
     let startX = 0;
     let startY = 0;
     let dy = 0;
@@ -2298,7 +2300,7 @@
       backdrop.style.opacity = String(v);
     }
     function close2() {
-      state24 = "closing";
+      state25 = "closing";
       if (reduced()) {
         onClose();
         return;
@@ -2309,13 +2311,13 @@
       animateThen(250, () => onClose());
     }
     function springBack() {
-      state24 = "closing";
+      state25 = "closing";
       el4.style.transition = ANIM;
       el4.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
-        state24 = "idle";
+        state25 = "idle";
       });
     }
     function velocityNow() {
@@ -2326,49 +2328,49 @@
       return dt > 0 ? (last.y - first2.y) / dt : 0;
     }
     function onStart(e) {
-      if (state24 === "closing") return;
-      state24 = "idle";
+      if (state25 === "closing") return;
+      state25 = "idle";
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        state24 = "ignored";
+        state25 = "ignored";
         return;
       }
       const t = touches[0];
       const rect = el4.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
       if (!inHandle && scrolledAncestor(e.target, el4)) {
-        state24 = "ignored";
+        state25 = "ignored";
         return;
       }
       if (!canStart(e)) {
-        state24 = "ignored";
+        state25 = "ignored";
         return;
       }
-      state24 = "tracking";
+      state25 = "tracking";
       startX = t.clientX;
       startY = t.clientY;
       dy = 0;
       samples = [{ t: now(), y: startY }];
     }
     function onMove2(e) {
-      if (state24 !== "tracking" && state24 !== "dragging") return;
+      if (state25 !== "tracking" && state25 !== "dragging") return;
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        if (state24 === "dragging") springBack();
-        else state24 = "ignored";
+        if (state25 === "dragging") springBack();
+        else state25 = "ignored";
         return;
       }
       const t = touches[0];
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
-      if (state24 === "tracking") {
+      if (state25 === "tracking") {
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
-          state24 = "dragging";
+          state25 = "dragging";
           el4.classList.add("lfx-dragging");
           el4.style.transition = "none";
         } else {
-          state24 = "ignored";
+          state25 = "ignored";
           return;
         }
       }
@@ -2382,18 +2384,18 @@
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
     function onEnd() {
-      if (state24 === "dragging") {
+      if (state25 === "dragging") {
         const h2 = height();
         const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
         if (far || velocityNow() > velocity) close2();
         else springBack();
-      } else if (state24 !== "closing") {
-        state24 = "idle";
+      } else if (state25 !== "closing") {
+        state25 = "idle";
       }
     }
     function onCancel() {
-      if (state24 === "dragging") springBack();
-      else if (state24 !== "closing") state24 = "idle";
+      if (state25 === "dragging") springBack();
+      else if (state25 !== "closing") state25 = "idle";
     }
     el4.addEventListener("touchstart", onStart, { passive: true });
     el4.addEventListener("touchmove", onMove2, { passive: false });
@@ -2409,7 +2411,7 @@
       el4.removeEventListener("touchend", onEnd);
       el4.removeEventListener("touchcancel", onCancel);
       resetStyles();
-      state24 = "idle";
+      state25 = "idle";
     };
   }
 
@@ -2511,15 +2513,15 @@
   }
   var session = null;
   function clearMarker() {
-    const root6 = document.documentElement;
-    root6.classList.remove("lfx-menu-open");
-    root6.style.removeProperty("--lfx-menu-x");
-    root6.style.removeProperty("--lfx-menu-y");
+    const root7 = document.documentElement;
+    root7.classList.remove("lfx-menu-open");
+    root7.style.removeProperty("--lfx-menu-x");
+    root7.style.removeProperty("--lfx-menu-y");
   }
   function setPosition(pos) {
-    const root6 = document.documentElement;
-    root6.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
-    root6.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
+    const root7 = document.documentElement;
+    root7.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
+    root7.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
   }
   var isTouchSheet = () => typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches;
   function attachSheetSwipe(s, sheet) {
@@ -3288,10 +3290,10 @@
   var span = (cls, children) => h("span", { class: cls }, children);
   function buildPreview(id) {
     const tiles = (n) => Array.from({ length: n }, () => span("lfx-tp__tile"));
-    const root6 = span(`lfx-tp__preview lfx-tp__preview--${id}`);
-    root6.setAttribute("aria-hidden", "true");
+    const root7 = span(`lfx-tp__preview lfx-tp__preview--${id}`);
+    root7.setAttribute("aria-hidden", "true");
     if (id === "plus") {
-      root6.append(
+      root7.append(
         span("lfx-tp__bar", [span("lfx-tp__dot"), span("lfx-tp__dot"), span("lfx-tp__dot"), span("lfx-tp__dot")]),
         span("lfx-tp__hero lfx-tp__hero--side lfx-tp__hero--l"),
         span("lfx-tp__hero"),
@@ -3300,7 +3302,7 @@
         span("lfx-tp__row", tiles(5))
       );
     } else if (id === "prime") {
-      root6.append(
+      root7.append(
         span("lfx-tp__hero", [span("lfx-tp__line"), span("lfx-tp__line lfx-tp__line--s"), span("lfx-tp__btn")]),
         span("lfx-tp__row", tiles(4).map((t) => {
           t.append(span("lfx-tp__badge-mini"));
@@ -3308,15 +3310,15 @@
         }))
       );
     } else if (id === "retro") {
-      root6.append(span("lfx-tp__sun"), span("lfx-tp__grid"), span("lfx-tp__scan"));
+      root7.append(span("lfx-tp__sun"), span("lfx-tp__grid"), span("lfx-tp__scan"));
     } else if (id === "store") {
       let k = 0;
       const shelf = (n) => span("lfx-tp__shelf", Array.from({ length: n }, () => span(`lfx-tp__cover lfx-tp__cover--${k++ % 6}`)));
-      root6.append(span("lfx-tp__shopsign", ["VIDEOTHEK LENZ"]), ...STORE_ROWS.map(shelf), span("lfx-tp__carpet"));
+      root7.append(span("lfx-tp__shopsign", ["VIDEOTHEK LENZ"]), ...STORE_ROWS.map(shelf), span("lfx-tp__carpet"));
     } else {
-      root6.append(span("lfx-tp__logo"), span("lfx-tp__hero"), span("lfx-tp__row", tiles(4)));
+      root7.append(span("lfx-tp__logo"), span("lfx-tp__hero"), span("lfx-tp__row", tiles(4)));
     }
-    return root6;
+    return root7;
   }
   function buildMark(id, name) {
     if (id === "plus") {
@@ -3862,9 +3864,9 @@
     btn3.setAttribute("aria-checked", String(Boolean(on)));
   }
   var bound = /* @__PURE__ */ new Set();
-  function releaseSwitches(root6) {
-    if (!root6) return;
-    for (const e of [...bound]) if (root6 === e.btn || root6.contains(e.btn)) e.off();
+  function releaseSwitches(root7) {
+    if (!root7) return;
+    for (const e of [...bound]) if (root7 === e.btn || root7.contains(e.btn)) e.off();
   }
   function bindSwitch(btn3, item) {
     setSwitchState(btn3, item.checked);
@@ -3909,6 +3911,28 @@
     onToggle: (next) => setDataSaver(next),
     watch: (cb) => onDataSaverChange(() => cb(isDataSaverOn()))
   });
+
+  // src/js/features/profilebtn.js
+  var HEADER_SEL = "header.MuiAppBar-root";
+  var PROFILE_MENU_ID = "app-user-menu";
+  function isProfileButton(el4) {
+    if (!el4 || el4.tagName !== "BUTTON" || !el4.closest || !el4.closest(HEADER_SEL)) return false;
+    return el4.getAttribute("aria-controls") === PROFILE_MENU_ID || !!el4.querySelector(".MuiAvatar-root");
+  }
+  function profileButtonOf(target2) {
+    const el4 = target2 && target2.closest ? target2.closest("button") : null;
+    return isProfileButton(el4) ? el4 : null;
+  }
+  function findProfileButton() {
+    const header = document.querySelector(HEADER_SEL);
+    if (!header) return null;
+    const byId = header.querySelector(`button[aria-controls="${PROFILE_MENU_ID}"]`);
+    if (byId) return byId;
+    for (const b of header.querySelectorAll("button")) {
+      if (b.querySelector(".MuiAvatar-root")) return b;
+    }
+    return null;
+  }
 
   // src/js/features/nav.js
   var { STATS_LABEL: STATS_LABEL2 } = stats_exports;
@@ -4043,11 +4067,22 @@
       for (const el4 of nav.querySelectorAll(".lfx-nav__menu-item--fold")) el4.hidden = !off.has(el4.dataset.key);
     };
     fold(0);
+    const accountEntries = [...nav.querySelectorAll(".lfx-nav__menu-item--account")];
+    const account = !findProfileButton();
+    for (const el4 of accountEntries) el4.hidden = !account;
+    const hasContent = state2.model.more.length > 0 || account && accountEntries.length > 0;
+    wrap.hidden = false;
+    const edge = (count) => {
+      const r = wrap.getBoundingClientRect();
+      return hasContent || count > 0 ? r.right : r.left;
+    };
     let n = 0;
     if (!isNavCompact()) {
       const limit = rightLimit(nav.getBoundingClientRect().left);
-      while (n < items.length && wrap.getBoundingClientRect().right > limit) fold(++n);
+      while (n < items.length && edge(n) > limit) fold(++n);
     }
+    wrap.hidden = !hasContent && n === 0;
+    if (wrap.hidden && state2.menuOpen) setMenu(false);
     const moreBtn = wrap.querySelector(".lfx-nav__more-btn");
     if (moreBtn) moreBtn.classList.toggle("has-fold", n > 0);
     applyActive();
@@ -4093,10 +4128,10 @@
       const all = navItems(state2.model);
       const entries = MENU_ORDER.map((k) => all.find((it) => it.key === k)).filter(Boolean).map((it) => h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--fold", role: "menuitem", href: it.href, hidden: true, dataset: { key: it.key } }, it.label));
       for (const m of more) entries.push(h("a", { class: "lfx-nav__menu-item", role: "menuitem", href: m.href, dataset: { id: m.id } }, m.label));
-      if (statsUrl) entries.push(h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--stats", role: "menuitem", href: statsUrl }, STATS_LABEL2));
-      const designBtn = h("button", { type: "button", class: "lfx-nav__menu-item lfx-nav__menu-item--design", role: "menuitem" }, "Design-Einstellungen");
+      if (statsUrl) entries.push(h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--account lfx-nav__menu-item--stats", role: "menuitem", href: statsUrl }, STATS_LABEL2));
+      const designBtn = h("button", { type: "button", class: "lfx-nav__menu-item lfx-nav__menu-item--account lfx-nav__menu-item--design", role: "menuitem" }, "Design-Einstellungen");
       entries.push(designBtn);
-      const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: "lfx-nav__menu-item lfx-nav__menu-item--datasaver" }) : null;
+      const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: "lfx-nav__menu-item lfx-nav__menu-item--account lfx-nav__menu-item--datasaver" }) : null;
       if (dsBtn) entries.push(dsBtn);
       const menu = h("div", { class: "lfx-nav__menu", role: "menu", id: "lfx-nav-menu" }, entries);
       const btn3 = h("button", {
@@ -4125,7 +4160,8 @@
           setMenu(false);
           btn3.focus();
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden]), [role="menuitemcheckbox"]')];
+          const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden]), [role="menuitemcheckbox"]:not([hidden])')];
+          if (!items.length) return;
           const i = items.indexOf(document.activeElement);
           const next = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
           setMenu(true);
@@ -4147,9 +4183,9 @@
   }
   function onScroll() {
     const y = window.scrollY || document.documentElement.scrollTop || 0;
-    const root6 = document.documentElement;
+    const root7 = document.documentElement;
     const on = y > SCROLL_THRESHOLD;
-    if (root6.classList.contains("lfx-scrolled") !== on) root6.classList.toggle("lfx-scrolled", on);
+    if (root7.classList.contains("lfx-scrolled") !== on) root7.classList.toggle("lfx-scrolled", on);
   }
   function onDocClick(e) {
     if (e.target && e.target.closest && e.target.closest('a[href^="#/home"]')) state2.clickAt = Date.now();
@@ -4829,9 +4865,9 @@
     const items = navItems(model).map((it) => ({ key: it.key, label: it.label, href: it.href }));
     for (const m of model.more) items.push({ key: "more", label: m.label, href: m.href, id: m.id });
     const statsUrl = statsLink2();
-    if (statsUrl) items.push({ key: "stats", label: STATS_LABEL3, href: statsUrl, external: true });
-    items.push({ key: "design", label: "Design-Einstellungen", action: "design" });
-    if (dataSaverAvailable()) items.push({ key: "datasaver", label: "Datensparmodus", action: "datasaver" });
+    if (statsUrl) items.push({ key: "stats", label: STATS_LABEL3, href: statsUrl, external: true, account: true });
+    items.push({ key: "design", label: "Design-Einstellungen", action: "design", account: true });
+    if (dataSaverAvailable()) items.push({ key: "datasaver", label: "Datensparmodus", action: "datasaver", account: true });
     return items;
   }
   var VIEWS_RETRY_MS2 = 5e3;
@@ -4885,8 +4921,14 @@
   function isOpen() {
     return Boolean(state3.overlay && !state3.overlay.hidden);
   }
+  function syncAccountItems() {
+    if (!state3.overlay) return;
+    const hide2 = Boolean(findProfileButton());
+    for (const li of state3.overlay.querySelectorAll("[data-lfx-account]")) li.hidden = hide2;
+  }
   function openOverlay() {
     if (!state3.overlay || isOpen()) return;
+    syncAccountItems();
     state3.returnFocus = document.activeElement;
     state3.overlay.hidden = false;
     cl().add("lfx-mnav-open");
@@ -4911,9 +4953,9 @@
     }
     trapTab(e, state3.overlay);
   }
-  function trapTab(e, root6) {
-    if (e.key !== "Tab" || !root6) return;
-    const nodes = [...root6.querySelectorAll(FOCUSABLE)];
+  function trapTab(e, root7) {
+    if (e.key !== "Tab" || !root7) return;
+    const nodes = [...root7.querySelectorAll(FOCUSABLE)].filter((n) => !n.closest("[hidden]"));
     if (!nodes.length) return;
     const first2 = nodes[0];
     const last = nodes[nodes.length - 1];
@@ -5040,7 +5082,7 @@
     const list = h(
       "ul",
       { class: "lfx-mnav-overlay__list" },
-      overlayItems(state3.model).map((it) => h("li", null, [
+      overlayItems(state3.model).map((it) => h("li", it.account ? { dataset: { lfxAccount: "" } } : null, [
         it.action === "datasaver" ? switchButton(dataSaverItem(), { className: "lfx-mnav-overlay__link lfx-mnav-overlay__link--datasaver", role: "switch" }) : it.action ? h("button", { type: "button", class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, dataset: { action: it.action } }, it.label) : (
           // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
           h("a", { class: `lfx-mnav-overlay__link${it.external ? " lfx-mnav-overlay__link--stats" : ""}`, href: it.href, ...it.external ? {} : { dataset: { key: it.key } } }, it.label)
@@ -5051,6 +5093,7 @@
     close2.addEventListener("click", () => closeOverlay());
     state3.overlay.textContent = "";
     state3.overlay.append(list, close2);
+    syncAccountItems();
     applyActive2();
     applyPillsVisibility();
   }
@@ -5231,6 +5274,18 @@
   function isPopoverOpen() {
     return current2 !== null;
   }
+  function tidyItems(list) {
+    const out = [];
+    for (const it of Array.isArray(list) ? list : []) {
+      if (!it || it.hidden) continue;
+      if (it.separator) {
+        if (!out.length || out[out.length - 1].separator) continue;
+      }
+      out.push(it);
+    }
+    while (out.length && out[out.length - 1].separator) out.pop();
+    return out;
+  }
   function closePopover({ restoreFocus = false } = {}) {
     const c = current2;
     if (!c) return;
@@ -5243,12 +5298,18 @@
     unmountPoint(c.el);
     document.documentElement.classList.remove("lfx-popover-open");
     if (c.anchorEl) {
-      c.anchorEl.setAttribute("aria-expanded", c.hadExpanded !== null ? c.hadExpanded : "false");
+      if (c.expand) c.anchorEl.setAttribute("aria-expanded", c.hadExpanded !== null ? c.hadExpanded : "false");
       if (restoreFocus && c.anchorEl.isConnected && typeof c.anchorEl.focus === "function") {
         try {
           c.anchorEl.focus({ preventScroll: true });
         } catch {
         }
+      }
+    }
+    if (typeof c.onClosed === "function") {
+      try {
+        c.onClosed();
+      } catch {
       }
     }
   }
@@ -5265,14 +5326,23 @@
     el4.style.left = `${Math.round(left)}px`;
     el4.style.top = `${Math.round(top)}px`;
   }
-  function openPopover(anchorEl, { label, items = [], align = "end", className = "" } = {}) {
+  function openPopover(anchorEl, { label, items = [], align = "end", className = "", expand = true, focus = true, onClosed } = {}) {
     closePopover();
     const el4 = mountPoint(ID6, { className: `lfx-popover${className ? ` ${className}` : ""}` });
     el4.className = `lfx-popover${className ? ` ${className}` : ""}`;
     el4.setAttribute("role", "menu");
     if (label) el4.setAttribute("aria-label", label);
-    const list = items.filter((it) => it && !it.hidden);
+    const list = tidyItems(items);
     const nodes = list.map((it) => {
+      if (it.separator) return h("div", { class: "lfx-popover__sep", role: "separator" });
+      if (it.head) {
+        const name = String(it.label || "");
+        const initial = name.trim().charAt(0).toUpperCase() || "?";
+        return h("div", { class: "lfx-popover__head", role: "none" }, [
+          h("span", { class: "lfx-popover__avatar", "aria-hidden": "true" }, it.imageUrl ? h("img", { src: it.imageUrl, alt: "", draggable: "false" }) : h("span", null, initial)),
+          h("span", { class: "lfx-popover__name" }, name)
+        ]);
+      }
       if (it.note) return h("div", { class: "lfx-popover__note", role: "none", dataset: { key: it.key || "" } }, it.label);
       const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ""}`;
       if (it.switch) {
@@ -5293,8 +5363,8 @@
       return node;
     });
     el4.replaceChildren(...nodes);
-    const focusable = nodes.filter((n) => !n.classList.contains("lfx-popover__note"));
-    const c = { el: el4, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
+    const focusable = nodes.filter((n) => n.matches("a, button"));
+    const c = { el: el4, anchorEl, expand, onClosed, hadExpanded: anchorEl && expand ? anchorEl.getAttribute("aria-expanded") : null };
     c.close = () => {
       if (current2 === c) closePopover({ restoreFocus: true });
     };
@@ -5315,6 +5385,7 @@
         e.stopPropagation();
         e.stopImmediatePropagation();
         c.close();
+      } else if (!focus && !el4.contains(document.activeElement) && !(anchorEl && anchorEl.contains(document.activeElement))) {
       } else if (e.key === "Tab") {
         closePopover({ restoreFocus: true });
       } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) && focusable.length) {
@@ -5330,13 +5401,13 @@
     };
     current2 = c;
     document.documentElement.classList.add("lfx-popover-open");
-    if (anchorEl) anchorEl.setAttribute("aria-expanded", "true");
+    if (anchorEl && expand) anchorEl.setAttribute("aria-expanded", "true");
     window.addEventListener("keydown", c.onKeydown, true);
     document.addEventListener("click", c.onDocClick, true);
     window.addEventListener("resize", c.onClose);
     window.addEventListener("scroll", c.onScroll, true);
     if (anchorEl) place(el4, anchorEl, align);
-    if (focusable[0]) focusable[0].focus({ preventScroll: true });
+    if (focus && focusable[0]) focusable[0].focus({ preventScroll: true });
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
     raf3(() => {
       if (current2 === c) el4.classList.add("is-open");
@@ -5402,6 +5473,393 @@
     }
   };
   var dsbtn_default = dsbtnFeature;
+
+  // src/js/shared/profile.js
+  function logout() {
+    const d = window.Dashboard;
+    if (d && typeof d.logout === "function") {
+      d.logout();
+      return;
+    }
+    window.location.hash = "#/mypreferencesmenu";
+  }
+  var QC_KEY = "qc:enabled";
+  var QC_OK_TTL = 10 * 6e4;
+  var QC_ERR_TTL = 3e4;
+  async function quickConnectEnabled() {
+    const r = await cached(
+      QC_KEY,
+      async () => {
+        try {
+          return await getJson("/QuickConnect/Enabled") === true ? 1 : 0;
+        } catch {
+          return -1;
+        }
+      },
+      (v) => v < 0 ? QC_ERR_TTL : QC_OK_TTL
+    );
+    return r === 1;
+  }
+  async function profileEntries({ theme: theme2, returnFocus } = {}) {
+    const [user, qc] = await Promise.all([
+      getUser().catch(() => null),
+      // ohne Admin-Gruppe weiter
+      quickConnectEnabled().catch(() => false)
+    ]);
+    const g1 = [];
+    if (getStatsUrl()) {
+      g1.push({ key: "stats", label: "Meine Statistik", href: statsHref(theme2) || getStatsUrl(), className: "is-stats" });
+    }
+    g1.push({ key: "design", label: "Design-Einstellungen", onClick: () => openThemePicker({ returnFocus }) });
+    if (DATASAVER_THEMES.includes(theme2 || getTheme() || "flix")) g1.push(dataSaverItem());
+    const g2 = [];
+    const uid = user && user.Id || getUserId();
+    if (uid) g2.push({ key: "profile", label: "Profil", href: `#/userprofile?userId=${encodeURIComponent(uid)}` });
+    g2.push({ key: "settings", label: "Einstellungen", href: "#/mypreferencesmenu" });
+    const g3 = [];
+    if (user && user.Policy && user.Policy.IsAdministrator) {
+      g3.push({ key: "dashboard", label: "\xDCbersicht", href: "#/dashboard" });
+      g3.push({ key: "metadata", label: "Metadaten-Manager", href: "#/metadata" });
+    }
+    const g4 = [];
+    if (qc === true) g4.push({ key: "quickconnect", label: "Quick Connect", href: "#/quickconnect" });
+    g4.push({ key: "logout", label: "Abmelden", onClick: () => logout() });
+    const out = [];
+    for (const g of [g1, g2, g3, g4]) {
+      if (!g.length) continue;
+      if (out.length) out.push({ key: "sep", separator: true });
+      out.push(...g);
+    }
+    return out;
+  }
+  async function getUserChip({ retries = 0, delay = 500, isAlive = () => true } = {}) {
+    let user;
+    for (let i = 0; ; i++) {
+      try {
+        user = await getUser();
+      } catch {
+        user = null;
+      }
+      if (user || i >= retries || !isAlive()) break;
+      await new Promise((r) => setTimeout(r, delay));
+      if (!isAlive()) break;
+    }
+    const name = user && user.Name || "";
+    const tag = user && user.PrimaryImageTag;
+    const id = user && user.Id || getUserId();
+    const imageUrl2 = tag && id ? buildUrl(`/Users/${id}/Images/Primary`, { tag, maxWidth: 96 }) : null;
+    return { name, imageUrl: imageUrl2 };
+  }
+
+  // src/js/shared/profilesheet.js
+  var FOCUSABLE2 = "a[href], button:not([disabled])";
+  var cur = null;
+  function isProfileSheetOpen() {
+    return cur !== null;
+  }
+  function closeProfileSheet({ restoreFocus = true } = {}) {
+    const c = cur;
+    if (!c) return;
+    cur = null;
+    if (c.detachSwipe) c.detachSwipe();
+    window.removeEventListener("keydown", c.onKeydown, true);
+    window.removeEventListener("hashchange", c.onHash);
+    releaseSwitches(c.root);
+    unmountPoint(c.root);
+    document.documentElement.classList.remove(c.openClass);
+    const back = c.returnFocus;
+    if (restoreFocus && back && back.isConnected && typeof back.focus === "function") {
+      try {
+        back.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+  }
+  function entryNode(it, close2, p) {
+    if (it.separator) return h("div", { class: `${p}__sep`, role: "separator" });
+    if (it.switch) {
+      return switchButton(it, { className: `${p}__item ${p}__item--switch`, role: "switch", labelClass: `${p}__label` });
+    }
+    const kids = [h("span", { class: `${p}__label` }, it.label)];
+    const cls = `${p}__item${it.className ? ` ${it.className}` : ""}`;
+    const node = it.href ? h("a", { class: cls, href: it.href, dataset: { key: it.key || "" } }, kids) : h("button", { type: "button", class: cls, dataset: { key: it.key || "" } }, kids);
+    node.addEventListener("click", () => {
+      close2({ restoreFocus: false });
+      if (typeof it.onClick === "function") it.onClick();
+    });
+    return node;
+  }
+  function section(title, nodes, p) {
+    return h("section", { class: `${p}__section` }, [
+      title ? h("h3", { class: `${p}__head` }, title) : null,
+      ...nodes
+    ]);
+  }
+  function openProfileSheet({ id, prefix, openClass, label = "Profil", returnFocus, load: load6 } = {}) {
+    closeProfileSheet({ restoreFocus: false });
+    const p = prefix;
+    const root7 = mountPoint(id, { className: `${p}-overlay` });
+    const who = h("div", { class: `${p}__who` });
+    const body = h("div", { class: `${p}__body` });
+    const sheet = h("div", { class: p, role: "dialog", "aria-modal": "true", "aria-label": label, tabindex: "-1" }, [
+      h("span", { class: `${p}__grip`, "aria-hidden": "true" }),
+      who,
+      body
+    ]);
+    root7.replaceChildren(sheet);
+    const c = { root: root7, sheet, openClass, returnFocus: returnFocus || null };
+    cur = c;
+    const close2 = (opts) => {
+      if (cur === c) closeProfileSheet(opts);
+    };
+    c.onKeydown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        close2();
+      } else if (e.key === "Tab") {
+        const list = [...sheet.querySelectorAll(FOCUSABLE2)];
+        if (!list.length) {
+          e.preventDefault();
+          return;
+        }
+        const first2 = list[0];
+        const last = list[list.length - 1];
+        const active7 = document.activeElement;
+        if (!sheet.contains(active7)) {
+          e.preventDefault();
+          first2.focus();
+        } else if (e.shiftKey && active7 === first2) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active7 === last) {
+          e.preventDefault();
+          first2.focus();
+        }
+      }
+    };
+    c.onHash = () => close2({ restoreFocus: false });
+    root7.addEventListener("click", (e) => {
+      if (e.target === root7) close2();
+    });
+    window.addEventListener("keydown", c.onKeydown, true);
+    window.addEventListener("hashchange", c.onHash);
+    if (typeof attachSwipeClose === "function") {
+      c.detachSwipe = attachSwipeClose(sheet, { onClose: () => close2(), backdrop: root7 });
+    }
+    document.documentElement.classList.add(openClass);
+    sheet.focus({ preventScroll: true });
+    (async () => {
+      let data;
+      try {
+        data = typeof load6 === "function" ? await load6() : null;
+      } catch {
+        data = null;
+      }
+      if (cur !== c) return;
+      const chip = data && data.chip || { name: "", imageUrl: null };
+      const initial = (chip.name || "?").trim().charAt(0).toUpperCase() || "?";
+      who.replaceChildren(
+        h("span", { class: `${p}__avatar`, "aria-hidden": "true" }, chip.imageUrl ? h("img", { src: chip.imageUrl, alt: "", draggable: "false" }) : h("span", null, initial)),
+        h("span", { class: `${p}__name` }, chip.name || label)
+      );
+      const secs = (data && data.sections || []).map((s) => ({ title: s.title, items: tidyItems(s.items) })).filter((s) => s.items.length);
+      body.replaceChildren(...secs.map((s) => section(s.title, s.items.map((it) => entryNode(it, close2, p)), p)));
+      const first2 = body.querySelector(FOCUSABLE2);
+      if (first2 && document.activeElement === sheet) first2.focus({ preventScroll: true });
+    })();
+    return { close: close2 };
+  }
+
+  // src/js/features/profilemenu.js
+  var OPEN_CLASS2 = "lfx-flix-profile-open";
+  var SHEET_ID = "lfx-flix-profilesheet";
+  var SHEET_PREFIX = "lfx-flix-psheet";
+  var SHEET_OPEN_CLASS = "lfx-flix-profilesheet-open";
+  var POPOVER_ID = "lfx-popover";
+  var HOVER_CLOSE_MS = 200;
+  var HOVER_CLICK_GRACE2 = 800;
+  var HOVER_MQ = "(hover: hover) and (pointer: fine)";
+  var state4 = {
+    mounted: false,
+    seq: 0,
+    // Öffnungszähler gegen veraltete Antworten
+    route: null,
+    mine: null,
+    // Token des eigenen offenen Popovers
+    sheet: null,
+    // eigenes offenes Blatt
+    openedAt: 0,
+    byHover: false,
+    pending: false,
+    // Öffnen läuft (async)
+    pendingHover: false,
+    // laufendes Öffnen kam per Hover und wurde (noch) nicht per Klick bestätigt
+    hoverTimer: 0,
+    cleanups: []
+  };
+  var root3 = () => document.documentElement;
+  var inPopover = (n) => Boolean(n && n.closest && n.closest(`#${POPOVER_ID}`));
+  function ownPopoverOpen() {
+    return state4.mine !== null && isPopoverOpen();
+  }
+  function ownSheetOpen() {
+    return state4.sheet !== null && isProfileSheetOpen();
+  }
+  function clearHoverTimer() {
+    if (state4.hoverTimer) {
+      clearTimeout(state4.hoverTimer);
+      state4.hoverTimer = 0;
+    }
+  }
+  function closeOwn({ restoreFocus = false } = {}) {
+    clearHoverTimer();
+    state4.seq++;
+    state4.pending = false;
+    state4.pendingHover = false;
+    if (ownPopoverOpen()) closePopover({ restoreFocus });
+    state4.mine = null;
+    root3().classList.remove(OPEN_CLASS2);
+    if (ownSheetOpen()) closeProfileSheet({ restoreFocus });
+    state4.sheet = null;
+  }
+  var safeChip = () => getUserChip().catch(() => ({ name: "", imageUrl: null }));
+  var safeEntries = (btn3) => profileEntries({ theme: "flix", returnFocus: btn3 }).catch(() => []);
+  async function openMenu(btn3, { focus, hover: hover2 }) {
+    const seq4 = ++state4.seq;
+    state4.pending = true;
+    state4.pendingHover = hover2;
+    if (isNarrow()) {
+      state4.sheet = openProfileSheet({
+        id: SHEET_ID,
+        prefix: SHEET_PREFIX,
+        openClass: SHEET_OPEN_CLASS,
+        label: "Profil",
+        returnFocus: btn3,
+        load: async () => {
+          const [chip2, items] = await Promise.all([safeChip(), safeEntries(btn3)]);
+          return { chip: chip2, sections: [{ items }] };
+        }
+      }) || {};
+      state4.pending = false;
+      return;
+    }
+    const [chip, entries] = await Promise.all([safeChip(), safeEntries(btn3)]);
+    if (seq4 !== state4.seq || !state4.mounted) return;
+    state4.pending = false;
+    if (!btn3.isConnected) return;
+    const token2 = {};
+    state4.mine = token2;
+    state4.openedAt = Date.now();
+    state4.byHover = state4.pendingHover;
+    openPopover(btn3, {
+      label: "Profilmen\xFC",
+      className: "lfx-flix-profile",
+      align: "end",
+      expand: false,
+      focus,
+      onClosed: () => {
+        if (state4.mine !== token2) return;
+        state4.mine = null;
+        root3().classList.remove(OPEN_CLASS2);
+      },
+      items: [{ head: true, label: chip.name || "Profil", imageUrl: chip.imageUrl }, ...entries]
+    });
+    root3().classList.add(OPEN_CLASS2);
+  }
+  function onClick(e) {
+    const btn3 = profileButtonOf(e.target);
+    if (!btn3) return;
+    e.preventDefault();
+    e.stopPropagation();
+    clearHoverTimer();
+    if (ownSheetOpen()) {
+      closeOwn({ restoreFocus: true });
+      return;
+    }
+    if (ownPopoverOpen()) {
+      if (state4.byHover && Date.now() - state4.openedAt < HOVER_CLICK_GRACE2) return;
+      closeOwn({ restoreFocus: e.detail === 0 });
+      return;
+    }
+    if (state4.pending) {
+      state4.pendingHover = false;
+      return;
+    }
+    openMenu(btn3, { focus: e.detail === 0, hover: false });
+  }
+  function canHover(e) {
+    return e.pointerType === "mouse" && typeof matchMedia === "function" && matchMedia(HOVER_MQ).matches && !isNarrow();
+  }
+  function onPointerOver(e) {
+    if (e.pointerType !== "mouse") return;
+    const btn3 = profileButtonOf(e.target);
+    if (btn3) {
+      if (!canHover(e)) return;
+      clearHoverTimer();
+      if (!ownPopoverOpen() && !state4.pending && !ownSheetOpen()) openMenu(btn3, { focus: false, hover: true });
+      return;
+    }
+    if (ownPopoverOpen() && inPopover(e.target)) clearHoverTimer();
+  }
+  function onPointerOut(e) {
+    if (e.pointerType !== "mouse") return;
+    const fromBtn = profileButtonOf(e.target);
+    if (!fromBtn && !(ownPopoverOpen() && inPopover(e.target))) return;
+    const to = e.relatedTarget;
+    if (to && (profileButtonOf(to) || inPopover(to))) return;
+    if (state4.pending && !ownPopoverOpen()) {
+      if (state4.pendingHover) {
+        state4.seq++;
+        state4.pending = false;
+      }
+      return;
+    }
+    if (!ownPopoverOpen()) return;
+    clearHoverTimer();
+    state4.hoverTimer = setTimeout(() => {
+      state4.hoverTimer = 0;
+      if (ownPopoverOpen()) closeOwn();
+    }, HOVER_CLOSE_MS);
+  }
+  var profilemenu = {
+    name: "profilemenu",
+    match(route) {
+      return isReady() && isModern() && !isTv() && isTheme("flix") && !EXCLUDED.test(route.path);
+    },
+    mount(route) {
+      state4.mounted = true;
+      state4.route = route;
+      document.addEventListener("click", onClick, true);
+      document.addEventListener("pointerover", onPointerOver);
+      document.addEventListener("pointerout", onPointerOut);
+      state4.cleanups.push(
+        () => document.removeEventListener("click", onClick, true),
+        () => document.removeEventListener("pointerover", onPointerOver),
+        () => document.removeEventListener("pointerout", onPointerOut)
+      );
+      try {
+        Promise.resolve(quickConnectEnabled()).catch(() => {
+        });
+        Promise.resolve(getUserChip({ retries: 20, isAlive: () => state4.mounted })).catch(() => {
+        });
+      } catch {
+      }
+    },
+    update(route) {
+      const changed = !state4.route || state4.route.hash !== route.hash;
+      state4.route = route;
+      if (changed) closeOwn();
+    },
+    unmount() {
+      state4.mounted = false;
+      closeOwn();
+      for (const fn of state4.cleanups.splice(0)) fn();
+      state4.route = null;
+    }
+  };
+  var profilemenu_default = profilemenu;
 
   // src/js/features/osdcenter.js
   var ID8 = "lfx-osdc";
@@ -5952,7 +6410,7 @@
   }
 
   // src/js/core/sheet.js
-  var SHEET_ID = "lfx-sheet";
+  var SHEET_ID2 = "lfx-sheet";
   var current3 = null;
   function isChooserOpen() {
     return current3 !== null;
@@ -5983,14 +6441,14 @@
     if (title) c.sheet.setAttribute("aria-label", title);
     releaseSwitches(c.list);
     c.list.replaceChildren(
-      ...entries.map(
-        ({ label, note: note2, onClick: onClick2, disabled, primary, ...rest }) => rest.switch ? switchButton({ label, ...rest }, { className: "lfx-sheet__item lfx-sheet__item--switch", role: "switch" }) : h(
+      ...tidyItems(entries).map(
+        ({ label, note: note2, onClick: onClick3, disabled, primary, ...rest }) => rest.separator ? h("div", { class: "lfx-sheet__sep", role: "separator" }) : rest.switch ? switchButton({ label, ...rest }, { className: "lfx-sheet__item lfx-sheet__item--switch", role: "switch" }) : h(
           "button",
           {
             type: "button",
             class: `lfx-sheet__item${primary ? " lfx-sheet__item--primary" : ""}`,
             disabled: disabled ? true : null,
-            onclick: onClick2
+            onclick: onClick3
           },
           [
             note2 ? h("span", { class: "lfx-sheet__text" }, [h("span", null, [label]), h("span", { class: "lfx-sheet__note" }, [note2])]) : label
@@ -6003,7 +6461,7 @@
   }
   function openSheet(anchorEl, label) {
     closeChooser();
-    const overlay = mountPoint(SHEET_ID, { className: "lfx-sheet-overlay" });
+    const overlay = mountPoint(SHEET_ID2, { className: "lfx-sheet-overlay" });
     const title = h("h2", { class: "lfx-sheet__title" }, [label || ""]);
     const list = h("div", { class: "lfx-sheet__list" });
     const sheet = h("div", { class: "lfx-sheet", role: "dialog", "aria-modal": "true", "aria-label": label || "" }, [title, list]);
@@ -6676,10 +7134,10 @@
     grow();
     if (kb && list.children[from]) list.children[from].focus({ preventScroll: true });
   }
-  function renderEpisodes(slot2, state24, H) {
+  function renderEpisodes(slot2, state25, H) {
     slot2.hidden = false;
     slot2.replaceChildren();
-    const { seasons, seasonId, episodes, selectedEpisodeId } = state24;
+    const { seasons, seasonId, episodes, selectedEpisodeId } = state25;
     putItems(episodes);
     const current6 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
@@ -6837,7 +7295,7 @@
   var SKIP_IN_CARD = '.cardOverlayButton, .lfx-card__action, button, [data-action="menu"], [data-action="play"], [data-action="resume"]';
   var IMAGE_LINK = "a.cardImageContainer, a.lfx-card__link";
   var REFRESH_DEBOUNCE = 1800;
-  var state4 = null;
+  var state5 = null;
   var clickInstalled = false;
   var rootEl2 = () => document.documentElement;
   var overlayOnTop = () => Boolean(document.querySelector(".dialogContainer")) || isChooserOpen();
@@ -6883,13 +7341,13 @@
       return Promise.resolve();
     }
     const theme2 = getTheme();
-    if (opts.overlay && state4) state4.overlayMode = true;
-    if (theme2 && theme2 !== "flix" && !opts.overlay && !(state4 && state4.overlayMode)) {
+    if (opts.overlay && state5) state5.overlayMode = true;
+    if (theme2 && theme2 !== "flix" && !opts.overlay && !(state5 && state5.overlayMode)) {
       location.hash = titleHref(id);
       return Promise.resolve();
     }
     const hint2 = typeof itemOrId === "object" ? itemOrId : null;
-    if (state4) return loadInto(id, hint2, true);
+    if (state5) return loadInto(id, hint2, true);
     create2(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay), id);
     return loadInto(id, hint2, false);
   }
@@ -6916,11 +7374,11 @@
     } catch {
       kb = true;
     }
-    state4 = { overlay, modal, content: content2, closeBtn, opener: opener2, kb, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
-    state4.unsub = onItemsChanged(onChanged);
-    lockScroll(state4);
+    state5 = { overlay, modal, content: content2, closeBtn, opener: opener2, kb, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    state5.unsub = onItemsChanged(onChanged);
+    lockScroll(state5);
     if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches) {
-      state4.detachSwipe = attachSwipeClose(modal, {
+      state5.detachSwipe = attachSwipeClose(modal, {
         backdrop: overlay,
         canStart: () => overlay.scrollTop <= 0 && !overlayOnTop(),
         holdBackdrop: true,
@@ -6934,7 +7392,7 @@
     window.addEventListener("hashchange", onHashChange);
     try {
       history.pushState({ ...history.state || {}, lfxModal: true }, "", location.href);
-      state4.pushed = true;
+      state5.pushed = true;
     } catch {
     }
     closeBtn.focus({ preventScroll: true });
@@ -6964,9 +7422,9 @@
     if (l.y) window.scrollTo(0, l.y);
   }
   function teardown2() {
-    if (!state4) return null;
-    const s = state4;
-    state4 = null;
+    if (!state5) return null;
+    const s = state5;
+    state5 = null;
     clearTimeout(s.fallback);
     clearTimeout(s.refreshTimer);
     if (typeof s.unsub === "function") s.unsub();
@@ -6984,12 +7442,12 @@
     return s.after;
   }
   function closeModal(opts = {}) {
-    if (!state4) return;
-    if (opts.after) state4.after = opts.after;
-    if (state4.closing) return;
-    state4.closing = true;
-    if (state4.pushed) {
-      state4.fallback = setTimeout(() => finish2(), 600);
+    if (!state5) return;
+    if (opts.after) state5.after = opts.after;
+    if (state5.closing) return;
+    state5.closing = true;
+    if (state5.pushed) {
+      state5.fallback = setTimeout(() => finish2(), 600);
       history.back();
     } else {
       finish2();
@@ -7004,35 +7462,35 @@
     setTimeout(fix2, 150);
   }
   function finish2() {
-    const y = state4 ? state4.scrollY : 0;
+    const y = state5 ? state5.scrollY : 0;
     const after = teardown2();
     if (after) after();
     else restoreScroll(y);
   }
   function onPopState() {
-    if (!state4) return;
+    if (!state5) return;
     const st = history.state;
     if (st && st.lfxModal) return;
-    state4.pushed = false;
+    state5.pushed = false;
     finish2();
   }
   function onHashChange() {
-    if (!state4) return;
-    state4.pushed = false;
-    const after = state4.after;
+    if (!state5) return;
+    state5.pushed = false;
+    const after = state5.after;
     teardown2();
     if (after) after();
   }
   function focusables() {
-    if (!state4) return [];
+    if (!state5) return [];
     const sel = 'button:not([disabled]), a[href], input:not([disabled]), [tabindex="0"]';
-    return [...state4.modal.querySelectorAll(sel)].filter((el4) => !el4.closest("[hidden]"));
+    return [...state5.modal.querySelectorAll(sel)].filter((el4) => !el4.closest("[hidden]"));
   }
   function onKeydown2(e) {
-    if (!state4) return;
+    if (!state5) return;
     if (overlayOnTop()) return;
     if (e.key === "Escape") {
-      const open4 = state4.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
+      const open4 = state5.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
       e.stopPropagation();
       e.preventDefault();
       if (open4) {
@@ -7050,7 +7508,7 @@
     const first2 = list[0];
     const last = list[list.length - 1];
     const active7 = document.activeElement;
-    if (!state4.modal.contains(active7)) {
+    if (!state5.modal.contains(active7)) {
       e.preventDefault();
       first2.focus();
     } else if (e.shiftKey && active7 === first2) {
@@ -7096,9 +7554,9 @@
     if (document.activeElement === document.body) s.closeBtn.focus({ preventScroll: true });
   }
   async function loadInto(id, hint2, replace, refresh2 = false) {
-    const s = state4;
+    const s = state5;
     const token2 = ++s.token;
-    const stale = () => state4 !== s || s.token !== token2;
+    const stale = () => state5 !== s || s.token !== token2;
     if (!refresh2) {
       s.seasons = [];
       s.episodes = [];
@@ -7175,7 +7633,7 @@
     await Promise.all(tasks);
   }
   async function loadSeriesParts(s, token2, H) {
-    const stale = () => state4 !== s || s.token !== token2;
+    const stale = () => state5 !== s || s.token !== token2;
     try {
       s.seasons = await loadSeasons(s.main.Id);
       if (stale()) return;
@@ -7194,10 +7652,10 @@
       if (s.want === sid) s.want = null;
       throw e;
     }
-    if (state4 !== s || s.token !== token2 || s.want !== sid) return;
+    if (state5 !== s || s.token !== token2 || s.want !== sid) return;
     if (s.parts.episodesSlot.querySelector(".lfx-modal__seasonlist:not([hidden])")) {
       setTimeout(() => {
-        if (state4 === s && s.token === token2 && s.want === sid) showSeason(s, token2, H, sid).catch(() => {
+        if (state5 === s && s.token === token2 && s.want === sid) showSeason(s, token2, H, sid).catch(() => {
         });
       }, 300);
       return;
@@ -7215,7 +7673,7 @@
     }
   }
   function onChanged({ removed = [], updated = [] } = {}) {
-    const s = state4;
+    const s = state5;
     if (!s || !s.main) return;
     const id = s.main.Id;
     if (removed.includes(id)) {
@@ -7236,7 +7694,7 @@
     if (updated.includes(id)) {
       clearTimeout(s.refreshTimer);
       s.refreshTimer = setTimeout(() => {
-        if (state4 !== s) return;
+        if (state5 !== s) return;
         for (const key of ["item", "seasons", "next", "similar", "coll"]) clearCache(`lfx:modal:${key}:${id}`);
         clearCache(`lfx:modal:eps:${id}:`);
         loadInto(id, null, true, true);
@@ -7302,8 +7760,8 @@
   }
   function makeHandlers(s, token2) {
     const main = s.main;
-    const stale = () => state4 !== s || s.token !== token2;
-    const sameTitle = () => state4 === s && Boolean(s.main) && s.main.Id === main.Id;
+    const stale = () => state5 !== s || s.token !== token2;
+    const sameTitle = () => state5 === s && Boolean(s.main) && s.main.Id === main.Id;
     let starting = false;
     const coverFor = (it) => {
       if (!it || it.Type !== "Episode") return it;
@@ -7458,12 +7916,12 @@
   }
   function onOrphanPop() {
     window.removeEventListener("popstate", onOrphanPop);
-    if (!state4 && history.state && history.state.lfxModal) history.back();
+    if (!state5 && history.state && history.state.lfxModal) history.back();
   }
   function destroyAll() {
-    if (state4) {
-      if (state4.pushed) window.addEventListener("popstate", onOrphanPop);
-      state4.pushed = false;
+    if (state5) {
+      if (state5.pushed) window.addEventListener("popstate", onOrphanPop);
+      state5.pushed = false;
       teardown2();
     }
     if (clickInstalled) {
@@ -8920,10 +9378,10 @@
     teardown3();
     const billboardSlot = h("section", { id: "lfx-billboard", class: "lfx-billboard", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { id: "lfx-rows", class: "lfx-rows" });
-    const root6 = h("div", { id: HOME_ID, class: "lfx-home" }, [billboardSlot, rowsSlot]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: HOME_ID, class: "lfx-home" }, [billboardSlot, rowsSlot]);
+    tab2.prepend(root7);
     document.documentElement.classList.add("lfx-home-on");
-    const ctx2 = { root: root6 };
+    const ctx2 = { root: root7 };
     for (const [mod, slot2] of [[billboard_exports, billboardSlot], [rows_exports, rowsSlot]]) {
       try {
         cleanups.push(mod.render(slot2, ctx2));
@@ -9291,7 +9749,7 @@
     closeNow();
     play(item, { resume });
   }
-  function openMenu(s) {
+  function openMenu2(s) {
     wasHeld = true;
     clearClose();
     openItemMenu(s.item, s.btns.menu.btn, { onClose: () => onMenuClosed(s) });
@@ -9306,12 +9764,12 @@
     closeNow();
     openModal(item);
   }
-  function circleButton(cls, label, onClick2) {
+  function circleButton(cls, label, onClick3) {
     const btn3 = h("button", { type: "button", class: `lfx-hc__btn ${cls}`, "aria-label": label });
     const tip = h("span", { class: "lfx-hc__tip", "aria-hidden": "true" }, label);
     btn3.addEventListener("click", (e) => {
       e.stopPropagation();
-      onClick2();
+      onClick3();
     });
     return { btn: btn3, tip, wrap: h("span", { class: "lfx-hc__btnwrap" }, [btn3, tip]) };
   }
@@ -9467,7 +9925,7 @@
       list: circleButton("lfx-hc__btn--list", "Meine Liste", () => toggleFavorite(s)),
       like: circleButton("lfx-hc__btn--like", "Gef\xE4llt mir", () => toggleLike(s)),
       dl: circleButton("lfx-hc__btn--dl", "Herunterladen", () => downloadClick(s)),
-      menu: circleButton("lfx-hc__btn--menu", "Mehr", () => openMenu(s)),
+      menu: circleButton("lfx-hc__btn--menu", "Mehr", () => openMenu2(s)),
       more: circleButton("lfx-hc__btn--more", "Weitere Infos", () => showDetails(s))
     };
     s.btns.played = playedBtn;
@@ -9986,7 +10444,7 @@
     return a;
   }
   function createHead() {
-    let state24 = { kind: "series", genre: null, view: null, sort: null };
+    let state25 = { kind: "series", genre: null, view: null, sort: null };
     let genres = [];
     const menu = createGenresMenu();
     const title = h("h1", { class: "lfx-lib__title" });
@@ -10005,11 +10463,11 @@
       h("div", { class: "lfx-lib__right" }, [tools, views])
     ]);
     const onSort = () => {
-      window.location.hash = libraryHref(state24.kind, { genre: state24.genre, view: "grid", sort: select.value });
+      window.location.hash = libraryHref(state25.kind, { genre: state25.genre, view: "grid", sort: select.value });
     };
     select.addEventListener("change", onSort);
     function paint2() {
-      const { kind: kind2, genre, view, sort } = state24;
+      const { kind: kind2, genre, view, sort } = state25;
       const label = KIND_LABEL2[kind2] || KIND_LABEL2.movies;
       title.replaceChildren();
       if (genre) {
@@ -10038,8 +10496,8 @@
     return {
       el: el4,
       update(next) {
-        const changedView = state24.kind !== next.kind || state24.genre !== next.genre || state24.view !== next.view;
-        state24 = { kind: next.kind, genre: next.genre || null, view: next.view || null, sort: next.sort || null };
+        const changedView = state25.kind !== next.kind || state25.genre !== next.genre || state25.view !== next.view;
+        state25 = { kind: next.kind, genre: next.genre || null, view: next.view || null, sort: next.sort || null };
         if (changedView) count.textContent = "";
         menu.close();
         paint2();
@@ -10065,7 +10523,7 @@
   // src/js/features/library.js
   var ROOT_ID3 = "lfx-library";
   var ON_CLASS2 = "lfx-library-on";
-  var state5 = null;
+  var state6 = null;
   var waitTimer2 = null;
   function findHomeTab2() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
@@ -10089,8 +10547,8 @@
     s.body.replaceChildren();
   }
   function teardown4() {
-    const s = state5;
-    state5 = null;
+    const s = state6;
+    state6 = null;
     if (s) {
       s.seq += 1;
       disposeContent(s);
@@ -10111,7 +10569,7 @@
     s.genres = [];
     s.head.setGenres([]);
     getLibraryGenres(kind2).then((list) => {
-      if (state5 !== s || s.genresKind !== kind2) return;
+      if (state6 !== s || s.genresKind !== kind2) return;
       s.genres = list || [];
       s.head.setGenres(s.genres);
     }, () => {
@@ -10156,7 +10614,7 @@
       sort: sort || "az",
       cacheKey: (srt) => homeKey(getUserId(), "lib", kind2, genre || "all", "grid", srt || "az"),
       onCount: (n) => {
-        if (state5 === s) s.head.setCount(n);
+        if (state6 === s) s.head.setCount(n);
       }
     });
     s.grid = grid2;
@@ -10186,9 +10644,9 @@
     teardown4();
     const head = createHead();
     const body = h("div", { class: "lfx-lib__body" });
-    const root6 = h("div", { id: ROOT_ID3, class: "lfx-lib" }, [head.el, body]);
+    const root7 = h("div", { id: ROOT_ID3, class: "lfx-lib" }, [head.el, body]);
     const s = {
-      root: root6,
+      root: root7,
       head,
       body,
       genres: [],
@@ -10200,24 +10658,24 @@
       raf: 0,
       onScroll: null
     };
-    state5 = s;
+    state6 = s;
     s.onScroll = () => {
       if (s.raf) return;
       s.raf = requestAnimationFrame(() => {
         s.raf = 0;
-        if (state5 === s) head.setStuck(head.el.getBoundingClientRect().top <= headerHeight() + 1);
+        if (state6 === s) head.setStuck(head.el.getBoundingClientRect().top <= headerHeight() + 1);
       });
     };
     window.addEventListener("scroll", s.onScroll, { passive: true });
-    tab2.prepend(root6);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS2);
     apply2(s, route);
   }
   function ensure2(route) {
     clearTimeout(waitTimer2);
     const tab2 = findHomeTab2();
-    if (tab2 && state5 && tab2.contains(state5.root)) {
-      apply2(state5, route);
+    if (tab2 && state6 && tab2.contains(state6.root)) {
+      apply2(state6, route);
       return;
     }
     if (tab2) {
@@ -10262,7 +10720,7 @@
     { id: "year", label: "Erscheinungsjahr" }
   ];
   var pending = null;
-  var state6 = null;
+  var state7 = null;
   var queryFor = (type) => ({
     IncludeItemTypes: type ? TYPE_QUERY[type] : "Movie,Series",
     Filters: "IsFavorite"
@@ -10276,8 +10734,8 @@
     return tab2 && tab2.isConnected ? tab2 : null;
   }
   function teardown5() {
-    const s = state6;
-    state6 = null;
+    const s = state7;
+    state7 = null;
     if (s) {
       for (const fn of s.cleanups.splice(0)) {
         try {
@@ -10345,7 +10803,7 @@
       loadedAt: Date.now(),
       cleanups: []
     };
-    state6 = s;
+    state7 = s;
     const title = retro ? h("h1", { class: "lfx-ml__title" }, [
       "C:\\LENZ84\\LISTE>",
       h("span", { class: "lfx-ml__cursor", "aria-hidden": "true" }, "_")
@@ -10386,10 +10844,10 @@
     if (retro) cl2.add(RETRO_PAGE_ON);
     paint(s);
     const refresh2 = () => {
-      if (state6 === s) s.grid.refresh();
+      if (state7 === s) s.grid.refresh();
     };
     s.cleanups.push(onItemsChanged(({ removed = [] }) => {
-      if (state6 !== s || !removed.length) return;
+      if (state7 !== s || !removed.length) return;
       let n = 0;
       s.root.querySelectorAll("[data-lfx-id]").forEach((el4) => {
         if (removed.includes(el4.dataset.lfxId)) {
@@ -10417,8 +10875,8 @@
     clearTimeout(pending);
     const r = routeOf(route);
     const tab2 = findHomeTab3();
-    if (state6 && state6.root && state6.root.isConnected && tab2 && tab2.contains(state6.root)) {
-      const s = state6;
+    if (state7 && state7.root && state7.root.isConnected && tab2 && tab2.contains(state7.root)) {
+      const s = state7;
       if (s.retro !== isTheme("retro")) {
         build3(tab2, r);
         return;
@@ -10583,18 +11041,18 @@
   var ICON_PLUS2 = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>';
   var ICON_CHECK2 = '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
   var ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
-  function roundButton2(label, icon5, onClick2, extra = "") {
-    const b = h("button", { type: "button", class: `lfx-np__btn ${extra}`.trim(), "aria-label": label, title: label, onclick: onClick2 });
+  function roundButton2(label, icon5, onClick3, extra = "") {
+    const b = h("button", { type: "button", class: `lfx-np__btn ${extra}`.trim(), "aria-label": label, title: label, onclick: onClick3 });
     b.append(svg5(icon5));
     return b;
   }
-  function iconButton(mod, label, icon5, onClick2) {
+  function iconButton(mod, label, icon5, onClick3) {
     const b = h("button", { type: "button", class: `lfx-np__btn lfx-np__btn--${mod}`, "aria-label": label, title: label });
     b.append(h("span", { class: "lfx-np__ico", "aria-hidden": "true" }));
     b.firstChild.innerHTML = icon5;
     b.addEventListener("click", (e) => {
       e.stopPropagation();
-      onClick2(b);
+      onClick3(b);
     });
     return b;
   }
@@ -10721,8 +11179,8 @@
       pills.set(d.id, pill);
       nav.append(pill);
     }
-    const root6 = h("div", { id: ROOT_ID5, class: "lfx-np" }, [nav, ...sections.values()]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID5, class: "lfx-np" }, [nav, ...sections.values()]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS4);
     setActive("new");
     let raf3 = 0;
@@ -10764,16 +11222,16 @@
     }
     cleanups2.push(onThemeChange(() => {
       relabel("new", `Neu bei ${brandName()}`);
-      root6.querySelectorAll(".lfx-np__sub").forEach((el4) => {
+      root7.querySelectorAll(".lfx-np__sub").forEach((el4) => {
         el4.textContent = chartSubtitle(Number(el4.dataset.days));
       });
     }));
     let newSeriesIds = /* @__PURE__ */ new Set();
     function onChanged2({ removed = [], updated = [] }) {
       if (disposed) return;
-      const list = root6.querySelector(".lfx-np__list");
+      const list = root7.querySelector(".lfx-np__list");
       for (const id of removed) {
-        root6.querySelectorAll("[data-lfx-id]").forEach((el4) => {
+        root7.querySelectorAll("[data-lfx-id]").forEach((el4) => {
           if (el4.dataset.lfxId === id) el4.remove();
         });
       }
@@ -11875,14 +12333,14 @@
     if (!el4) return;
     if (isMenuOpen() && inNativeDialog(el4)) return;
     const t = e.touches && e.touches[0] || e;
-    const state24 = { x: t.clientX, y: t.clientY, fired: false };
-    press2 = state24;
+    const state25 = { x: t.clientX, y: t.clientY, fired: false };
+    press2 = state25;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press2 !== state24 || !el4.isConnected) return;
-      state24.fired = true;
+      if (press2 !== state25 || !el4.isConnected) return;
+      state25.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el4, state24.x, state24.y);
+      openFor(el4, state25.x, state25.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -12079,14 +12537,14 @@
   var WIDE_BASE_DESKTOP = 600;
   var WIDE_BASE_NARROW = 420;
   var NARROW_PX = 800;
-  var state7 = null;
+  var state8 = null;
   var BASE_TITLE = "Geheimmen\xFC";
   var pct = (v) => `${Math.round(v * 100)} %`;
   var isNarrowView = () => (window.innerWidth || 1024) < NARROW_PX;
   var wideBase = () => isNarrowView() ? WIDE_BASE_NARROW : WIDE_BASE_DESKTOP;
   var px = (base, scale) => Math.round(base * scale);
   var de = (n, digits = 1) => n.toFixed(digits).replace(".", ",");
-  var section = (title, children) => h("section", { class: "lfx-secret__sec" }, [h("h3", { class: "lfx-secret__h" }, title), ...children]);
+  var section2 = (title, children) => h("section", { class: "lfx-secret__sec" }, [h("h3", { class: "lfx-secret__h" }, title), ...children]);
   var note = (text) => h("p", { class: "lfx-secret__note" }, text);
   function recommendScale() {
     const dpr = window.devicePixelRatio || 1;
@@ -12149,7 +12607,7 @@
       h("button", { type: "button", class: "lfx-secret__btn", onclick: () => resetImageScales() }, "Zur\xFCcksetzen"),
       note("Gilt f\xFCr neu geladene Bilder, in allen Designs au\xDFer VIDEOTHEK LENZ.")
     );
-    return section("Bildgr\xF6\xDFen", kids);
+    return section2("Bildgr\xF6\xDFen", kids);
   }
   function playbackSection() {
     const b = switchButton(
@@ -12159,10 +12617,10 @@
       { className: "lfx-secret__switch", role: "switch" }
     );
     loadAutoNextEnabled().then((on) => {
-      if (state7 && b.isConnected) setSwitchState(b, on);
+      if (state8 && b.isConnected) setSwitchState(b, on);
     }, () => {
     });
-    return section("Wiedergabe", [
+    return section2("Wiedergabe", [
       b,
       note("Gilt f\xFCr dein Konto auf allen Ger\xE4ten, auch am Fernseher."),
       note("Abbrechen im Overlay mit \u201EVerbergen\u201C, Pause oder Zur\xFCckspulen.")
@@ -12173,7 +12631,7 @@
       { key, label, checked: get(), onToggle: (on) => set(on) },
       { className: "lfx-secret__switch", role: "switch" }
     );
-    return section("TV (Test)", [
+    return section2("TV (Test)", [
       sw("zapstats", "Messanzeige", isZapStatsOn, setZapStats),
       sw("zapwarm", "Vorw\xE4rmen der Nachbarsender", isZapWarmOn, setZapWarm),
       sw("forcehls", "HLS erzwingen", isForceHlsOn, setForceHls),
@@ -12202,7 +12660,7 @@
       for (const [p, b] of btns2) setSwitchState(b, cur3[p]);
     }));
     offs.push(onDataSaverChange(showStatus));
-    return section("Datensparmodus im Detail", [
+    return section2("Datensparmodus im Detail", [
       status,
       ...list,
       h("button", { type: "button", class: "lfx-secret__btn", onclick: () => resetDataSaverParts() }, "Alle wieder an"),
@@ -12229,7 +12687,7 @@
         reload3.hidden = false;
       }
     }, "Cache leeren");
-    return section("Info", [...rows, clear, msg, reload3]);
+    return section2("Info", [...rows, clear, msg, reload3]);
   }
   var runOffs = (list) => {
     for (const off of list) {
@@ -12245,7 +12703,7 @@
     s.back.hidden = !top;
   }
   function pushView({ title: viewTitle, node, offs = [], trigger = null }) {
-    const s = state7;
+    const s = state8;
     if (!s) return null;
     const view = {
       title: String(viewTitle || ""),
@@ -12263,7 +12721,7 @@
     return view;
   }
   function popView() {
-    const s = state7;
+    const s = state8;
     if (!s || !s.views.length) return false;
     const view = s.views.pop();
     runOffs(view.offs);
@@ -12276,9 +12734,9 @@
     return true;
   }
   function closeSecretMenu() {
-    if (!state7) return;
-    const s = state7;
-    state7 = null;
+    if (!state8) return;
+    const s = state8;
+    state8 = null;
     document.removeEventListener("keydown", s.onKey, true);
     while (s.views.length) runOffs(s.views.pop().offs);
     runOffs(s.offs);
@@ -12288,7 +12746,7 @@
     if (prev && prev.isConnected && typeof prev.focus === "function") prev.focus();
   }
   function openSecretMenu() {
-    if (state7) return;
+    if (state8) return;
     const offs = [];
     const close2 = () => closeSecretMenu();
     const title = h("h2", { class: "lfx-secret__title", id: `${PANEL_ID}-title` }, BASE_TITLE);
@@ -12306,12 +12764,12 @@
       h("div", { class: "lfx-secret__head" }, [back, title, closeBtn]),
       body
     ]);
-    const root6 = h("div", { id: PANEL_ID, class: "lfx-secret" }, [panel]);
-    root6.addEventListener("mousedown", (e) => {
-      if (e.target === root6) close2();
+    const root7 = h("div", { id: PANEL_ID, class: "lfx-secret" }, [panel]);
+    root7.addEventListener("mousedown", (e) => {
+      if (e.target === root7) close2();
     });
-    root6.addEventListener("click", (e) => {
-      if (e.target === root6) close2();
+    root7.addEventListener("click", (e) => {
+      if (e.target === root7) close2();
     });
     const onKey4 = (e) => {
       if (e.key === "Escape") {
@@ -12334,8 +12792,8 @@
       }
     };
     document.addEventListener("keydown", onKey4, true);
-    state7 = { root: root6, prevFocus: document.activeElement, offs, onKey: onKey4, body, title, back, panel, views: [] };
-    document.body.append(root6);
+    state8 = { root: root7, prevFocus: document.activeElement, offs, onKey: onKey4, body, title, back, panel, views: [] };
+    document.body.append(root7);
     document.documentElement.classList.add("lfx-secret-open");
     panel.focus();
   }
@@ -12346,7 +12804,7 @@
   var WINDOW_MS = 3e3;
   var stamps = [];
   var listening2 = false;
-  function onClick(e) {
+  function onClick2(e) {
     const t = e.target;
     if (!t || typeof t.closest !== "function" || !t.closest(LOGO_SELECTOR)) return;
     const now = Date.now();
@@ -12361,8 +12819,8 @@
   function listen(on) {
     if (on === listening2) return;
     listening2 = on;
-    if (on) document.addEventListener("click", onClick, true);
-    else document.removeEventListener("click", onClick, true);
+    if (on) document.addEventListener("click", onClick2, true);
+    else document.removeEventListener("click", onClick2, true);
   }
   var secretmenu = {
     name: "secretmenu",
@@ -12419,41 +12877,41 @@
   function isHomeRoute2(route) {
     return route.path === "/home" && route.params.get("tab") !== "1" && !route.params.get("lfx");
   }
-  var state8 = { el: null, showTimer: null, hideTimer: null, removeTimer: null, deadline: 0, remaining: 0, onClick: null };
+  var state9 = { el: null, showTimer: null, hideTimer: null, removeTimer: null, deadline: 0, remaining: 0, onClick: null };
   function clearTimers2() {
-    clearTimeout(state8.showTimer);
-    clearTimeout(state8.hideTimer);
-    clearTimeout(state8.removeTimer);
-    state8.showTimer = state8.hideTimer = state8.removeTimer = null;
+    clearTimeout(state9.showTimer);
+    clearTimeout(state9.hideTimer);
+    clearTimeout(state9.removeTimer);
+    state9.showTimer = state9.hideTimer = state9.removeTimer = null;
   }
   function removeHint() {
     clearTimers2();
-    if (state8.el) unmountPoint(state8.el);
-    state8.el = null;
+    if (state9.el) unmountPoint(state9.el);
+    state9.el = null;
   }
   function leave2() {
-    if (!state8.el) return;
-    const el4 = state8.el;
-    clearTimeout(state8.hideTimer);
-    state8.hideTimer = null;
+    if (!state9.el) return;
+    const el4 = state9.el;
+    clearTimeout(state9.hideTimer);
+    state9.hideTimer = null;
     el4.classList.add("is-leaving");
-    state8.removeTimer = setTimeout(() => {
-      state8.removeTimer = null;
-      if (state8.el === el4) removeHint();
+    state9.removeTimer = setTimeout(() => {
+      state9.removeTimer = null;
+      if (state9.el === el4) removeHint();
     }, LEAVE_MS);
   }
   function startHideTimer(ms) {
-    clearTimeout(state8.hideTimer);
-    state8.deadline = Date.now() + ms;
-    state8.hideTimer = setTimeout(leave2, ms);
+    clearTimeout(state9.hideTimer);
+    state9.deadline = Date.now() + ms;
+    state9.hideTimer = setTimeout(leave2, ms);
   }
-  function canHover() {
+  function canHover2() {
     return typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }
   function show2() {
-    state8.showTimer = null;
+    state9.showTimer = null;
     const url = statsHref() || getStatsUrl();
-    if (!url || state8.el || !shouldShow()) return;
+    if (!url || state9.el || !shouldShow()) return;
     const link2 = h("a", { class: "lfx-statshint__link", href: url }, [
       h("span", { class: "lfx-statshint__badge" }, "Neu"),
       h("span", { class: "lfx-statshint__text" }, `${STATS_LABEL} \u2013 deine Sehgewohnheiten im \xDCberblick`),
@@ -12464,13 +12922,13 @@
       e.preventDefault();
       leave2();
     });
-    const root6 = mountPoint(ID9, { className: "lfx-statshint" });
-    root6.classList.remove("is-leaving");
+    const root7 = mountPoint(ID9, { className: "lfx-statshint" });
+    root7.classList.remove("is-leaving");
     const top = !isMobile();
-    root6.classList.toggle("lfx-statshint--top", top);
+    root7.classList.toggle("lfx-statshint--top", top);
     const nav = top ? document.getElementById("lfx-nav") : null;
     const navRight = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
-    root6.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
+    root7.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
     let limit = 0;
     if (top && navRight > 0) {
       document.querySelectorAll("header.MuiAppBar-root button, header.MuiAppBar-root a, #lfx-tvm-btn, #lfx-ds-btn").forEach((n) => {
@@ -12478,27 +12936,27 @@
         if (r.width > 0 && r.left > navRight && (!limit || r.left < limit)) limit = r.left;
       });
     }
-    root6.style.right = limit ? `max(calc(var(--lfx-gutter) + 178px), ${Math.round(window.innerWidth - limit + 8)}px)` : "";
-    const avail = top ? root6.getBoundingClientRect().width : 0;
+    root7.style.right = limit ? `max(calc(var(--lfx-gutter) + 178px), ${Math.round(window.innerWidth - limit + 8)}px)` : "";
+    const avail = top ? root7.getBoundingClientRect().width : 0;
     if (top && avail > 0 && avail < 260) {
-      root6.classList.remove("lfx-statshint--top");
-      root6.style.left = "";
-      root6.style.right = "";
+      root7.classList.remove("lfx-statshint--top");
+      root7.style.left = "";
+      root7.style.right = "";
     }
-    root6.setAttribute("role", "status");
-    root6.setAttribute("aria-live", "polite");
-    root6.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link2, close2]));
-    state8.el = root6;
-    if (canHover()) {
-      root6.addEventListener("mouseenter", () => {
-        if (!state8.hideTimer) return;
-        state8.remaining = Math.max(500, state8.deadline - Date.now());
-        clearTimeout(state8.hideTimer);
-        state8.hideTimer = null;
+    root7.setAttribute("role", "status");
+    root7.setAttribute("aria-live", "polite");
+    root7.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link2, close2]));
+    state9.el = root7;
+    if (canHover2()) {
+      root7.addEventListener("mouseenter", () => {
+        if (!state9.hideTimer) return;
+        state9.remaining = Math.max(500, state9.deadline - Date.now());
+        clearTimeout(state9.hideTimer);
+        state9.hideTimer = null;
       });
-      root6.addEventListener("mouseleave", () => {
-        if (state8.el !== root6 || state8.hideTimer || state8.removeTimer) return;
-        startHideTimer(state8.remaining || HINT_DURATION);
+      root7.addEventListener("mouseleave", () => {
+        if (state9.el !== root7 || state9.hideTimer || state9.removeTimer) return;
+        startHideTimer(state9.remaining || HINT_DURATION);
       });
     }
     try {
@@ -12510,7 +12968,7 @@
   }
   function sync3(route) {
     if (isHomeRoute2(route)) {
-      if (!state8.el && !state8.showTimer && shouldShow()) state8.showTimer = setTimeout(show2, HINT_DELAY);
+      if (!state9.el && !state9.showTimer && shouldShow()) state9.showTimer = setTimeout(show2, HINT_DELAY);
     } else {
       removeHint();
     }
@@ -12521,22 +12979,22 @@
       return isTheme("flix") && isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED5.test(route.path);
     },
     mount(route) {
-      state8.onClick = (e) => {
+      state9.onClick = (e) => {
         const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
         if (a && isStatsHref(a.getAttribute("href"))) {
           markSeen();
           removeHint();
         }
       };
-      document.addEventListener("click", state8.onClick, true);
+      document.addEventListener("click", state9.onClick, true);
       sync3(route);
     },
     update(route) {
       sync3(route);
     },
     unmount() {
-      if (state8.onClick) document.removeEventListener("click", state8.onClick, true);
-      state8.onClick = null;
+      if (state9.onClick) document.removeEventListener("click", state9.onClick, true);
+      state9.onClick = null;
       removeHint();
     }
   };
@@ -12600,8 +13058,8 @@
   var sabbackFeature = {
     name: "sabback",
     match(route) {
-      const root6 = document.documentElement;
-      if (!root6.classList.contains("lfx-standalone") || isTv() || !isReady()) return false;
+      const root7 = document.documentElement;
+      if (!root7.classList.contains("lfx-standalone") || isTv() || !isReady()) return false;
       if (!route || EXCLUDED6.test(route.path)) return false;
       if (document.querySelector(PLAYER2)) return false;
       const { kind: kind2 } = parseLfxRoute(route);
@@ -12623,53 +13081,6 @@
     }
   };
   var sabback_default = sabbackFeature;
-
-  // src/js/shared/profile.js
-  function logout() {
-    const d = window.Dashboard;
-    if (d && typeof d.logout === "function") {
-      d.logout();
-      return;
-    }
-    window.location.hash = "#/mypreferencesmenu";
-  }
-  async function profileEntries({ theme: theme2, returnFocus } = {}) {
-    const entries = [];
-    if (getStatsUrl()) {
-      entries.push({ key: "stats", label: "Meine Statistik", href: statsHref(theme2) || getStatsUrl(), className: "is-stats" });
-    }
-    entries.push({ key: "design", label: "Design-Einstellungen", onClick: () => openThemePicker({ returnFocus }) });
-    if (DATASAVER_THEMES.includes(theme2 || getTheme() || "flix")) entries.push(dataSaverItem());
-    entries.push({ key: "settings", label: "Einstellungen", href: "#/mypreferencesmenu" });
-    let user = null;
-    try {
-      user = await getUser();
-    } catch {
-    }
-    if (user && user.Policy && user.Policy.IsAdministrator) {
-      entries.push({ key: "dashboard", label: "Dashboard", href: "#/dashboard" });
-    }
-    entries.push({ key: "logout", label: "Abmelden", onClick: () => logout() });
-    return entries;
-  }
-  async function getUserChip({ retries = 0, delay = 500, isAlive = () => true } = {}) {
-    let user;
-    for (let i = 0; ; i++) {
-      try {
-        user = await getUser();
-      } catch {
-        user = null;
-      }
-      if (user || i >= retries || !isAlive()) break;
-      await new Promise((r) => setTimeout(r, delay));
-      if (!isAlive()) break;
-    }
-    const name = user && user.Name || "";
-    const tag = user && user.PrimaryImageTag;
-    const id = user && user.Id || getUserId();
-    const imageUrl2 = tag && id ? buildUrl(`/Users/${id}/Images/Primary`, { tag, maxWidth: 96 }) : null;
-    return { name, imageUrl: imageUrl2 };
-  }
 
   // src/js/features/plus/header-icons.js
   var svg6 = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
@@ -12738,7 +13149,7 @@
     if (route.path === "/tv" && (!parent || series && parent === series.id)) return "series";
     return null;
   }
-  var state9 = {
+  var state10 = {
     root: null,
     nav: null,
     chip: null,
@@ -12762,9 +13173,9 @@
     return span2;
   };
   function applyActive4() {
-    if (!state9.root) return;
-    const key = state9.route ? activeKey2(state9.route, state9.libs) : null;
-    for (const el4 of state9.root.querySelectorAll("[data-key]")) {
+    if (!state10.root) return;
+    const key = state10.route ? activeKey2(state10.route, state10.libs) : null;
+    for (const el4 of state10.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -12772,10 +13183,10 @@
     }
   }
   function renderNav() {
-    if (!state9.nav) return;
-    state9.nav.textContent = "";
-    for (const it of navItems2(state9.libs)) {
-      state9.nav.append(
+    if (!state10.nav) return;
+    state10.nav.textContent = "";
+    for (const it of navItems2(state10.libs)) {
+      state10.nav.append(
         h("a", { class: "lfx-plus-header__item", href: it.href, dataset: { key: it.key } }, [
           icon2(it.icon, "lfx-plus-header__icon"),
           h("span", { class: "lfx-plus-header__label" }, it.label)
@@ -12784,73 +13195,73 @@
     }
     applyActive4();
   }
-  var menuOpen = () => Boolean(state9.menu && state9.menu.el.isConnected && isPopoverOpen());
+  var menuOpen = () => Boolean(state10.menu && state10.menu.el.isConnected && isPopoverOpen());
   function clearTimers3() {
-    clearTimeout(state9.openTimer);
-    clearTimeout(state9.closeTimer);
-    state9.openTimer = null;
-    state9.closeTimer = null;
+    clearTimeout(state10.openTimer);
+    clearTimeout(state10.closeTimer);
+    state10.openTimer = null;
+    state10.closeTimer = null;
   }
   function closeMenu() {
     clearTimers3();
-    state9.seq++;
+    state10.seq++;
     if (menuOpen()) closePopover();
-    state9.menu = null;
-    state9.pinned = false;
+    state10.menu = null;
+    state10.pinned = false;
   }
-  async function openMenu2() {
-    if (!state9.chip || menuOpen()) return;
-    const seq4 = ++state9.seq;
+  async function openMenu3() {
+    if (!state10.chip || menuOpen()) return;
+    const seq4 = ++state10.seq;
     let items;
     try {
-      items = await profileEntries({ theme: "plus", returnFocus: state9.chip });
+      items = await profileEntries({ theme: "plus", returnFocus: state10.chip });
     } catch {
       items = [];
     }
-    if (seq4 !== state9.seq || !state9.chip || menuOpen()) return;
-    const menu = openPopover(state9.chip, { label: "Profilmen\xFC", items, align: "start", className: "lfx-plus-menu" });
-    state9.menu = menu;
-    menu.el.addEventListener("mouseenter", () => clearTimeout(state9.closeTimer));
+    if (seq4 !== state10.seq || !state10.chip || menuOpen()) return;
+    const menu = openPopover(state10.chip, { label: "Profilmen\xFC", items, align: "start", className: "lfx-plus-menu" });
+    state10.menu = menu;
+    menu.el.addEventListener("mouseenter", () => clearTimeout(state10.closeTimer));
     menu.el.addEventListener("mouseleave", () => scheduleClose2());
   }
   function scheduleOpen() {
-    clearTimeout(state9.closeTimer);
-    if (menuOpen() || state9.openTimer) return;
-    state9.pinned = false;
-    state9.openTimer = setTimeout(() => {
-      state9.openTimer = null;
-      openMenu2();
+    clearTimeout(state10.closeTimer);
+    if (menuOpen() || state10.openTimer) return;
+    state10.pinned = false;
+    state10.openTimer = setTimeout(() => {
+      state10.openTimer = null;
+      openMenu3();
     }, OPEN_DELAY);
   }
   function scheduleClose2() {
-    clearTimeout(state9.openTimer);
-    state9.openTimer = null;
-    if (state9.pinned || !menuOpen()) return;
-    clearTimeout(state9.closeTimer);
-    state9.closeTimer = setTimeout(() => {
-      state9.closeTimer = null;
-      if (!state9.pinned) closeMenu();
+    clearTimeout(state10.openTimer);
+    state10.openTimer = null;
+    if (state10.pinned || !menuOpen()) return;
+    clearTimeout(state10.closeTimer);
+    state10.closeTimer = setTimeout(() => {
+      state10.closeTimer = null;
+      if (!state10.pinned) closeMenu();
     }, CLOSE_DELAY);
   }
   function onChipClick() {
     clearTimers3();
     if (menuOpen()) {
-      if (state9.pinned) closeMenu();
-      else state9.pinned = true;
+      if (state10.pinned) closeMenu();
+      else state10.pinned = true;
       return;
     }
-    state9.pinned = true;
-    openMenu2();
+    state10.pinned = true;
+    openMenu3();
   }
   async function fillChip(mountSeq) {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state9.mountSeq && Boolean(state9.chip) });
+      user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state10.mountSeq && Boolean(state10.chip) });
     } catch {
     }
-    if (mountSeq !== state9.mountSeq || !state9.chip) return;
-    const avatar = state9.chip.querySelector(".lfx-plus-header__avatar");
-    const name = state9.chip.querySelector(".lfx-plus-header__name");
+    if (mountSeq !== state10.mountSeq || !state10.chip) return;
+    const avatar = state10.chip.querySelector(".lfx-plus-header__avatar");
+    const name = state10.chip.querySelector(".lfx-plus-header__name");
     name.textContent = user.name || "";
     if (user.imageUrl) {
       avatar.style.backgroundImage = `url("${user.imageUrl}")`;
@@ -12858,32 +13269,32 @@
     } else {
       avatar.textContent = (user.name || "?").trim().charAt(0).toUpperCase();
     }
-    if (user.name) state9.chip.setAttribute("aria-label", `Profilmen\xFC: ${user.name}`);
+    if (user.name) state10.chip.setAttribute("aria-label", `Profilmen\xFC: ${user.name}`);
   }
   function setHidden(on) {
-    if (state9.root) state9.root.classList.toggle("is-hidden", on);
+    if (state10.root) state10.root.classList.toggle("is-hidden", on);
     document.documentElement.classList.toggle(HIDDEN_CLASS, on);
   }
   function scrollTick() {
-    state9.raf = 0;
-    const root6 = state9.root;
-    if (!root6) return;
+    state10.raf = 0;
+    const root7 = state10.root;
+    if (!root7) return;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-    const dy = y - state9.lastY;
-    root6.classList.toggle("is-solid", y > SOLID_AT);
+    const dy = y - state10.lastY;
+    root7.classList.toggle("is-solid", y > SOLID_AT);
     if (y <= SOLID_AT) {
       setHidden(false);
     } else if (dy >= SCROLL_DELTA && y > HIDE_AFTER) {
-      if (!root6.contains(document.activeElement) && !menuOpen()) setHidden(true);
+      if (!root7.contains(document.activeElement) && !menuOpen()) setHidden(true);
     } else if (dy <= -SCROLL_DELTA) {
       setHidden(false);
     }
-    if (Math.abs(dy) >= SCROLL_DELTA || y <= SOLID_AT) state9.lastY = y;
+    if (Math.abs(dy) >= SCROLL_DELTA || y <= SOLID_AT) state10.lastY = y;
   }
   function onScroll2() {
-    if (state9.raf) return;
+    if (state10.raf) return;
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state9.raf = raf3(scrollTick);
+    state10.raf = raf3(scrollTick);
   }
   async function loadLibraries(mountSeq) {
     let libs2 = [];
@@ -12891,8 +13302,8 @@
       libs2 = await getLibraries() || [];
     } catch {
     }
-    if (mountSeq !== state9.mountSeq || !state9.root) return;
-    state9.libs = libs2;
+    if (mountSeq !== state10.mountSeq || !state10.root) return;
+    state10.libs = libs2;
     renderNav();
   }
   var plusHeader = {
@@ -12901,13 +13312,13 @@
       return isTheme("plus") && isModern() && !isTv() && !isPhone() && isReady() && !EXCLUDED7.test(route.path);
     },
     mount(route) {
-      const mountSeq = ++state9.mountSeq;
-      state9.route = route;
-      state9.libs = [];
-      state9.pinned = false;
-      const root6 = mountPoint(ROOT_ID7, { tag: "header", className: "lfx-plus-header" });
-      root6.textContent = "";
-      state9.root = root6;
+      const mountSeq = ++state10.mountSeq;
+      state10.route = route;
+      state10.libs = [];
+      state10.pinned = false;
+      const root7 = mountPoint(ROOT_ID7, { tag: "header", className: "lfx-plus-header" });
+      root7.textContent = "";
+      state10.root = root7;
       const brand = h("a", { class: "lfx-plus-header__brand", href: "#/home", "aria-label": `${brandName("plus")} Startseite` });
       const chip = h("button", {
         type: "button",
@@ -12925,32 +13336,32 @@
       tv.append(icon2("tvmode", "lfx-plus-header__icon"));
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
       const ds = createDataSaverButton({ className: "lfx-plus-header__ds" });
-      root6.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, ds, tv, search);
-      state9.nav = nav;
-      state9.chip = chip;
+      root7.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, ds, tv, search);
+      state10.nav = nav;
+      state10.chip = chip;
       chip.addEventListener("click", onChipClick);
       chip.addEventListener("mouseenter", scheduleOpen);
       chip.addEventListener("mouseleave", scheduleClose2);
       chip.addEventListener("keydown", (e) => {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          state9.pinned = true;
+          state10.pinned = true;
           clearTimers3();
-          openMenu2();
+          openMenu3();
         }
       });
       document.documentElement.classList.add(ON_CLASS6);
       renderNav();
       window.addEventListener("scroll", onScroll2, { passive: true });
-      state9.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
-      state9.lastY = Math.max(0, window.scrollY || 0);
+      state10.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
+      state10.lastY = Math.max(0, window.scrollY || 0);
       scrollTick();
       fillChip(mountSeq);
       loadLibraries(mountSeq);
     },
     update(route) {
-      const changed = !state9.route || state9.route.hash !== route.hash;
-      state9.route = route;
+      const changed = !state10.route || state10.route.hash !== route.hash;
+      state10.route = route;
       if (changed) {
         closeMenu();
         setHidden(false);
@@ -12958,18 +13369,18 @@
       applyActive4();
     },
     unmount() {
-      state9.mountSeq++;
+      state10.mountSeq++;
       closeMenu();
       closePopover();
-      for (const fn of state9.cleanups.splice(0)) fn();
-      if (state9.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state9.raf);
-      state9.raf = 0;
+      for (const fn of state10.cleanups.splice(0)) fn();
+      if (state10.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state10.raf);
+      state10.raf = 0;
       unmountPoint(ROOT_ID7);
       document.documentElement.classList.remove(ON_CLASS6, HIDDEN_CLASS);
-      state9.root = null;
-      state9.nav = null;
-      state9.chip = null;
-      state9.libs = [];
+      state10.root = null;
+      state10.nav = null;
+      state10.chip = null;
+      state10.libs = [];
     }
   };
   var header_default = plusHeader;
@@ -13005,28 +13416,28 @@
     if (/^\/(mypreferences|usermenu)/.test(route.path)) return "Einstellungen";
     return "";
   }
-  var state10 = { root: null, tvEl: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
+  var state11 = { root: null, tvEl: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
   function render6() {
-    if (!state10.root) return;
-    const back = showsBack(state10.route);
-    state10.backEl.hidden = !back;
-    state10.root.classList.toggle("has-back", back);
-    state10.titleEl.textContent = headerTitle(state10.route, state10.libs);
-    const on = isTvModeRoute(state10.route);
-    state10.tvEl.classList.toggle("is-active", on);
-    if (on) state10.tvEl.setAttribute("aria-current", "page");
-    else state10.tvEl.removeAttribute("aria-current");
+    if (!state11.root) return;
+    const back = showsBack(state11.route);
+    state11.backEl.hidden = !back;
+    state11.root.classList.toggle("has-back", back);
+    state11.titleEl.textContent = headerTitle(state11.route, state11.libs);
+    const on = isTvModeRoute(state11.route);
+    state11.tvEl.classList.toggle("is-active", on);
+    if (on) state11.tvEl.setAttribute("aria-current", "page");
+    else state11.tvEl.removeAttribute("aria-current");
   }
   function scrollTick2() {
-    state10.raf = 0;
-    if (!state10.root) return;
+    state11.raf = 0;
+    if (!state11.root) return;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-    state10.root.classList.toggle("is-solid", y > SOLID_AT2);
+    state11.root.classList.toggle("is-solid", y > SOLID_AT2);
   }
   function onScroll3() {
-    if (state10.raf) return;
+    if (state11.raf) return;
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state10.raf = raf3(scrollTick2);
+    state11.raf = raf3(scrollTick2);
   }
   async function loadLibraries2(seq4) {
     let libs2 = [];
@@ -13034,8 +13445,8 @@
       libs2 = await getLibraries() || [];
     } catch {
     }
-    if (seq4 !== state10.seq || !state10.root) return;
-    state10.libs = libs2;
+    if (seq4 !== state11.seq || !state11.root) return;
+    state11.libs = libs2;
     render6();
   }
   var plusMobileHead = {
@@ -13044,11 +13455,11 @@
       return isTheme("plus") && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED8.test(route.path);
     },
     mount(route) {
-      const seq4 = ++state10.seq;
-      state10.route = route;
-      state10.libs = [];
-      const root6 = mountPoint(ROOT_ID8, { tag: "header", className: "lfx-plus-mhead" });
-      root6.textContent = "";
+      const seq4 = ++state11.seq;
+      state11.route = route;
+      state11.libs = [];
+      const root7 = mountPoint(ROOT_ID8, { tag: "header", className: "lfx-plus-mhead" });
+      root7.textContent = "";
       const backEl = h("button", { type: "button", class: "lfx-plus-mhead__back", "aria-label": "Zur\xFCck", hidden: true });
       backEl.innerHTML = ICONS3.back;
       backEl.addEventListener("click", () => window.history.back());
@@ -13057,35 +13468,35 @@
       tv.innerHTML = ICONS3.tvmode;
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
       const ds = createDataSaverButton({ className: "lfx-plus-mhead__ds" });
-      root6.append(backEl, titleEl2, ds, tv);
-      state10.tvEl = tv;
-      state10.root = root6;
-      state10.backEl = backEl;
-      state10.titleEl = titleEl2;
+      root7.append(backEl, titleEl2, ds, tv);
+      state11.tvEl = tv;
+      state11.root = root7;
+      state11.backEl = backEl;
+      state11.titleEl = titleEl2;
       document.documentElement.classList.add(ON_CLASS7);
       window.addEventListener("scroll", onScroll3, { passive: true });
-      state10.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
+      state11.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
       render6();
       scrollTick2();
       loadLibraries2(seq4);
     },
     update(route) {
-      state10.route = route;
+      state11.route = route;
       render6();
     },
     unmount() {
-      state10.seq++;
+      state11.seq++;
       closePopover();
-      for (const fn of state10.cleanups.splice(0)) fn();
-      if (state10.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state10.raf);
-      state10.raf = 0;
+      for (const fn of state11.cleanups.splice(0)) fn();
+      if (state11.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state11.raf);
+      state11.raf = 0;
       unmountPoint(ROOT_ID8);
       document.documentElement.classList.remove(ON_CLASS7);
-      state10.root = null;
-      state10.backEl = null;
-      state10.titleEl = null;
-      state10.tvEl = null;
-      state10.libs = [];
+      state11.root = null;
+      state11.backEl = null;
+      state11.titleEl = null;
+      state11.tvEl = null;
+      state11.libs = [];
     }
   };
   var mobilehead_default = plusMobileHead;
@@ -13113,27 +13524,27 @@
     if (kind2 === "hub" && lib) return `lib:${lib}`;
     return "foryou";
   }
-  var state11 = { root: null, route: null, libs: [], seq: 0 };
+  var state12 = { root: null, route: null, libs: [], seq: 0 };
   function applyActive5() {
-    if (!state11.root || !state11.route) return;
-    const key = activeTab(state11.route);
+    if (!state12.root || !state12.route) return;
+    const key = activeTab(state12.route);
     let active7 = null;
-    for (const el4 of state11.root.querySelectorAll('[role="tab"]')) {
+    for (const el4 of state12.root.querySelectorAll('[role="tab"]')) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       el4.setAttribute("aria-selected", String(on));
       el4.tabIndex = on ? 0 : -1;
       if (on) active7 = el4;
     }
-    const list = state11.root.querySelector(".lfx-plus-switcher__list");
+    const list = state12.root.querySelector(".lfx-plus-switcher__list");
     if (active7 && list && list.scrollWidth > list.clientWidth) {
       list.scrollLeft = Math.max(0, active7.offsetLeft - (list.clientWidth - active7.offsetWidth) / 2);
     }
   }
   function render7() {
-    if (!state11.root) return;
+    if (!state12.root) return;
     const list = h("div", { class: "lfx-plus-switcher__list", role: "tablist", "aria-label": "Ansicht w\xE4hlen" });
-    for (const t of switcherTabs(state11.libs)) {
+    for (const t of switcherTabs(state12.libs)) {
       list.append(h("a", { class: "lfx-plus-switcher__tab", role: "tab", href: t.href, dataset: { key: t.key } }, t.label));
     }
     list.addEventListener("keydown", (e) => {
@@ -13147,7 +13558,7 @@
       next.tabIndex = 0;
       next.focus();
     });
-    state11.root.replaceChildren(list);
+    state12.root.replaceChildren(list);
     applyActive5();
   }
   async function loadLibraries3(seq4) {
@@ -13156,8 +13567,8 @@
       libs2 = await getLibraries() || [];
     } catch {
     }
-    if (seq4 !== state11.seq || !state11.root) return;
-    state11.libs = libs2;
+    if (seq4 !== state12.seq || !state12.root) return;
+    state12.libs = libs2;
     render7();
   }
   var plusSwitcher = {
@@ -13166,24 +13577,24 @@
       return isTheme("plus") && isModern() && !isTv() && isReady() && isSwitcherRoute(route);
     },
     mount(route) {
-      const seq4 = ++state11.seq;
-      state11.route = route;
-      state11.libs = [];
-      state11.root = mountPoint(ROOT_ID9, { className: "lfx-plus-switcher" });
+      const seq4 = ++state12.seq;
+      state12.route = route;
+      state12.libs = [];
+      state12.root = mountPoint(ROOT_ID9, { className: "lfx-plus-switcher" });
       document.documentElement.classList.add(ON_CLASS8);
       render7();
       loadLibraries3(seq4);
     },
     update(route) {
-      state11.route = route;
+      state12.route = route;
       applyActive5();
     },
     unmount() {
-      state11.seq++;
+      state12.seq++;
       unmountPoint(ROOT_ID9);
       document.documentElement.classList.remove(ON_CLASS8);
-      state11.root = null;
-      state11.libs = [];
+      state12.root = null;
+      state12.libs = [];
     }
   };
   var switcher_default = plusSwitcher;
@@ -13992,8 +14403,8 @@
     const isHub = key.startsWith("hub:");
     const heroSlot = h("div", { class: "lfx-plus-home__hero is-loading" });
     const rowsSlot = h("div", { class: "lfx-plus-rows" });
-    const root6 = h("div", { id: ROOT_ID10, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID10, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS9);
     currentKey = key;
     currentPhone = isPhone();
@@ -14037,7 +14448,7 @@
         heroSlot.classList.remove("is-loading");
       }
     })();
-    if (!isHub) cleanups3.push(renderBrands(root6, rowsSlot));
+    if (!isHub) cleanups3.push(renderBrands(root7, rowsSlot));
     cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs(), isHub ? null : () => peekRowDefs(), { prefetch: !isHub, hero: () => heroSlot }));
   }
   function ensure6(route) {
@@ -14284,13 +14695,13 @@
   var ICON_TRAILER = svg7('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4 1.5 6 3.5-6 3.5z"/>');
   var ICON_CHEVRON = svg7('<path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/>');
   var ICON_CLOSE = svg7('<path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/>');
-  var state12 = null;
+  var state13 = null;
   var gen2 = 0;
   var routeId = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "title" ? r.id : null;
   };
-  var stalenessOf = (g) => () => !state12 || state12.g !== g;
+  var stalenessOf = (g) => () => !state13 || state13.g !== g;
   function closeTrailer() {
     const el4 = document.getElementById(TRAILER_ID);
     if (!el4) return;
@@ -14308,8 +14719,8 @@
   }
   function dispose() {
     gen2 += 1;
-    const s = state12;
-    state12 = null;
+    const s = state13;
+    state13 = null;
     closeTrailer();
     try {
       closePopover();
@@ -14329,14 +14740,14 @@
     document.getElementById(ROOT_ID11)?.remove();
     setPageOn(ON_CLASS10, false);
   }
-  function circle(mod, label, icon5, onClick2) {
+  function circle(mod, label, icon5, onClick3) {
     const b = h("button", { type: "button", class: `lfx-plus-circle lfx-plus-circle--${mod}`, "aria-label": label, title: label });
     const ico = h("span", { class: "lfx-plus-circle__ico", "aria-hidden": "true" });
     ico.innerHTML = icon5;
     b.append(ico);
     b.addEventListener("click", (e) => {
       e.preventDefault();
-      onClick2(b);
+      onClick3(b);
     });
     return b;
   }
@@ -14494,8 +14905,8 @@
   }
   async function load2(g) {
     const stale = stalenessOf(g);
-    const s = state12;
-    const root6 = s.root;
+    const s = state13;
+    const root7 = s.root;
     let sel;
     let main;
     try {
@@ -14505,8 +14916,8 @@
       if (!main) throw Object.assign(new Error("Titel nicht gefunden"), { notFound: true });
     } catch (e) {
       if (stale()) return;
-      root6.replaceChildren(errorBox(e && (e.notFound || /\b404\b/.test(String(e.message))) ? "Dieser Titel ist nicht mehr verf\xFCgbar." : e && e.message ? "Der Server hat nicht geantwortet." : ""));
-      root6.classList.add("is-error");
+      root7.replaceChildren(errorBox(e && (e.notFound || /\b404\b/.test(String(e.message))) ? "Dieser Titel ist nicht mehr verf\xFCgbar." : e && e.message ? "Der Server hat nicht geantwortet." : ""));
+      root7.classList.add("is-error");
       return;
     }
     if (stale()) return;
@@ -14681,8 +15092,8 @@
     });
     select(panels[0].id);
     const footer = h("footer", { class: "lfx-plus-title__footer" });
-    root6.classList.remove("is-loading");
-    root6.replaceChildren(backdrop, h("div", { class: "lfx-plus-title__content" }, [hero, tablist, panelWrap, footer]));
+    root7.classList.remove("is-loading");
+    root7.replaceChildren(backdrop, h("div", { class: "lfx-plus-title__content" }, [hero, tablist, panelWrap, footer]));
     paintPlay2();
     let raf3 = 0;
     const onScroll7 = () => {
@@ -14692,7 +15103,7 @@
         const vh = window.innerHeight || 800;
         const v = Math.max(0, Math.min(1, (window.scrollY || document.documentElement.scrollTop || 0) / (vh * 0.55)));
         const stuck = tablist.getBoundingClientRect().top <= 67;
-        root6.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
+        root7.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
         tablist.classList.toggle("is-stuck", stuck);
       });
     };
@@ -14831,19 +15242,19 @@
   function begin(id, { keepScroll = false } = {}) {
     dispose();
     const g = gen2;
-    state12 = { g, id, root: null, cleanups: [], cancelWait: null };
-    const s = state12;
+    state13 = { g, id, root: null, cleanups: [], cancelWait: null };
+    const s = state13;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state12 !== s) return;
-      const root6 = h("div", { id: ROOT_ID11, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
+      if (state13 !== s) return;
+      const root7 = h("div", { id: ROOT_ID11, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-plus-title__skeleton" })
       ]);
-      s.root = root6;
-      tab2.prepend(root6);
+      s.root = root7;
+      tab2.prepend(root7);
       setPageOn(ON_CLASS10, true);
       if (!keepScroll) scrollTop();
       load2(g).then(() => {
-        if (state12 === s) root6.removeAttribute("aria-busy");
+        if (state13 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] plus-title", e));
     });
   }
@@ -14857,7 +15268,7 @@
     update(route) {
       const id = routeId(route);
       if (!id) return;
-      if (state12 && state12.id === id && state12.root && state12.root.isConnected) return;
+      if (state13 && state13.id === id && state13.root && state13.root.isConnected) return;
       begin(id);
     },
     unmount: dispose
@@ -14867,15 +15278,15 @@
   var ROOT_ID12 = "lfx-plus-browse";
   var ON_CLASS11 = "lfx-plus-browse-on";
   var PAGE5 = 40;
-  var state13 = null;
+  var state14 = null;
   var routeOf2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "browse" && r.lib ? { lib: r.lib, genre: r.genre } : null;
   };
   var asItems8 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function dispose2() {
-    const s = state13;
-    state13 = null;
+    const s = state14;
+    state14 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       for (const fn of s.cleanups.splice(0)) {
@@ -14910,11 +15321,11 @@
     loadMore(s);
   }
   async function loadMore(s) {
-    if (state13 !== s || s.loading || s.done) return;
+    if (state14 !== s || s.loading || s.done) return;
     const seq4 = s.seq;
     s.loading = true;
     s.root.setAttribute("aria-busy", "true");
-    const stale = () => state13 !== s || s.seq !== seq4;
+    const stale = () => state14 !== s || s.seq !== seq4;
     try {
       const res = await getItems({
         ...BASE_PARAMS,
@@ -14960,7 +15371,7 @@
     }
   }
   async function build6(tab2, s) {
-    const stale = () => state13 !== s;
+    const stale = () => state14 !== s;
     let lib = null;
     try {
       lib = (await getLibraries()).find((l) => l.id === s.libId) || null;
@@ -14973,9 +15384,9 @@
     const grid2 = h("div", { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" });
     const status = h("div", { class: "lfx-plus-browse__status" });
     const sentinel = h("div", { class: "lfx-plus-browse__sentinel", "aria-hidden": "true" });
-    const root6 = h("div", { id: ROOT_ID12, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
-    Object.assign(s, { root: root6, chips, grid: grid2, status, sentinel });
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID12, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
+    Object.assign(s, { root: root7, chips, grid: grid2, status, sentinel });
+    tab2.prepend(root7);
     setPageOn(ON_CLASS11, true);
     scrollTop();
     const addChip = (label, genreId) => {
@@ -15030,9 +15441,9 @@
       cancelWait: null,
       root: null
     };
-    state13 = s;
+    state14 = s;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state13 === s) build6(tab2, s);
+      if (state14 === s) build6(tab2, s);
     });
   }
   var browse_default = {
@@ -15045,13 +15456,13 @@
     update(route) {
       const r = routeOf2(route);
       if (!r) return;
-      if (!state13 || state13.libId !== r.lib || !state13.root || !state13.root.isConnected) {
+      if (!state14 || state14.libId !== r.lib || !state14.root || !state14.root.isConnected) {
         begin2(r);
         return;
       }
-      if ((r.genre || null) !== state13.genreId) {
-        state13.genreId = r.genre || null;
-        reload(state13);
+      if ((r.genre || null) !== state14.genreId) {
+        state14.genreId = r.genre || null;
+        reload(state14);
       }
     },
     unmount: dispose2
@@ -15130,14 +15541,14 @@
   var MIN_LEN2 = 2;
   var LUPE = '<svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="13.5" cy="13.5" r="8.5"/><path d="M20 20l8 8"/></svg>';
   var X = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg>';
-  var state14 = null;
+  var state15 = null;
   var routeQ = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "search" ? r.q || "" : null;
   };
   function dispose3() {
-    const s = state14;
-    state14 = null;
+    const s = state15;
+    state15 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       clearTimeout(s.timer);
@@ -15161,7 +15572,7 @@
       h("span", { class: `lfx-plus-tile__name${imageUrl2 ? hide2 ? " is-sr" : " has-img" : ""}` }, label)
     ]);
   }
-  function section2(title, body, mod = "") {
+  function section3(title, body, mod = "") {
     return h("section", { class: `lfx-plus-section ${mod}`.trim() }, [h("h2", { class: "lfx-plus-section__title" }, title), body]);
   }
   async function genreLib() {
@@ -15173,7 +15584,7 @@
     }
   }
   async function renderEmpty(s, seq4) {
-    const stale = () => state14 !== s || s.seq !== seq4;
+    const stale = () => state15 !== s || s.seq !== seq4;
     s.results.replaceChildren();
     const [lib, genres, colls] = await Promise.all([
       genreLib(),
@@ -15183,14 +15594,14 @@
     if (stale()) return;
     const parts = [];
     if (genres.length) {
-      parts.push(section2("Genres", h("div", { class: "lfx-plus-tilerow" }, genres.map((g) => tile(
+      parts.push(section3("Genres", h("div", { class: "lfx-plus-tilerow" }, genres.map((g) => tile(
         lib ? browseHref(lib.id, g.id) : searchHref(g.name),
         g.name,
         g.imageUrl
       )))));
     }
     if (colls.length) {
-      parts.push(section2("Sammlungen", h("div", { class: "lfx-plus-tilerow" }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl, { nameOnImage: false })))));
+      parts.push(section3("Sammlungen", h("div", { class: "lfx-plus-tilerow" }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl, { nameOnImage: false })))));
     }
     s.results.replaceChildren(...parts);
   }
@@ -15215,7 +15626,7 @@
     const ctl = new AbortController();
     s.abort = ctl;
     s.root.setAttribute("aria-busy", "true");
-    const stale = () => state14 !== s || s.seq !== seq4;
+    const stale = () => state15 !== s || s.seq !== seq4;
     try {
       const [res, info] = await Promise.all([
         searchItems(term, { signal: ctl.signal }),
@@ -15226,21 +15637,21 @@
       putItems([...titles, ...res.episodes]);
       const parts = [];
       if (titles.length) {
-        parts.push(section2("Filme und Serien", h(
+        parts.push(section3("Filme und Serien", h(
           "div",
           { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" },
           titles.map((it) => gridCard(it, { text: true, badge: info ? plusBadge(it, info) : null }))
         )));
       }
       if (res.episodes.length) {
-        parts.push(section2("Folgen", h(
+        parts.push(section3("Folgen", h(
           "div",
           { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" },
           res.episodes.map((it) => gridCard(it, { text: true }))
         ), "lfx-plus-section--small"));
       }
       if (res.people.length) {
-        parts.push(section2("Personen", h("div", { class: "lfx-plus-people" }, res.people.map(personCard)), "lfx-plus-section--small"));
+        parts.push(section3("Personen", h("div", { class: "lfx-plus-people" }, res.people.map(personCard)), "lfx-plus-section--small"));
       }
       if (!parts.length) parts.push(h("p", { class: "lfx-plus-empty" }, `Keine Ergebnisse f\xFCr \u201E${term}\u201C.`));
       s.results.replaceChildren(...parts);
@@ -15270,12 +15681,12 @@
     clear.innerHTML = X;
     const results = h("div", { class: "lfx-plus-search__results", "aria-live": "polite" });
     const field = h("div", { class: "lfx-plus-search__field" }, [icon5, input, clear]);
-    const root6 = h("div", { id: ROOT_ID13, class: "lfx-plus-page lfx-plus-search", role: "search" }, [field, results]);
-    Object.assign(s, { root: root6, input, results });
+    const root7 = h("div", { id: ROOT_ID13, class: "lfx-plus-page lfx-plus-search", role: "search" }, [field, results]);
+    Object.assign(s, { root: root7, input, results });
     s.syncUi = () => {
       clear.hidden = !input.value;
     };
-    tab2.prepend(root6);
+    tab2.prepend(root7);
     setPageOn(ON_CLASS12, true);
     const writeHash = (term) => {
       try {
@@ -15325,9 +15736,9 @@
     dispose3();
     const s = { root: null, input: null, results: null, term: null, timer: null, abort: null, seq: 0, cleanups: [], cancelWait: null, syncUi: () => {
     } };
-    state14 = s;
+    state15 = s;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state14 === s) build7(tab2, s, q);
+      if (state15 === s) build7(tab2, s, q);
     });
   }
   var search_default = {
@@ -15339,17 +15750,17 @@
     update(route) {
       const q = routeQ(route);
       if (q == null) return;
-      if (!state14 || !state14.root || !state14.root.isConnected) {
+      if (!state15 || !state15.root || !state15.root.isConnected) {
         begin3(q);
         return;
       }
-      if (q.trim() !== (state14.term || "")) {
-        state14.input.value = q;
-        clearTimeout(state14.timer);
-        runSearch(state14, q.trim());
+      if (q.trim() !== (state15.term || "")) {
+        state15.input.value = q;
+        clearTimeout(state15.timer);
+        runSearch(state15, q.trim());
       }
       try {
-        state14.input.focus({ preventScroll: true });
+        state15.input.focus({ preventScroll: true });
       } catch {
       }
     },
@@ -15380,7 +15791,7 @@
       if (tab2 === "1") return "list";
       return !tab2 || tab2 === "0" ? "home" : null;
     }
-    if (/^\/(mypreferences|usermenu)/.test(route.path)) return "profile";
+    if (/^\/(mypreferences|usermenu|userprofile|quickconnect|metadata)/.test(route.path)) return "profile";
     return null;
   }
   var isVideoHash = (hash2) => /^#!?[/]video(?:[/?]|$)/.test(String(hash2 || ""));
@@ -15396,8 +15807,11 @@
         go3(href);
       } });
     }
-    for (const p of Array.isArray(profile2) ? profile2 : []) {
-      if (p.switch) entries.push(p);
+    const prof2 = Array.isArray(profile2) ? profile2 : [];
+    if (prof2.length && !prof2[0].separator) entries.push({ key: "sep", separator: true });
+    for (const p of prof2) {
+      if (p.separator) entries.push({ key: "sep", separator: true });
+      else if (p.switch) entries.push(p);
       else if (p.href) entries.push({ label: p.label, onClick: () => {
         close2();
         go3(p.href);
@@ -15413,16 +15827,16 @@
     if (String(href).startsWith("#")) window.location.hash = href;
     else window.location.assign(href);
   }
-  var state15 = { root: null, route: null, profileBtn: null, sheet: null, seq: 0, cleanups: [] };
+  var state16 = { root: null, route: null, profileBtn: null, sheet: null, seq: 0, cleanups: [] };
   var iconEl = (name) => {
     const span2 = h("span", { class: "lfx-plus-tabbar__icon", "aria-hidden": "true" });
     span2.innerHTML = ICONS3[name];
     return span2;
   };
   function applyActive6() {
-    if (!state15.root) return;
-    const key = tabKey(state15.route);
-    for (const el4 of state15.root.querySelectorAll("[data-key]")) {
+    if (!state16.root) return;
+    const key = tabKey(state16.route);
+    for (const el4 of state16.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -15431,18 +15845,18 @@
     }
   }
   function closeProfile() {
-    state15.seq++;
-    const c = state15.sheet;
-    state15.sheet = null;
+    state16.seq++;
+    const c = state16.sheet;
+    state16.sheet = null;
     if (c && isCurrent(c)) closeChooser();
   }
   async function openProfile() {
-    if (state15.sheet && isCurrent(state15.sheet)) {
+    if (state16.sheet && isCurrent(state16.sheet)) {
       closeProfile();
       return;
     }
-    const seq4 = ++state15.seq;
-    const anchor = state15.profileBtn;
+    const seq4 = ++state16.seq;
+    const anchor = state16.profileBtn;
     let libs2 = [];
     let profile2 = [];
     let user = { name: "" };
@@ -15458,31 +15872,31 @@
       user = await getUserChip();
     } catch {
     }
-    if (seq4 !== state15.seq || !state15.root) return;
+    if (seq4 !== state16.seq || !state16.root) return;
     const c = openSheet(anchor, "Profil");
-    state15.sheet = c;
+    state16.sheet = c;
     const entries = sheetEntries(libs2, profile2, { go, close: () => closeChooser() });
     renderSheet(c, user && user.name || "Profil", entries);
     const buttons = c.list ? c.list.querySelectorAll(".lfx-sheet__item") : [];
-    entries.forEach((e, i) => {
+    entries.filter((e) => !e.separator).forEach((e, i) => {
       if (e.stats && buttons[i]) buttons[i].classList.add("is-stats");
     });
   }
   async function fillAvatar() {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip({ retries: 20, isAlive: () => Boolean(state15.profileBtn) });
+      user = await getUserChip({ retries: 20, isAlive: () => Boolean(state16.profileBtn) });
     } catch {
     }
-    if (!state15.profileBtn) return;
-    const avatar = state15.profileBtn.querySelector(".lfx-plus-tabbar__avatar");
+    if (!state16.profileBtn) return;
+    const avatar = state16.profileBtn.querySelector(".lfx-plus-tabbar__avatar");
     if (user.imageUrl) {
       avatar.style.backgroundImage = `url("${user.imageUrl}")`;
       avatar.textContent = "";
     } else {
       avatar.textContent = (user.name || "?").trim().charAt(0).toUpperCase();
     }
-    if (user.name) state15.profileBtn.setAttribute("aria-label", `Profil: ${user.name}`);
+    if (user.name) state16.profileBtn.setAttribute("aria-label", `Profil: ${user.name}`);
   }
   var plusTabbar = {
     name: "plus-tabbar",
@@ -15490,13 +15904,13 @@
       return isTheme("plus") && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED9.test(route.path);
     },
     mount(route) {
-      state15.seq++;
-      state15.route = route;
-      const root6 = mountPoint(ROOT_ID14, { tag: "nav", className: "lfx-plus-tabbar" });
-      root6.textContent = "";
-      root6.setAttribute("aria-label", "Hauptnavigation");
+      state16.seq++;
+      state16.route = route;
+      const root7 = mountPoint(ROOT_ID14, { tag: "nav", className: "lfx-plus-tabbar" });
+      root7.textContent = "";
+      root7.setAttribute("aria-label", "Hauptnavigation");
       for (const t of TABS2) {
-        root6.append(h("a", { class: "lfx-plus-tabbar__tab", href: t.href, "aria-label": t.label, dataset: { key: t.key } }, [iconEl(t.icon)]));
+        root7.append(h("a", { class: "lfx-plus-tabbar__tab", href: t.href, "aria-label": t.label, dataset: { key: t.key } }, [iconEl(t.icon)]));
       }
       const profileBtn = h("button", {
         type: "button",
@@ -15506,9 +15920,9 @@
         dataset: { key: "profile" }
       }, [h("span", { class: "lfx-plus-tabbar__avatar", "aria-hidden": "true" })]);
       profileBtn.addEventListener("click", openProfile);
-      root6.append(profileBtn);
-      state15.root = root6;
-      state15.profileBtn = profileBtn;
+      root7.append(profileBtn);
+      state16.root = root7;
+      state16.profileBtn = profileBtn;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
         if (e.target && e.target.matches && e.target.matches(TEXT_INPUT)) cl2.add(KB_CLASS);
@@ -15516,14 +15930,14 @@
       const onFocusOut = () => cl2.remove(KB_CLASS);
       document.addEventListener("focusin", onFocusIn);
       document.addEventListener("focusout", onFocusOut);
-      state15.cleanups.push(() => {
+      state16.cleanups.push(() => {
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("focusout", onFocusOut);
         cl2.remove(KB_CLASS);
       });
       const onHash2 = () => cl2.toggle(HIDE_CLASS, isVideoHash(window.location.hash));
       window.addEventListener("hashchange", onHash2);
-      state15.cleanups.push(() => {
+      state16.cleanups.push(() => {
         window.removeEventListener("hashchange", onHash2);
         cl2.remove(HIDE_CLASS);
       });
@@ -15533,18 +15947,18 @@
       fillAvatar();
     },
     update(route) {
-      const changed = !state15.route || state15.route.hash !== route.hash;
-      state15.route = route;
+      const changed = !state16.route || state16.route.hash !== route.hash;
+      state16.route = route;
       if (changed) closeProfile();
       applyActive6();
     },
     unmount() {
       closeProfile();
-      for (const fn of state15.cleanups.splice(0)) fn();
+      for (const fn of state16.cleanups.splice(0)) fn();
       unmountPoint(ROOT_ID14);
       document.documentElement.classList.remove(ON_CLASS13);
-      state15.root = null;
-      state15.profileBtn = null;
+      state16.root = null;
+      state16.profileBtn = null;
     }
   };
   var tabbar_default = plusTabbar;
@@ -15568,25 +15982,25 @@
     const NOLOGO = nologoClass;
     const NOBD = nobdClass;
     const ALL = [NOLOGO, NOBD].filter(Boolean);
-    const state24 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
+    const state25 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
     function probeLogo(url) {
-      if (state24.probes.has(url) || typeof Image !== "function") return;
-      state24.probes.set(url, "pending");
+      if (state25.probes.has(url) || typeof Image !== "function") return;
+      state25.probes.set(url, "pending");
       const img = new Image();
-      img.onload = () => state24.probes.set(url, "ok");
+      img.onload = () => state25.probes.set(url, "ok");
       img.onerror = () => {
-        state24.probes.set(url, "bad");
+        state25.probes.set(url, "bad");
         evaluate3();
       };
       img.src = url;
     }
     function evaluate3() {
-      const page2 = state24.page;
+      const page2 = state25.page;
       if (!page2 || !page2.isConnected) return;
       const logoEl = page2.querySelector(".detailLogo");
       const logoUrl2 = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
       if (logoUrl2) probeLogo(logoUrl2);
-      let noLogo = !logoUrl2 || state24.probes.get(logoUrl2) === "bad";
+      let noLogo = !logoUrl2 || state25.probes.get(logoUrl2) === "bad";
       if (!noLogo) {
         const had = page2.classList.contains(NOLOGO);
         if (had) page2.classList.remove(NOLOGO);
@@ -15603,55 +16017,55 @@
       }
     }
     function schedule4() {
-      if (state24.timer) return;
-      state24.timer = setTimeout(() => {
-        state24.timer = 0;
+      if (state25.timer) return;
+      state25.timer = setTimeout(() => {
+        state25.timer = 0;
         evaluate3();
       }, 60);
     }
     function clearPage() {
-      if (state24.obs) state24.obs.disconnect();
-      state24.obs = null;
-      clearTimeout(state24.timer);
-      clearTimeout(state24.poll);
-      state24.timer = 0;
-      state24.poll = 0;
-      if (state24.page) {
-        state24.page.classList.remove(...ALL);
-        state24.page = null;
+      if (state25.obs) state25.obs.disconnect();
+      state25.obs = null;
+      clearTimeout(state25.timer);
+      clearTimeout(state25.poll);
+      state25.timer = 0;
+      state25.poll = 0;
+      if (state25.page) {
+        state25.page.classList.remove(...ALL);
+        state25.page = null;
       }
       for (const p of document.querySelectorAll(ALL.map((c) => `.${c}`).join(", "))) p.classList.remove(...ALL);
-      state24.probes.clear();
+      state25.probes.clear();
     }
     function attach2() {
       const page2 = document.querySelector("#itemDetailPage:not(.hide)");
       if (!page2) {
-        if (++state24.tries < 30) state24.poll = setTimeout(attach2, 200);
+        if (++state25.tries < 30) state25.poll = setTimeout(attach2, 200);
         return;
       }
-      if (state24.page === page2) return;
-      if (state24.obs) state24.obs.disconnect();
-      state24.page = page2;
-      state24.obs = new MutationObserver((records) => {
+      if (state25.page === page2) return;
+      if (state25.obs) state25.obs.disconnect();
+      state25.page = page2;
+      state25.obs = new MutationObserver((records) => {
         if (records.every((r) => r.type === "attributes" && r.target === page2)) return;
         schedule4();
       });
-      state24.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
+      state25.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
       evaluate3();
     }
     const feature = {
       name,
       match: (route) => isTheme(theme2) && isModern() && !isTv() && isReady() && route.path === "/details",
       mount() {
-        state24.tries = 0;
+        state25.tries = 0;
         attach2();
       },
       update() {
-        state24.tries = 0;
-        clearTimeout(state24.poll);
-        state24.probes.clear();
+        state25.tries = 0;
+        clearTimeout(state25.poll);
+        state25.probes.clear();
         const page2 = document.querySelector("#itemDetailPage:not(.hide)");
-        if (page2 && page2 !== state24.page) clearPage();
+        if (page2 && page2 !== state25.page) clearPage();
         attach2();
         evaluate3();
       },
@@ -15672,7 +16086,7 @@
   var ID11 = "lfx-plus-favempty";
   var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
   var SETTLE_MS = 1500;
-  var state16 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
+  var state17 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
   var isFavRoute = (route) => route && route.path === "/home" && route.params.get("tab") === "1" && !route.params.get("lfx");
   function findTab() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #favoritesTab");
@@ -15680,8 +16094,8 @@
   }
   var hasCards = (tab2) => !!tab2.querySelector(".card, .listItem");
   function check2() {
-    state16.timer = 0;
-    const tab2 = state16.tab;
+    state17.timer = 0;
+    const tab2 = state17.tab;
     if (!tab2 || !tab2.isConnected) return;
     const mine = document.getElementById(ID11);
     if (hasCards(tab2)) {
@@ -15691,44 +16105,44 @@
     }
   }
   function schedule3(delay = SETTLE_MS) {
-    clearTimeout(state16.timer);
-    state16.timer = setTimeout(check2, delay);
+    clearTimeout(state17.timer);
+    state17.timer = setTimeout(check2, delay);
   }
   function teardown8() {
-    if (state16.obs) state16.obs.disconnect();
-    state16.obs = null;
-    clearTimeout(state16.timer);
-    clearTimeout(state16.poll);
-    state16.timer = 0;
-    state16.poll = 0;
-    state16.tab = null;
+    if (state17.obs) state17.obs.disconnect();
+    state17.obs = null;
+    clearTimeout(state17.timer);
+    clearTimeout(state17.poll);
+    state17.timer = 0;
+    state17.poll = 0;
+    state17.tab = null;
     document.getElementById(ID11)?.remove();
   }
   function attach() {
     const tab2 = findTab();
     if (!tab2) {
-      if (++state16.tries < 30) state16.poll = setTimeout(attach, 200);
+      if (++state17.tries < 30) state17.poll = setTimeout(attach, 200);
       return;
     }
-    if (state16.tab === tab2) return;
+    if (state17.tab === tab2) return;
     teardown8();
-    state16.tab = tab2;
-    state16.obs = new MutationObserver((records) => {
+    state17.tab = tab2;
+    state17.obs = new MutationObserver((records) => {
       if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID11))) return;
       schedule3();
     });
-    state16.obs.observe(tab2, { childList: true, subtree: true });
+    state17.obs.observe(tab2, { childList: true, subtree: true });
     schedule3();
   }
   var favempty_default = {
     name: "plus-favempty",
     match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && isFavRoute(route),
     mount() {
-      state16.tries = 0;
+      state17.tries = 0;
       attach();
     },
     update() {
-      state16.tries = 0;
+      state17.tries = 0;
       attach();
     },
     unmount: teardown8
@@ -15745,8 +16159,8 @@
   var MAX_SUGGESTIONS = 5;
   var MIN_LEN3 = 2;
   var SVG_NS = "http://www.w3.org/2000/svg";
-  var FOCUSABLE2 = "a[href], button:not([disabled]), input:not([disabled])";
-  var cur = null;
+  var FOCUSABLE3 = "a[href], button:not([disabled]), input:not([disabled])";
+  var cur2 = null;
   function searchIcon() {
     const svg11 = document.createElementNS(SVG_NS, "svg");
     svg11.setAttribute("viewBox", "0 0 24 24");
@@ -15788,12 +16202,12 @@
     return a;
   }
   function isPrimeSearchOpen() {
-    return cur !== null;
+    return cur2 !== null;
   }
   function closePrimeSearch({ restoreFocus = true } = {}) {
-    const c = cur;
+    const c = cur2;
     if (!c) return;
-    cur = null;
+    cur2 = null;
     clearTimeout(c.timer);
     if (c.ctrl) c.ctrl.abort();
     document.removeEventListener("keydown", c.onKeydown, true);
@@ -15814,16 +16228,16 @@
     }
   }
   function openPrimeSearch({ returnFocus } = {}) {
-    if (cur) {
-      cur.input.focus();
+    if (cur2) {
+      cur2.input.focus();
       return;
     }
     const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
     const mobile = isMobile() && isNarrow();
-    const root6 = mountPoint(ID12, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
-    root6.setAttribute("role", "dialog");
-    root6.setAttribute("aria-modal", "true");
-    root6.setAttribute("aria-label", "Suche");
+    const root7 = mountPoint(ID12, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
+    root7.setAttribute("role", "dialog");
+    root7.setAttribute("aria-modal", "true");
+    root7.setAttribute("aria-label", "Suche");
     const input = h("input", {
       class: "lfx-prime-search__input",
       type: "search",
@@ -15840,9 +16254,9 @@
     const grid2 = h("div", { class: "lfx-prime-search__grid" });
     const status = h("p", { class: "lfx-prime-search__status", role: "status" });
     const panel = h("div", { class: "lfx-prime-search__panel" }, [head, suggest, status, grid2]);
-    root6.replaceChildren(panel);
-    const c = { root: root6, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
-    cur = c;
+    root7.replaceChildren(panel);
+    const c = { root: root7, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
+    cur2 = c;
     const close2 = () => closePrimeSearch();
     const reset = () => {
       suggest.replaceChildren();
@@ -15861,7 +16275,7 @@
       c.ctrl = ctrl;
       try {
         const res = await searchItems(term, { limit: 24, signal: ctrl.signal });
-        if (cur !== c || seq4 !== c.seq || ctrl.signal.aborted) return;
+        if (cur2 !== c || seq4 !== c.seq || ctrl.signal.aborted) return;
         const items = [...res.movies, ...res.series];
         suggest.replaceChildren(...items.slice(0, MAX_SUGGESTIONS).map((it) => {
           const a = h("a", { class: "lfx-prime-search__sug", href: titleHref(it.Id) }, it.Name || "");
@@ -15872,7 +16286,7 @@
         status.textContent = items.length ? "" : `Keine Treffer f\xFCr \u201E${term}\u201C.`;
       } catch (e) {
         if (e && e.name === "AbortError") return;
-        if (cur !== c || seq4 !== c.seq) return;
+        if (cur2 !== c || seq4 !== c.seq) return;
         reset();
         status.textContent = "Die Suche ist fehlgeschlagen.";
       }
@@ -15895,7 +16309,7 @@
       input.focus();
     });
     if (cancel) cancel.addEventListener("click", () => close2());
-    root6.addEventListener("mousedown", (e) => {
+    root7.addEventListener("mousedown", (e) => {
       if (!panel.contains(e.target)) close2();
     });
     c.onKeydown = (e) => {
@@ -15905,7 +16319,7 @@
         e.stopImmediatePropagation();
         close2();
       } else if (e.key === "Tab") {
-        const list = [...panel.querySelectorAll(FOCUSABLE2)].filter((el4) => !el4.hidden);
+        const list = [...panel.querySelectorAll(FOCUSABLE3)].filter((el4) => !el4.hidden);
         if (!list.length) return;
         const first2 = list[0];
         const last = list[list.length - 1];
@@ -15999,7 +16413,7 @@
       if (pinned) return;
       leaveTimer3 = setTimeout(() => close2(), LEAVE_MS2);
     };
-    const onClick2 = (e) => {
+    const onClick3 = (e) => {
       if (e.detail === 0) {
         if (opened) close2();
         else open4({ focus: true });
@@ -16047,7 +16461,7 @@
     };
     wrap.addEventListener("mouseenter", onEnter);
     wrap.addEventListener("mouseleave", onLeave);
-    button.addEventListener("click", onClick2);
+    button.addEventListener("click", onClick3);
     flyout.addEventListener("click", onFlyoutClick);
     wrap.addEventListener("keydown", onKeydown3);
     wrap.addEventListener("focusout", onFocusOut);
@@ -16060,7 +16474,7 @@
         gen8++;
         close2();
         document.removeEventListener("click", onDocClick2, true);
-        button.removeEventListener("click", onClick2);
+        button.removeEventListener("click", onClick3);
         flyout.removeEventListener("click", onFlyoutClick);
         wrap.removeEventListener("mouseenter", onEnter);
         wrap.removeEventListener("mouseleave", onLeave);
@@ -16071,129 +16485,31 @@
   }
 
   // src/js/features/prime/profile-sheet.js
-  var ID13 = "lfx-prime-profilesheet";
-  var OPEN_CLASS2 = "lfx-prime-profilesheet-open";
-  var FOCUSABLE3 = "a[href], button:not([disabled])";
-  var cur2 = null;
-  function closeProfileSheet({ restoreFocus = true } = {}) {
-    const c = cur2;
-    if (!c) return;
-    cur2 = null;
-    if (c.detachSwipe) c.detachSwipe();
-    window.removeEventListener("keydown", c.onKeydown, true);
-    window.removeEventListener("hashchange", c.onHash);
-    releaseSwitches(c.root);
-    unmountPoint(c.root);
-    document.documentElement.classList.remove(OPEN_CLASS2);
-    const back = c.returnFocus;
-    if (restoreFocus && back && back.isConnected && typeof back.focus === "function") {
-      try {
-        back.focus({ preventScroll: true });
-      } catch {
+  function openProfileSheet2({ returnFocus } = {}) {
+    return openProfileSheet({
+      id: "lfx-prime-profilesheet",
+      prefix: "lfx-prime-psheet",
+      openClass: "lfx-prime-profilesheet-open",
+      label: "Profil",
+      returnFocus,
+      load: async () => {
+        const [chip, libs2, entries] = await Promise.all([
+          getUserChip().catch(() => ({ name: "", imageUrl: null })),
+          getLibraries().catch(() => []),
+          profileEntries({ theme: "prime", returnFocus }).catch(() => [])
+        ]);
+        const nav = [{ key: "new", label: "Neu & beliebt", href: "#/home?lfx=new" }];
+        const libItems = (libs2 || []).map((l) => ({ key: `lib:${l.id}`, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href }));
+        return {
+          chip,
+          sections: [{ items: nav }, { title: "Bibliotheken", items: libItems }, { items: entries }]
+        };
       }
-    }
-  }
-  function entryNode(it, close2) {
-    if (it.switch) {
-      return switchButton(it, { className: "lfx-prime-psheet__item lfx-prime-psheet__item--switch", role: "switch", labelClass: "lfx-prime-psheet__label" });
-    }
-    const kids = [h("span", { class: "lfx-prime-psheet__label" }, it.label)];
-    const cls = `lfx-prime-psheet__item${it.className ? ` ${it.className}` : ""}`;
-    const node = it.href ? h("a", { class: cls, href: it.href, dataset: { key: it.key || "" } }, kids) : h("button", { type: "button", class: cls, dataset: { key: it.key || "" } }, kids);
-    node.addEventListener("click", () => {
-      close2({ restoreFocus: false });
-      if (typeof it.onClick === "function") it.onClick();
     });
-    return node;
-  }
-  function section3(title, nodes) {
-    return h("section", { class: "lfx-prime-psheet__section" }, [
-      title ? h("h3", { class: "lfx-prime-psheet__head" }, title) : null,
-      ...nodes
-    ]);
-  }
-  function openProfileSheet({ returnFocus } = {}) {
-    closeProfileSheet({ restoreFocus: false });
-    const root6 = mountPoint(ID13, { className: "lfx-prime-psheet-overlay" });
-    const who = h("div", { class: "lfx-prime-psheet__who" });
-    const body = h("div", { class: "lfx-prime-psheet__body" });
-    const sheet = h("div", { class: "lfx-prime-psheet", role: "dialog", "aria-modal": "true", "aria-label": "Profil", tabindex: "-1" }, [
-      h("span", { class: "lfx-prime-psheet__grip", "aria-hidden": "true" }),
-      who,
-      body
-    ]);
-    root6.replaceChildren(sheet);
-    const c = { root: root6, sheet, returnFocus: returnFocus || null };
-    cur2 = c;
-    const close2 = (opts) => {
-      if (cur2 === c) closeProfileSheet(opts);
-    };
-    c.onKeydown = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        close2();
-      } else if (e.key === "Tab") {
-        const list = [...sheet.querySelectorAll(FOCUSABLE3)];
-        if (!list.length) {
-          e.preventDefault();
-          return;
-        }
-        const first2 = list[0];
-        const last = list[list.length - 1];
-        const active7 = document.activeElement;
-        if (!sheet.contains(active7)) {
-          e.preventDefault();
-          first2.focus();
-        } else if (e.shiftKey && active7 === first2) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && active7 === last) {
-          e.preventDefault();
-          first2.focus();
-        }
-      }
-    };
-    c.onHash = () => close2({ restoreFocus: false });
-    root6.addEventListener("click", (e) => {
-      if (e.target === root6) close2();
-    });
-    window.addEventListener("keydown", c.onKeydown, true);
-    window.addEventListener("hashchange", c.onHash);
-    if (typeof attachSwipeClose === "function") {
-      c.detachSwipe = attachSwipeClose(sheet, { onClose: () => close2(), backdrop: root6 });
-    }
-    document.documentElement.classList.add(OPEN_CLASS2);
-    sheet.focus({ preventScroll: true });
-    const mine = c;
-    (async () => {
-      const [chip, libs2, entries] = await Promise.all([
-        getUserChip().catch(() => ({ name: "", imageUrl: null })),
-        getLibraries().catch(() => []),
-        profileEntries({ theme: "prime", returnFocus }).catch(() => [])
-      ]);
-      if (cur2 !== mine) return;
-      const initial = (chip.name || "?").trim().charAt(0).toUpperCase() || "?";
-      who.replaceChildren(
-        h("span", { class: "lfx-prime-psheet__avatar", "aria-hidden": "true" }, chip.imageUrl ? h("img", { src: chip.imageUrl, alt: "", draggable: "false" }) : h("span", null, initial)),
-        h("span", { class: "lfx-prime-psheet__name" }, chip.name || "Profil")
-      );
-      const nav = [{ key: "new", label: "Neu & beliebt", href: "#/home?lfx=new" }];
-      const libNodes = (libs2 || []).map((l) => ({ key: `lib:${l.id}`, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href }));
-      body.replaceChildren(...[
-        section3(null, nav.map((it) => entryNode(it, close2))),
-        libNodes.length ? section3("Bibliotheken", libNodes.map((it) => entryNode(it, close2))) : null,
-        section3(null, entries.filter((it) => it && !it.hidden).map((it) => entryNode(it, close2)))
-      ].filter(Boolean));
-      const first2 = body.querySelector(FOCUSABLE3);
-      if (first2 && document.activeElement === sheet) first2.focus({ preventScroll: true });
-    })();
-    return { close: close2 };
   }
 
   // src/js/features/prime/header.js
-  var ID14 = "lfx-prime-header";
+  var ID13 = "lfx-prime-header";
   var HTML_CLASS = "lfx-prime-header-on";
   var MOBILE_CLASS = "lfx-prime-mobile";
   var PILLS_CLASS = "lfx-prime-header-pills";
@@ -16252,6 +16568,8 @@
     "/mypreferencessubtitles": "Untertitel",
     "/mypreferencescontrols": "Steuerung",
     "/mypreferencesquickconnect": "Quick Connect",
+    "/quickconnect": "Quick Connect",
+    "/metadata": "Metadaten-Manager",
     "/userprofile": "Profil",
     "/search": "Suche",
     "/queue": "Warteschlange"
@@ -16289,7 +16607,7 @@
     else window.location.hash = "#/home";
   }
   var isTitleRoute = (route) => Boolean(route && route.path === "/home" && route.params.get("lfx") === "title");
-  var state17 = {
+  var state18 = {
     title: false,
     mobile: false,
     kind: null,
@@ -16304,30 +16622,30 @@
     titleTimer: 0
   };
   function refreshTitle() {
-    if (!state17.el || !state17.mobile || !state17.route) return;
-    const t = state17.el.querySelector(".lfx-prime-header__title");
+    if (!state18.el || !state18.mobile || !state18.route) return;
+    const t = state18.el.querySelector(".lfx-prime-header__title");
     if (!t) return;
-    const next = mobileTitle(state17.route, state17.libs);
+    const next = mobileTitle(state18.route, state18.libs);
     if (t.textContent !== next) t.textContent = next;
   }
   function stopTitlePoll() {
-    if (state17.titleTimer) clearInterval(state17.titleTimer);
-    state17.titleTimer = 0;
+    if (state18.titleTimer) clearInterval(state18.titleTimer);
+    state18.titleTimer = 0;
   }
   function startTitlePoll() {
     stopTitlePoll();
-    if (!state17.mobile || state17.kind !== "sub") return;
+    if (!state18.mobile || state18.kind !== "sub") return;
     let n = 0;
-    state17.titleTimer = setInterval(() => {
+    state18.titleTimer = setInterval(() => {
       refreshTitle();
       n += 1;
-      if (n >= 24 || !state17.el) stopTitlePoll();
+      if (n >= 24 || !state18.el) stopTitlePoll();
     }, 250);
   }
   function applyActive7() {
-    if (!state17.el || !state17.route) return;
-    const key = activeKey3(state17.route);
-    for (const el4 of state17.el.querySelectorAll("[data-key]")) {
+    if (!state18.el || !state18.route) return;
+    const key = activeKey3(state18.route);
+    for (const el4 of state18.el.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -16335,9 +16653,9 @@
     }
   }
   function renderNav2() {
-    const nav = state17.el && state17.el.querySelector(".lfx-prime-header__nav");
+    const nav = state18.el && state18.el.querySelector(".lfx-prime-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems3(state17.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems3(state18.libs).map((it) => h("a", {
       class: "lfx-prime-header__link",
       href: it.href,
       dataset: { key: it.key }
@@ -16356,15 +16674,15 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state17.profileBusy) return;
-    state17.profileBusy = true;
+    if (state18.profileBusy) return;
+    state18.profileBusy = true;
     try {
-      state17.menus.close();
+      state18.menus.close();
       const items = await profileEntries({ theme: "prime", returnFocus: btn3 });
-      if (!state17.el || !btn3.isConnected) return;
+      if (!state18.el || !btn3.isConnected) return;
       openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
     } finally {
-      state17.profileBusy = false;
+      state18.profileBusy = false;
     }
   }
   function tvLink() {
@@ -16389,7 +16707,7 @@
       "aria-haspopup": "dialog"
     }, [icon3("search")]);
     searchBtn.addEventListener("click", () => {
-      state17.menus.close();
+      state18.menus.close();
       closeProfile2();
       if (isPrimeSearchOpen()) closePrimeSearch();
       else openPrimeSearch({ returnFocus: searchBtn });
@@ -16419,13 +16737,13 @@
     avatar.addEventListener("click", () => toggleProfile(avatar));
     const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, tvLink(), dsLink(), gridWrap, listLink, avatar]);
     const bar = h("div", { class: "lfx-prime-header__bar" }, [logo, nav, right]);
-    state17.el.replaceChildren(bar);
-    state17.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
+    state18.el.replaceChildren(bar);
+    state18.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
     return { avatar };
   }
   function buildMobile(route) {
     const kind2 = mobileKind(route);
-    state17.kind = kind2;
+    state18.kind = kind2;
     const avatar = h("button", {
       type: "button",
       class: "lfx-prime-header__avatar",
@@ -16434,7 +16752,7 @@
     });
     avatar.addEventListener("click", () => {
       closePrimeSearch({ restoreFocus: false });
-      openProfileSheet({ returnFocus: avatar });
+      openProfileSheet2({ returnFocus: avatar });
     });
     let left;
     if (kind2 === "home") {
@@ -16444,19 +16762,19 @@
       back.append(icon3("back"));
       back.addEventListener("click", goBack2);
       const tag = isTitleRoute(route) ? "div" : "h1";
-      state17.title = tag === "div";
-      left = [back, h(tag, { class: "lfx-prime-header__title" }, mobileTitle(route, state17.libs))];
+      state18.title = tag === "div";
+      left = [back, h(tag, { class: "lfx-prime-header__title" }, mobileTitle(route, state18.libs))];
     }
     const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [tvLink(), dsLink(), avatar])]);
     const kids = [bar];
     if (kind2 === "home") kids.push(h("nav", { class: "lfx-prime-header__pills", "aria-label": "Filme und Serien" }));
-    state17.el.replaceChildren(...kids);
+    state18.el.replaceChildren(...kids);
     return { avatar };
   }
   function renderPills2() {
-    const nav = state17.el && state17.el.querySelector(".lfx-prime-header__pills");
+    const nav = state18.el && state18.el.querySelector(".lfx-prime-header__pills");
     if (!nav) return;
-    const items = navItems3(state17.libs).filter((it) => it.key.startsWith("lib:"));
+    const items = navItems3(state18.libs).filter((it) => it.key.startsWith("lib:"));
     nav.replaceChildren(...items.map((it) => h("a", {
       class: "lfx-prime-header__pill",
       href: it.href,
@@ -16466,7 +16784,7 @@
     applyActive7();
   }
   async function loadFlyoutData() {
-    let libs2 = state17.libs;
+    let libs2 = state18.libs;
     let cols;
     try {
       cols = await getCollections();
@@ -16488,11 +16806,11 @@
   async function loadLibs2(seq4) {
     try {
       const libs2 = await getLibraries();
-      if (seq4 !== state17.seq || !state17.el) return;
-      state17.libs = libs2;
+      if (seq4 !== state18.seq || !state18.el) return;
+      state18.libs = libs2;
     } catch {
-      if (seq4 !== state17.seq || !state17.el) return;
-      state17.libs = [];
+      if (seq4 !== state18.seq || !state18.el) return;
+      state18.libs = [];
     }
     renderNav2();
     renderPills2();
@@ -16501,43 +16819,43 @@
   async function loadAvatar(seq4, avatar) {
     let chip = { name: "", imageUrl: null };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => seq4 === state17.seq && Boolean(state17.el) });
+      chip = await getUserChip({ retries: 20, isAlive: () => seq4 === state18.seq && Boolean(state18.el) });
     } catch {
     }
-    if (seq4 !== state17.seq || !state17.el) return;
+    if (seq4 !== state18.seq || !state18.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-prime-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function onScroll4() {
-    if (state17.raf) return;
-    state17.raf = requestAnimationFrame(() => {
-      state17.raf = 0;
+    if (state18.raf) return;
+    state18.raf = requestAnimationFrame(() => {
+      state18.raf = 0;
       applyScroll();
     });
   }
   function applyScroll() {
-    if (!state17.el || state17.mobile) return;
+    if (!state18.el || state18.mobile) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD2;
-    if (state17.el.classList.contains("is-scrolled") !== on) state17.el.classList.toggle("is-scrolled", on);
+    if (state18.el.classList.contains("is-scrolled") !== on) state18.el.classList.toggle("is-scrolled", on);
   }
   function syncHtmlClasses() {
     const cl2 = document.documentElement.classList;
-    cl2.toggle(MOBILE_CLASS, state17.mobile);
-    cl2.toggle(PILLS_CLASS, state17.mobile && state17.kind === "home");
+    cl2.toggle(MOBILE_CLASS, state18.mobile);
+    cl2.toggle(PILLS_CLASS, state18.mobile && state18.kind === "home");
   }
   function render8() {
-    const seq4 = ++state17.seq;
-    if (state17.menus) state17.menus.destroy();
-    state17.menus = null;
+    const seq4 = ++state18.seq;
+    if (state18.menus) state18.menus.destroy();
+    state18.menus = null;
     closeProfile2();
     closeProfileSheet({ restoreFocus: false });
-    state17.mobile = isMobile() && isNarrow();
-    state17.kind = null;
-    const parts = state17.mobile ? buildMobile(state17.route) : build8();
-    state17.el.className = `lfx-prime-header${state17.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state17.kind}` : ""}`;
+    state18.mobile = isMobile() && isNarrow();
+    state18.kind = null;
+    const parts = state18.mobile ? buildMobile(state18.route) : build8();
+    state18.el.className = `lfx-prime-header${state18.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state18.kind}` : ""}`;
     syncHtmlClasses();
     applyScroll();
     renderNav2();
@@ -16553,56 +16871,56 @@
       return isTheme("prime") && isModern() && !isTv() && isReady() && !EXCLUDED10.test(route.path);
     },
     mount(route) {
-      state17.route = route;
-      state17.el = mountPoint(ID14, { tag: "header", className: "lfx-prime-header" });
+      state18.route = route;
+      state18.el = mountPoint(ID13, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
-      state17.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
+      state18.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
       render8();
     },
     update(route) {
-      const changed = !state17.route || state17.route.hash !== route.hash;
-      state17.route = route;
-      if (!state17.el) return;
+      const changed = !state18.route || state18.route.hash !== route.hash;
+      state18.route = route;
+      if (!state18.el) return;
       const mobileNow = isMobile() && isNarrow();
-      if (mobileNow !== state17.mobile || mobileNow && (mobileKind(route) !== state17.kind || state17.kind === "sub" && isTitleRoute(route) !== state17.title)) {
+      if (mobileNow !== state18.mobile || mobileNow && (mobileKind(route) !== state18.kind || state18.kind === "sub" && isTitleRoute(route) !== state18.title)) {
         closePrimeSearch({ restoreFocus: false });
         render8();
         return;
       }
-      if (changed && state17.menus) state17.menus.close();
-      if (state17.mobile) {
+      if (changed && state18.menus) state18.menus.close();
+      if (state18.mobile) {
         refreshTitle();
         if (changed) startTitlePoll();
       }
       applyActive7();
     },
     unmount() {
-      state17.seq++;
+      state18.seq++;
       stopTitlePoll();
-      for (const fn of state17.cleanups.splice(0)) fn();
-      if (state17.raf) cancelAnimationFrame(state17.raf);
-      state17.raf = 0;
-      if (state17.menus) state17.menus.destroy();
-      state17.menus = null;
+      for (const fn of state18.cleanups.splice(0)) fn();
+      if (state18.raf) cancelAnimationFrame(state18.raf);
+      state18.raf = 0;
+      if (state18.menus) state18.menus.destroy();
+      state18.menus = null;
       closeProfile2();
       closePopover();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
-      unmountPoint(ID14);
+      unmountPoint(ID13);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
-      state17.el = null;
-      state17.libs = [];
-      state17.mobile = false;
-      state17.kind = null;
-      state17.profileBusy = false;
+      state18.el = null;
+      state18.libs = [];
+      state18.mobile = false;
+      state18.kind = null;
+      state18.profileBusy = false;
     }
   };
 
   // src/js/features/prime/footer.js
-  function buildMoreButton(onClick2) {
+  function buildMoreButton(onClick3) {
     const btn3 = h("button", { type: "button", class: "lfx-prime-more" }, "Mehr");
-    btn3.addEventListener("click", () => onClick2(btn3));
+    btn3.addEventListener("click", () => onClick3(btn3));
     return btn3;
   }
   function buildFooter() {
@@ -16908,14 +17226,14 @@
       const btn3 = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg8(ICON_PLAY4), label]);
       const bar = h("span", { class: "lfx-prime-hero__bar" });
       const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
-      const paint2 = (state24) => {
+      const paint2 = (state25) => {
         label.replaceChildren(...[
-          h("span", { class: "lfx-prime-hero__label1" }, state24.line1),
-          state24.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state24.line2) : null
+          h("span", { class: "lfx-prime-hero__label1" }, state25.line1),
+          state25.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state25.line2) : null
         ].filter(Boolean));
-        btn3.classList.toggle("is-two", Boolean(state24.line2));
-        progress.hidden = !(state24.progress > 0);
-        bar.style.width = `${Math.round(state24.progress)}%`;
+        btn3.classList.toggle("is-two", Boolean(state25.line2));
+        progress.hidden = !(state25.progress > 0);
+        bar.style.width = `${Math.round(state25.progress)}%`;
       };
       paint2(playLabel(item));
       if (item.Type === "Series") {
@@ -17523,8 +17841,8 @@
     const heroSlot = h("section", { id: "lfx-prime-hero", class: "lfx-prime-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-prime-rows" });
     const moreSlot = h("div", { class: "lfx-prime-moreslot" });
-    const root6 = h("div", { id: ROOT_ID15, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID15, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS14);
     current4 = route;
     builtMobile = isMobile() && isNarrow();
@@ -17613,12 +17931,12 @@
     if (extra) parts.push(h("span", null, extra));
     return h("div", { class: "lfx-prime-meta" }, parts);
   }
-  function roundButton3(mod, label, icon5, onClick2) {
+  function roundButton3(mod, label, icon5, onClick3) {
     const b = h("button", { type: "button", class: `lfx-prime-hc__round lfx-prime-hc__round--${mod}`, title: label, "aria-label": label });
     if (icon5) b.append(icon5);
     b.addEventListener("click", (e) => {
       e.stopPropagation();
-      onClick2(b);
+      onClick3(b);
     });
     return b;
   }
@@ -17632,12 +17950,12 @@
     const logo = !popup ? logoImage(item, { maxWidth: 400 }) : null;
     const label = h("span", { class: "lfx-prime-hc__label" });
     const play2 = h("button", { type: "button", class: "lfx-prime-hc__play" }, [svgIcon(ICON_PLAY4), label]);
-    const paintPlay2 = (state24) => {
+    const paintPlay2 = (state25) => {
       label.replaceChildren(...[
-        h("span", null, state24.line1),
-        state24.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state24.line2) : null
+        h("span", null, state25.line1),
+        state25.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state25.line2) : null
       ].filter(Boolean));
-      play2.classList.toggle("is-two", Boolean(state24.line2));
+      play2.classList.toggle("is-two", Boolean(state25.line2));
     };
     paintPlay2(playLabel(item));
     if (item.Type === "Series") {
@@ -18145,7 +18463,7 @@
     el4.innerHTML = markup;
     return el4;
   }
-  function circleButton2({ label, icon: icon5, mod = "", onClick: onClick2, hidden: hidden2 = false }) {
+  function circleButton2({ label, icon: icon5, mod = "", onClick: onClick3, hidden: hidden2 = false }) {
     const b = h("button", {
       type: "button",
       class: `lfx-pt__circle${mod ? ` lfx-pt__circle--${mod}` : ""}`,
@@ -18154,10 +18472,10 @@
       hidden: hidden2 || null
     });
     b.append(iconEl2(icon5));
-    if (onClick2) {
+    if (onClick3) {
       b.addEventListener("click", (e) => {
         e.stopPropagation();
-        onClick2(b, e);
+        onClick3(b, e);
       });
     }
     return b;
@@ -18245,7 +18563,7 @@
   var ON_CLASS15 = "lfx-prime-title-on";
   var TRAILER_DELAY_MS2 = 1200;
   var HEADER_H2 = 80;
-  var root3 = null;
+  var root4 = null;
   var session3 = null;
   var waitTimer7 = null;
   var isPlainRoute = (route) => {
@@ -18613,7 +18931,7 @@
     teardownSession();
     const s = { id, dead: false, cleanups: [], video: null, trailerSrc: null };
     session3 = s;
-    root3.replaceChildren(buildSkeleton2());
+    root4.replaceChildren(buildSkeleton2());
     try {
       window.scrollTo(0, 0);
     } catch {
@@ -18629,7 +18947,7 @@
       main = await loadItem(r.targetId);
       if (!main) throw new Error("Titel nicht gefunden");
     } catch {
-      if (!s.dead) root3.replaceChildren(buildError2("Der Titel konnte nicht geladen werden."));
+      if (!s.dead) root4.replaceChildren(buildError2("Der Titel konnte nicht geladen werden."));
       return;
     }
     if (s.dead) return;
@@ -18643,7 +18961,7 @@
     defs.push({ id: "details", label: "Details" });
     const stage = buildStage(s, main);
     const tabs = buildTabs(s, defs);
-    root3.replaceChildren(stage, tabs.sentinel, tabs.bar, tabs.panels);
+    root4.replaceChildren(stage, tabs.sentinel, tabs.bar, tabs.panels);
     const tilesEl = h("div", { class: "lfx-pt__tiles" }, detailTiles(main).map(buildTile));
     tabs.panel("details").append(tilesEl);
     const tasks = [];
@@ -18735,8 +19053,8 @@
     clearTimeout(waitTimer7);
     waitTimer7 = null;
     teardownSession();
-    if (root3) root3.remove();
-    root3 = null;
+    if (root4) root4.remove();
+    root4 = null;
     document.getElementById(ROOT_ID16)?.remove();
     document.documentElement.classList.remove(ON_CLASS15);
   }
@@ -18749,15 +19067,15 @@
     const r = isPlainRoute(route);
     if (!r) return;
     clearTimeout(waitTimer7);
-    if (root3 && root3.isConnected && session3 && session3.id === r.id) return;
+    if (root4 && root4.isConnected && session3 && session3.id === r.id) return;
     const run = (tab3) => {
-      if (!root3 || !root3.isConnected || !tab3.contains(root3)) {
+      if (!root4 || !root4.isConnected || !tab3.contains(root4)) {
         document.getElementById(ROOT_ID16)?.remove();
-        root3 = h("div", { id: ROOT_ID16, class: "lfx-pt" });
-        tab3.prepend(root3);
+        root4 = h("div", { id: ROOT_ID16, class: "lfx-pt" });
+        tab3.prepend(root4);
       }
       document.documentElement.classList.add(ON_CLASS15);
-      pullToTop(root3);
+      pullToTop(root4);
       load3(r.id);
     };
     const tab2 = findHomeTab9();
@@ -18782,7 +19100,7 @@
   };
 
   // src/js/features/prime/tabbar.js
-  var ID15 = "lfx-prime-tabbar";
+  var ID14 = "lfx-prime-tabbar";
   var HTML_CLASS2 = "lfx-prime-tabbar-on";
   var EXCLUDED11 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var HIDE_CLASSES = ["lfx-sheet-open", "lfx-themepicker-open", "lfx-popover-open", "lfx-modal-open", "lfx-prime-profilesheet-open"];
@@ -18818,14 +19136,14 @@
     if (key === "list") return "list";
     return null;
   }
-  var state18 = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
+  var state19 = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
   function scheduleApply() {
-    if (state18.raf) return;
+    if (state19.raf) return;
     const run = () => {
-      state18.raf = 0;
+      state19.raf = 0;
       applyState();
     };
-    state18.raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(run) : setTimeout(run, 0);
+    state19.raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(run) : setTimeout(run, 0);
   }
   function inputFocused() {
     const a = document.activeElement;
@@ -18839,12 +19157,12 @@
     return inputFocused();
   }
   function applyState() {
-    const el4 = state18.el;
+    const el4 = state19.el;
     if (!el4) return;
     const hide2 = shouldHide();
     if (el4.classList.contains("is-hidden") !== hide2) el4.classList.toggle("is-hidden", hide2);
     el4.toggleAttribute("inert", hide2);
-    const active7 = state18.route ? activeTab2(state18.route, isPrimeSearchOpen()) : null;
+    const active7 = state19.route ? activeTab2(state19.route, isPrimeSearchOpen()) : null;
     for (const t of el4.querySelectorAll("[data-tab]")) {
       const on = t.dataset.tab === active7;
       t.classList.toggle("is-active", on);
@@ -18879,8 +19197,8 @@
       else openPrimeSearch({ returnFocus: search });
       applyState();
     });
-    state18.el.replaceChildren(home, list, search);
-    state18.el.setAttribute("aria-label", "Hauptnavigation");
+    state19.el.replaceChildren(home, list, search);
+    state19.el.setAttribute("aria-label", "Hauptnavigation");
   }
   var tabbar_default2 = {
     name: "prime-tabbar",
@@ -18888,48 +19206,48 @@
       return isTheme("prime") && isModern() && !isTv() && isMobile() && isNarrow() && isReady() && !EXCLUDED11.test(route.path);
     },
     mount(route) {
-      state18.route = route;
-      state18.el = mountPoint(ID15, { tag: "nav", className: "lfx-prime-tabbar" });
+      state19.route = route;
+      state19.el = mountPoint(ID14, { tag: "nav", className: "lfx-prime-tabbar" });
       build9();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
-        state18.observer = new MutationObserver(applyState);
-        state18.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        state18.observer.observe(document.body, { childList: true });
-        state18.bodyObserver = new MutationObserver((records) => {
-          if (state18.el && records.every((r) => state18.el.contains(r.target))) return;
+        state19.observer = new MutationObserver(applyState);
+        state19.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        state19.observer.observe(document.body, { childList: true });
+        state19.bodyObserver = new MutationObserver((records) => {
+          if (state19.el && records.every((r) => state19.el.contains(r.target))) return;
           scheduleApply();
         });
-        state18.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "aria-hidden", "hidden", "open"] });
+        state19.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "aria-hidden", "hidden", "open"] });
       }
       const onFocus = () => applyState();
       document.addEventListener("focusin", onFocus);
       document.addEventListener("focusout", onFocus);
-      state18.cleanups.push(() => {
+      state19.cleanups.push(() => {
         document.removeEventListener("focusin", onFocus);
         document.removeEventListener("focusout", onFocus);
       });
       applyState();
     },
     update(route) {
-      state18.route = route;
+      state19.route = route;
       applyState();
     },
     unmount() {
-      if (state18.observer) state18.observer.disconnect();
-      state18.observer = null;
-      if (state18.bodyObserver) state18.bodyObserver.disconnect();
-      state18.bodyObserver = null;
-      if (state18.raf) {
-        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state18.raf);
-        clearTimeout(state18.raf);
-        state18.raf = 0;
+      if (state19.observer) state19.observer.disconnect();
+      state19.observer = null;
+      if (state19.bodyObserver) state19.bodyObserver.disconnect();
+      state19.bodyObserver = null;
+      if (state19.raf) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state19.raf);
+        clearTimeout(state19.raf);
+        state19.raf = 0;
       }
-      for (const fn of state18.cleanups.splice(0)) fn();
-      unmountPoint(ID15);
+      for (const fn of state19.cleanups.splice(0)) fn();
+      unmountPoint(ID14);
       document.documentElement.classList.remove(HTML_CLASS2);
-      state18.el = null;
-      state18.route = null;
+      state19.el = null;
+      state19.route = null;
     }
   };
 
@@ -18979,7 +19297,7 @@
   var NO_CRT_CLASS = "lfx-retro-nocrt";
 
   // src/js/features/retro/title-mount.js
-  var root4 = () => document.documentElement;
+  var root5 = () => document.documentElement;
   var PAGE_CLASS = "lfx-retro-page-on";
   function findHomeTab10() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
@@ -19004,7 +19322,7 @@
     };
   }
   function setPageOn2(cls, on) {
-    const cl2 = root4().classList;
+    const cl2 = root5().classList;
     cl2.toggle(PAGE_CLASS, on);
     cl2.toggle(cls, on);
   }
@@ -19156,11 +19474,11 @@
   }
 
   // src/js/features/retro/header.js
-  var ID16 = "lfx-retro-header";
+  var ID15 = "lfx-retro-header";
   var HTML_CLASS3 = "lfx-retro-header-on";
   var SCROLL_THRESHOLD3 = 10;
   var HOVER_GAP_MS = 140;
-  var state19 = {
+  var state20 = {
     el: null,
     ds: null,
     route: null,
@@ -19173,9 +19491,9 @@
     cleanups: []
   };
   function applyActive8() {
-    if (!state19.el || !state19.route) return;
-    const key = activeKey4(state19.route);
-    for (const el4 of state19.el.querySelectorAll("[data-key]")) {
+    if (!state20.el || !state20.route) return;
+    const key = activeKey4(state20.route);
+    for (const el4 of state20.el.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -19183,9 +19501,9 @@
     }
   }
   function renderNav3() {
-    const nav = state19.el && state19.el.querySelector(".lfx-retro-header__nav");
+    const nav = state20.el && state20.el.querySelector(".lfx-retro-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems4(state19.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems4(state20.libs).map((it) => h("a", {
       class: "lfx-retro-header__link",
       href: it.href,
       dataset: { key: it.key }
@@ -19193,7 +19511,7 @@
     applyActive8();
   }
   function closeDsPopover() {
-    if (state19.ds && state19.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
+    if (state20.ds && state20.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
   }
   function profileIsOpen2() {
     const el4 = document.getElementById("lfx-popover");
@@ -19204,14 +19522,14 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state19.busy) return;
-    state19.busy = true;
+    if (state20.busy) return;
+    state20.busy = true;
     try {
       const items = await profileEntries({ theme: "retro", returnFocus: btn3 });
-      if (!state19.el || !btn3.isConnected) return;
+      if (!state20.el || !btn3.isConnected) return;
       openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-retro-profile" });
     } finally {
-      state19.busy = false;
+      state20.busy = false;
     }
   }
   function build10() {
@@ -19229,13 +19547,13 @@
     avatar.addEventListener("click", () => toggleProfile2(avatar));
     const ds = createDsButton();
     const tv = createTvButton();
-    state19.ds = ds;
+    state20.ds = ds;
     const right = h("div", { class: "lfx-retro-header__right" }, [clock.el, ds, tv, sound.el, crt.el, avatar]);
-    state19.el.replaceChildren(h("div", { class: "lfx-retro-header__bar" }, [logo, nav, right]));
-    state19.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
+    state20.el.replaceChildren(h("div", { class: "lfx-retro-header__bar" }, [logo, nav, right]));
+    state20.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
     nav.addEventListener("click", (e) => {
       if (e.target.closest && e.target.closest("a")) {
-        state19.clickAt = Date.now();
+        state20.clickAt = Date.now();
         emitFx("nav");
       }
     });
@@ -19243,8 +19561,8 @@
       if (e.pointerType && e.pointerType !== "mouse") return;
       if (!e.target.closest || !e.target.closest("a")) return;
       const now = Date.now();
-      if (now - state19.lastHover < HOVER_GAP_MS) return;
-      state19.lastHover = now;
+      if (now - state20.lastHover < HOVER_GAP_MS) return;
+      state20.lastHover = now;
       emitFx("hover");
     });
     return { avatar };
@@ -19256,32 +19574,32 @@
     } catch {
       libs2 = [];
     }
-    if (seq4 !== state19.seq || !state19.el) return;
-    state19.libs = libs2;
+    if (seq4 !== state20.seq || !state20.el) return;
+    state20.libs = libs2;
     renderNav3();
   }
   async function loadAvatar2(seq4, avatar) {
     let chip = { name: "", imageUrl: null };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => seq4 === state19.seq && Boolean(state19.el) });
+      chip = await getUserChip({ retries: 20, isAlive: () => seq4 === state20.seq && Boolean(state20.el) });
     } catch {
     }
-    if (seq4 !== state19.seq || !state19.el) return;
+    if (seq4 !== state20.seq || !state20.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-retro-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function applyScroll2() {
-    if (!state19.el) return;
+    if (!state20.el) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD3;
-    if (state19.el.classList.contains("is-scrolled") !== on) state19.el.classList.toggle("is-scrolled", on);
+    if (state20.el.classList.contains("is-scrolled") !== on) state20.el.classList.toggle("is-scrolled", on);
   }
   function onScroll6() {
-    if (state19.raf) return;
-    state19.raf = requestAnimationFrame(() => {
-      state19.raf = 0;
+    if (state20.raf) return;
+    state20.raf = requestAnimationFrame(() => {
+      state20.raf = 0;
       applyScroll2();
     });
   }
@@ -19291,42 +19609,42 @@
       return isTheme("retro") && isModern() && !isTv() && !isPhone2() && isReady() && !EXCLUDED12.test(route.path);
     },
     mount(route) {
-      const seq4 = ++state19.seq;
-      state19.route = route;
-      state19.el = mountPoint(ID16, { tag: "header", className: "lfx-retro-header" });
+      const seq4 = ++state20.seq;
+      state20.route = route;
+      state20.el = mountPoint(ID15, { tag: "header", className: "lfx-retro-header" });
       const { avatar } = build10();
       document.documentElement.classList.add(HTML_CLASS3);
       window.addEventListener("scroll", onScroll6, { passive: true });
-      state19.cleanups.push(() => window.removeEventListener("scroll", onScroll6));
+      state20.cleanups.push(() => window.removeEventListener("scroll", onScroll6));
       renderNav3();
       applyScroll2();
       loadLibs3(seq4);
       loadAvatar2(seq4, avatar);
     },
     update(route) {
-      const changed = !state19.route || state19.route.hash !== route.hash;
-      state19.route = route;
-      if (!state19.el) return;
+      const changed = !state20.route || state20.route.hash !== route.hash;
+      state20.route = route;
+      if (!state20.el) return;
       if (changed && profileIsOpen2()) closePopover();
       if (changed) closeDsPopover();
-      if (changed && state19.clickAt && Date.now() - state19.clickAt < 1500) scrollTop2();
-      state19.clickAt = 0;
+      if (changed && state20.clickAt && Date.now() - state20.clickAt < 1500) scrollTop2();
+      state20.clickAt = 0;
       applyActive8();
     },
     unmount() {
-      state19.seq++;
-      for (const fn of state19.cleanups.splice(0)) fn();
-      if (state19.raf) cancelAnimationFrame(state19.raf);
-      state19.raf = 0;
+      state20.seq++;
+      for (const fn of state20.cleanups.splice(0)) fn();
+      if (state20.raf) cancelAnimationFrame(state20.raf);
+      state20.raf = 0;
       if (profileIsOpen2()) closePopover();
       closeDsPopover();
-      unmountPoint(ID16);
+      unmountPoint(ID15);
       document.documentElement.classList.remove(HTML_CLASS3);
-      state19.el = null;
-      state19.ds = null;
-      state19.route = null;
-      state19.libs = [];
-      state19.busy = false;
+      state20.el = null;
+      state20.ds = null;
+      state20.route = null;
+      state20.libs = [];
+      state20.busy = false;
     }
   };
 
@@ -19349,7 +19667,7 @@
     const k = activeKey4(route);
     if (k === "home" || k === "search" || k === "new" || k === "list") return k;
     if (k && k.startsWith("lib:")) return "more";
-    if (/^\/(mypreferences|usermenu)/.test(route.path)) return "more";
+    if (/^\/(mypreferences|usermenu|userprofile|quickconnect|metadata)/.test(route.path)) return "more";
     return null;
   }
   var isVideoHash2 = (hash2) => /^#!?[/]video(?:[/?]|$)/.test(String(hash2 || ""));
@@ -19366,7 +19684,13 @@
         goFn(href);
       } });
     }
-    for (const p of Array.isArray(profile2) ? profile2 : []) {
+    const prof2 = Array.isArray(profile2) ? profile2 : [];
+    if (entries.length && prof2.length && !prof2[0].separator) entries.push({ key: "sep", separator: true });
+    for (const p of prof2) {
+      if (p.separator) {
+        entries.push({ key: "sep", separator: true });
+        continue;
+      }
       if (p.switch && typeof p.onToggle === "function") {
         entries.push({
           key: p.key,
@@ -19388,12 +19712,13 @@
         p.onClick();
       } });
     }
+    if (entries.length && !entries[entries.length - 1].separator) entries.push({ key: "sep", separator: true });
     for (const pref of ["sound", "crt"]) {
       entries.push({ key: `pref-${pref}`, label: PREF_LABEL[pref], pref, onClick: () => toggle(pref) });
     }
     return entries;
   }
-  var state20 = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clickAt: 0, clock: null, cleanups: [] };
+  var state21 = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clickAt: 0, clock: null, cleanups: [] };
   function paintToggle(btn3, pref) {
     const on = getPref(pref);
     btn3.dataset.pref = pref;
@@ -19405,24 +19730,24 @@
     btn3.textContent = switchText(label, on);
   }
   function syncSheetToggles() {
-    const c = state20.sheet;
+    const c = state21.sheet;
     if (!c || !isCurrent(c) || !c.list) return;
     for (const b of c.list.querySelectorAll("[data-pref]")) paintToggle(b, b.dataset.pref);
   }
   function applyActive9() {
-    if (!state20.root) return;
-    const sheetOpen = Boolean(state20.sheet && isCurrent(state20.sheet));
-    const key = sheetOpen ? "more" : tabKey2(state20.route);
-    if (state20.top) {
-      const tv = state20.top.querySelector('[data-key="tv"]');
-      const on = isTvModeRoute(state20.route);
+    if (!state21.root) return;
+    const sheetOpen = Boolean(state21.sheet && isCurrent(state21.sheet));
+    const key = sheetOpen ? "more" : tabKey2(state21.route);
+    if (state21.top) {
+      const tv = state21.top.querySelector('[data-key="tv"]');
+      const on = isTvModeRoute(state21.route);
       if (tv) {
         tv.classList.toggle("is-active", on);
         if (on) tv.setAttribute("aria-current", "page");
         else tv.removeAttribute("aria-current");
       }
     }
-    for (const el4 of state20.root.querySelectorAll("[data-key]")) {
+    for (const el4 of state21.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -19430,7 +19755,7 @@
     }
   }
   function releaseOffs() {
-    for (const off of state20.offs.splice(0)) {
+    for (const off of state21.offs.splice(0)) {
       try {
         off();
       } catch {
@@ -19438,23 +19763,23 @@
     }
   }
   function closeDsPopover2() {
-    if (state20.ds && state20.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
+    if (state21.ds && state21.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
   }
   function closeMore() {
-    state20.seq++;
+    state21.seq++;
     releaseOffs();
-    const c = state20.sheet;
-    state20.sheet = null;
+    const c = state21.sheet;
+    state21.sheet = null;
     if (c && isCurrent(c)) closeChooser();
     applyActive9();
   }
   async function openMore() {
-    if (state20.sheet && isCurrent(state20.sheet)) {
+    if (state21.sheet && isCurrent(state21.sheet)) {
       closeMore();
       return;
     }
-    const seq4 = ++state20.seq;
-    const anchor = state20.moreBtn;
+    const seq4 = ++state21.seq;
+    const anchor = state21.moreBtn;
     let libs2 = [];
     let profile2 = [];
     try {
@@ -19465,11 +19790,11 @@
       profile2 = await profileEntries({ theme: "retro", returnFocus: anchor });
     } catch {
     }
-    if (seq4 !== state20.seq || !state20.root) return;
+    if (seq4 !== state21.seq || !state21.root) return;
     emitFx("open");
     const c = openSheet(anchor, "Mehr");
     c.sheet.classList.add("lfx-retro-sheet");
-    state20.sheet = c;
+    state21.sheet = c;
     releaseOffs();
     const entries = moreEntries(libs2, profile2, {
       go: go2,
@@ -19481,7 +19806,7 @@
     });
     renderSheet(c, "Mehr", entries);
     const buttons = c.list ? c.list.querySelectorAll(".lfx-sheet__item") : [];
-    entries.forEach((e, i) => {
+    entries.filter((e) => !e.separator).forEach((e, i) => {
       const b = buttons[i];
       if (!b) return;
       if (e.stats) b.classList.add("is-stats");
@@ -19494,7 +19819,7 @@
           const off = sw.watch((on) => {
             if (b.isConnected) paintSwitch(b, sw.label, Boolean(on));
           });
-          if (typeof off === "function") state20.offs.push(off);
+          if (typeof off === "function") state21.offs.push(off);
         }
       }
     });
@@ -19511,11 +19836,11 @@
   async function fillTopbar() {
     let chip = { name: "" };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => Boolean(state20.top) });
+      chip = await getUserChip({ retries: 20, isAlive: () => Boolean(state21.top) });
     } catch {
     }
-    if (!state20.top || !chip.name) return;
-    const who = state20.top.querySelector(".lfx-retro-topbar__user");
+    if (!state21.top || !chip.name) return;
+    const who = state21.top.querySelector(".lfx-retro-topbar__user");
     if (who) who.textContent = chip.name;
   }
   var retroTabbar = {
@@ -19524,22 +19849,22 @@
       return isTheme("retro") && isModern() && !isTv() && isPhone2() && isReady() && !EXCLUDED12.test(route.path);
     },
     mount(route) {
-      state20.seq++;
-      state20.route = route;
+      state21.seq++;
+      state21.route = route;
       const top = mountPoint(TOP_ID, { tag: "header", className: "lfx-retro-topbar" });
-      state20.clock = createClock();
+      state21.clock = createClock();
       const ds = createDsButton("lfx-retro-topbar__ds");
       top.replaceChildren(h("div", { class: "lfx-retro-topbar__bar" }, [
         createLogo("lfx-retro-topbar__logo"),
         h("span", { class: "lfx-retro-topbar__user", "aria-hidden": "true" }),
-        state20.clock.el,
+        state21.clock.el,
         ds,
         createTvButton("lfx-retro-topbar__tv")
       ]));
-      state20.ds = ds;
-      state20.top = top;
-      const root6 = mountPoint(ROOT_ID17, { tag: "nav", className: "lfx-retro-tabbar" });
-      root6.setAttribute("aria-label", "Hauptnavigation");
+      state21.ds = ds;
+      state21.top = top;
+      const root7 = mountPoint(ROOT_ID17, { tag: "nav", className: "lfx-retro-tabbar" });
+      root7.setAttribute("aria-label", "Hauptnavigation");
       const more = h("button", {
         type: "button",
         class: "lfx-retro-fkey",
@@ -19548,15 +19873,15 @@
         dataset: { key: "more" }
       }, [h("span", { class: "lfx-retro-fkey__n", "aria-hidden": "true" }, "F5"), h("span", { class: "lfx-retro-fkey__l", "aria-hidden": "true" }, "MEHR")]);
       more.addEventListener("click", openMore);
-      root6.replaceChildren(...KEYS.map(fkey), more);
-      root6.addEventListener("click", (e) => {
+      root7.replaceChildren(...KEYS.map(fkey), more);
+      root7.addEventListener("click", (e) => {
         if (e.target.closest && e.target.closest("a")) {
-          state20.clickAt = Date.now();
+          state21.clickAt = Date.now();
           emitFx("nav");
         }
       });
-      state20.root = root6;
-      state20.moreBtn = more;
+      state21.root = root7;
+      state21.moreBtn = more;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
         if (e.target && e.target.matches && e.target.matches(TEXT_INPUT2)) cl2.add(KB_CLASS2);
@@ -19568,7 +19893,7 @@
       document.addEventListener("focusout", onFocusOut);
       window.addEventListener("hashchange", onHash2);
       document.addEventListener(PREFS_EVENT, onPrefs);
-      state20.cleanups.push(() => {
+      state21.cleanups.push(() => {
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("focusout", onFocusOut);
         window.removeEventListener("hashchange", onHash2);
@@ -19581,30 +19906,30 @@
       fillTopbar();
     },
     update(route) {
-      const changed = !state20.route || state20.route.hash !== route.hash;
-      state20.route = route;
+      const changed = !state21.route || state21.route.hash !== route.hash;
+      state21.route = route;
       if (changed) {
         closeMore();
         closeDsPopover2();
       }
-      if (changed && state20.clickAt && Date.now() - state20.clickAt < 1500) scrollTop2();
-      state20.clickAt = 0;
+      if (changed && state21.clickAt && Date.now() - state21.clickAt < 1500) scrollTop2();
+      state21.clickAt = 0;
       applyActive9();
     },
     unmount() {
       closeMore();
       closeDsPopover2();
-      state20.ds = null;
-      for (const fn of state20.cleanups.splice(0)) fn();
-      if (state20.clock) state20.clock.destroy();
-      state20.clock = null;
+      state21.ds = null;
+      for (const fn of state21.cleanups.splice(0)) fn();
+      if (state21.clock) state21.clock.destroy();
+      state21.clock = null;
       unmountPoint(ROOT_ID17);
       unmountPoint(TOP_ID);
       document.documentElement.classList.remove(ON_CLASS16, MOBILE_CLASS2);
-      state20.root = null;
-      state20.top = null;
-      state20.moreBtn = null;
-      state20.route = null;
+      state21.root = null;
+      state21.top = null;
+      state21.moreBtn = null;
+      state21.route = null;
     }
   };
   var tabbar_default3 = retroTabbar;
@@ -20229,8 +20554,8 @@
     const heroSlot = h("section", { id: "lfx-retro-hero", class: "lfx-retro-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-retro-rows" });
     const moreSlot = h("div", { class: "lfx-retro-moreslot" });
-    const root6 = h("div", { id: ROOT_ID18, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID18, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS17);
     current5 = route;
     builtPhone = isPhone2();
@@ -20520,17 +20845,17 @@
   // src/js/features/retro/title.js
   var ROOT_ID19 = "lfx-retro-title";
   var ON_CLASS18 = "lfx-retro-title-on";
-  var state21 = null;
+  var state22 = null;
   var gen5 = 0;
   var routeId2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "title" ? r.id : null;
   };
-  var stalenessOf2 = (g) => () => !state21 || state21.g !== g;
+  var stalenessOf2 = (g) => () => !state22 || state22.g !== g;
   function dispose4() {
     gen5 += 1;
-    const s = state21;
-    state21 = null;
+    const s = state22;
+    state22 = null;
     closeTrailer2();
     try {
       closePopover();
@@ -20572,12 +20897,12 @@
       h("a", { class: "lfx-retro-btn", href: "#/home" }, "Zur Startseite")
     ]);
   }
-  function btn2(mod, label, onClick2) {
+  function btn2(mod, label, onClick3) {
     const b = h("button", { type: "button", class: `lfx-retro-btn lfx-rt__btn lfx-rt__btn--${mod}` }, label);
     b.addEventListener("click", (e) => {
       e.preventDefault();
       emitFx("click");
-      onClick2(b);
+      onClick3(b);
     });
     return b;
   }
@@ -20620,8 +20945,8 @@
   }
   async function load4(g) {
     const stale = stalenessOf2(g);
-    const s = state21;
-    const root6 = s.root;
+    const s = state22;
+    const root7 = s.root;
     let sel;
     let main;
     try {
@@ -20637,9 +20962,9 @@
     } catch (e) {
       if (stale()) return;
       emitFx("error");
-      root6.replaceChildren(errorBox2(e && e.message ? "DER SERVER HAT NICHT GEANTWORTET." : ""));
-      root6.classList.add("is-error");
-      root6.classList.remove("is-loading");
+      root7.replaceChildren(errorBox2(e && e.message ? "DER SERVER HAT NICHT GEANTWORTET." : ""));
+      root7.classList.add("is-error");
+      root7.classList.remove("is-loading");
       return;
     }
     if (stale()) return;
@@ -20763,8 +21088,8 @@
       shelfRow
     ]);
     content2.append(shelf);
-    root6.classList.remove("is-loading");
-    root6.replaceChildren(backdrop, content2);
+    root7.classList.remove("is-loading");
+    root7.replaceChildren(backdrop, content2);
     paintPlay2();
     emitFx("open");
     if (typed) {
@@ -20885,19 +21210,19 @@
   function begin4(id, { keepScroll = false } = {}) {
     dispose4();
     const g = gen5;
-    state21 = { g, id, root: null, cleanups: [], cancelWait: null };
-    const s = state21;
+    state22 = { g, id, root: null, cleanups: [], cancelWait: null };
+    const s = state22;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state21 !== s) return;
-      const root6 = h("div", { id: ROOT_ID19, class: "lfx-retro-page lfx-rt is-loading", "aria-busy": "true" }, [
+      if (state22 !== s) return;
+      const root7 = h("div", { id: ROOT_ID19, class: "lfx-retro-page lfx-rt is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-rt__boot lfx-retro-caret" }, "LADE KASSETTE")
       ]);
-      s.root = root6;
-      tab2.prepend(root6);
+      s.root = root7;
+      tab2.prepend(root7);
       setPageOn2(ON_CLASS18, true);
       if (!keepScroll) scrollTop2();
       load4(g).then(() => {
-        if (state21 === s) root6.removeAttribute("aria-busy");
+        if (state22 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] retro-title", e));
     });
   }
@@ -20911,7 +21236,7 @@
     update(route) {
       const id = routeId2(route);
       if (!id) return;
-      if (state21 && state21.id === id && state21.root && state21.root.isConnected) return;
+      if (state22 && state22.id === id && state22.root && state22.root.isConnected) return;
       begin4(id);
     },
     unmount: dispose4
@@ -20922,15 +21247,15 @@
   var ON_CLASS19 = "lfx-retro-search-on";
   var DEBOUNCE_MS3 = 300;
   var MIN_LEN4 = 2;
-  var state22 = null;
+  var state23 = null;
   var asItems10 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   var routeQ2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "search" ? r.q || "" : null;
   };
   function dispose5() {
-    const s = state22;
-    state22 = null;
+    const s = state23;
+    state23 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       clearTimeout(s.timer);
@@ -20967,7 +21292,7 @@
     }
   }
   async function renderStart(s, seq4) {
-    const stale = () => state22 !== s || s.seq !== seq4;
+    const stale = () => state23 !== s || s.seq !== seq4;
     s.results.replaceChildren(h("p", { class: "lfx-rs__hint lfx-retro-caret" }, "BEREIT"));
     s.count.textContent = "";
     const [lib, genres, colls, latest] = await Promise.all([
@@ -21015,7 +21340,7 @@
     s.abort = ctl;
     s.root.setAttribute("aria-busy", "true");
     s.count.textContent = "SUCHE L\xC4UFT\u2026";
-    const stale = () => state22 !== s || s.seq !== seq4;
+    const stale = () => state23 !== s || s.seq !== seq4;
     try {
       const res = await searchItems(term, { signal: ctl.signal });
       if (stale()) return;
@@ -21065,13 +21390,13 @@
     ]);
     const count = h("p", { class: "lfx-rs__count", "aria-live": "polite" });
     const results = h("div", { class: "lfx-rs__results" });
-    const root6 = h("div", { id: ROOT_ID20, class: "lfx-retro-page lfx-rs", role: "search" }, [
+    const root7 = h("div", { id: ROOT_ID20, class: "lfx-retro-page lfx-rs", role: "search" }, [
       h("p", { class: "lfx-rs__banner", "aria-hidden": "true" }, "LENZ//84 RECHERCHE-TERMINAL  \xB7  ENTER = SUCHEN"),
       cmd,
       count,
       results
     ]);
-    Object.assign(s, { root: root6, input, results, count });
+    Object.assign(s, { root: root7, input, results, count });
     const placeCaret = () => {
       const pos = typeof input.selectionStart === "number" ? input.selectionStart : input.value.length;
       cmd.style.setProperty("--rs-pos", String(pos));
@@ -21082,7 +21407,7 @@
       clear.hidden = !input.value;
       placeCaret();
     };
-    tab2.prepend(root6);
+    tab2.prepend(root7);
     setPageOn2(ON_CLASS19, true);
     const writeHash = (term) => {
       try {
@@ -21161,9 +21486,9 @@
       syncUi: () => {
       }
     };
-    state22 = s;
+    state23 = s;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state22 === s) build11(tab2, s, q);
+      if (state23 === s) build11(tab2, s, q);
     });
   }
   var search_default2 = {
@@ -21175,21 +21500,21 @@
     update(route) {
       const q = routeQ2(route);
       if (q == null) return;
-      if (!state22 || !state22.root || !state22.root.isConnected) {
+      if (!state23 || !state23.root || !state23.root.isConnected) {
         begin5(q);
         return;
       }
-      if (q.trim() !== (state22.term || "")) {
-        state22.input.value = q;
-        state22.input.setSelectionRange(q.length, q.length);
-        clearTimeout(state22.timer);
-        runSearch2(state22, q.trim());
+      if (q.trim() !== (state23.term || "")) {
+        state23.input.value = q;
+        state23.input.setSelectionRange(q.length, q.length);
+        clearTimeout(state23.timer);
+        runSearch2(state23, q.trim());
       }
       try {
-        state22.input.focus({ preventScroll: true });
+        state23.input.focus({ preventScroll: true });
       } catch {
       }
-      state22.syncUi();
+      state23.syncUi();
     },
     unmount: dispose5
   };
@@ -21204,7 +21529,7 @@
     date: { label: "DATUM", by: "DateCreated", order: "Descending" },
     rating: { label: "WERTUNG", by: "CommunityRating,SortName", order: "Descending" }
   };
-  var state23 = null;
+  var state24 = null;
   var routeOf3 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "browse" && r.lib ? { lib: r.lib, genre: r.genre } : null;
@@ -21229,8 +21554,8 @@
     }
   }
   function dispose6() {
-    const s = state23;
-    state23 = null;
+    const s = state24;
+    state24 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       for (const fn of s.cleanups.splice(0)) {
@@ -21302,12 +21627,12 @@
     loadMore2(s);
   }
   async function loadMore2(s) {
-    if (state23 !== s || s.loading || s.done) return;
+    if (state24 !== s || s.loading || s.done) return;
     const seq4 = s.seq;
     s.loading = true;
     s.root.setAttribute("aria-busy", "true");
     paintHead(s);
-    const stale = () => state23 !== s || s.seq !== seq4;
+    const stale = () => state24 !== s || s.seq !== seq4;
     const sort = SORTS4[s.sort] || SORTS4.name;
     try {
       const res = await getItems({
@@ -21360,7 +21685,7 @@
     paintHead(s);
   }
   async function build12(tab2, s) {
-    const stale = () => state23 !== s;
+    const stale = () => state24 !== s;
     let lib = null;
     try {
       lib = (await getLibraries()).find((l) => l.id === s.libId) || null;
@@ -21371,11 +21696,11 @@
     s.libName = lib ? lib.name : "Bibliothek";
     const path = h("h1", { class: "lfx-rb__path lfx-retro-glow--strong" });
     const count = h("p", { class: "lfx-rb__count", "aria-live": "polite" });
-    const optBtn = (attrs, label, onClick2) => {
+    const optBtn = (attrs, label, onClick3) => {
       const b = h("button", { type: "button", class: "lfx-rb__opt", ...attrs }, label);
       b.addEventListener("click", () => {
         emitFx("click");
-        onClick2(b);
+        onClick3(b);
       });
       return b;
     };
@@ -21415,7 +21740,7 @@
     const grid2 = h("div", { class: "lfx-rb__grid", role: "list" });
     const status = h("div", { class: "lfx-rb__status" });
     const sentinel = h("div", { class: "lfx-rb__sentinel", "aria-hidden": "true" });
-    const root6 = h("div", { id: ROOT_ID21, class: "lfx-retro-page lfx-rb" }, [
+    const root7 = h("div", { id: ROOT_ID21, class: "lfx-retro-page lfx-rb" }, [
       h("header", { class: "lfx-rb__head" }, [path, count]),
       opts,
       genres,
@@ -21423,8 +21748,8 @@
       status,
       sentinel
     ]);
-    Object.assign(s, { root: root6, path, count, opts, genres, genreBtn, grid: grid2, status, sentinel });
-    tab2.prepend(root6);
+    Object.assign(s, { root: root7, path, count, opts, genres, genreBtn, grid: grid2, status, sentinel });
+    tab2.prepend(root7);
     setPageOn2(ON_CLASS20, true);
     scrollTop2();
     const addGenre = (label, genreId) => {
@@ -21484,9 +21809,9 @@
       cancelWait: null,
       root: null
     };
-    state23 = s;
+    state24 = s;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state23 === s) build12(tab2, s);
+      if (state24 === s) build12(tab2, s);
     });
   }
   var browse_default2 = {
@@ -21499,16 +21824,16 @@
     update(route) {
       const r = routeOf3(route);
       if (!r) return;
-      if (!state23 || state23.libId !== r.lib || !state23.root || !state23.root.isConnected) {
+      if (!state24 || state24.libId !== r.lib || !state24.root || !state24.root.isConnected) {
         begin6(r);
         return;
       }
-      if ((r.genre || null) !== state23.genreId) {
-        state23.genreId = r.genre || null;
-        const chip = state23.genres.querySelector(`.lfx-rb__genre[data-genre="${state23.genreId || ""}"]`);
-        state23.genreName = chip && state23.genreId ? chip.textContent : null;
-        reload2(state23);
-      } else if (state23.grid && state23.builtList !== wantList(state23)) rerender(state23);
+      if ((r.genre || null) !== state24.genreId) {
+        state24.genreId = r.genre || null;
+        const chip = state24.genres.querySelector(`.lfx-rb__genre[data-genre="${state24.genreId || ""}"]`);
+        state24.genreName = chip && state24.genreId ? chip.textContent : null;
+        reload2(state24);
+      } else if (state24.grid && state24.builtList !== wantList(state24)) rerender(state24);
     },
     unmount: dispose6
   };
@@ -22129,8 +22454,8 @@
     if (!r.width || !r.height) return false;
     return r.bottom > 0 && r.top < (window.innerHeight || 800) && r.right > 0 && r.left < (window.innerWidth || 1200);
   }
-  function pickTarget(root6 = document) {
-    const list = [...root6.querySelectorAll(TARGETS)].filter((el4) => !el4.closest("#videoOsdPage") && inViewport(el4));
+  function pickTarget(root7 = document) {
+    const list = [...root7.querySelectorAll(TARGETS)].filter((el4) => !el4.closest("#videoOsdPage") && inViewport(el4));
     return list.length ? list[Math.floor(Math.random() * list.length)] : null;
   }
   function createGlitch({ crt, enabled: enabled2 = () => true, minMs = 2e4, maxMs = 4e4 }) {
@@ -22695,7 +23020,7 @@
   var MAX_HISTORY = 50;
   function createTerminal(deps) {
     const timers2 = createTimers();
-    let root6 = null;
+    let root7 = null;
     let out = null;
     let input = null;
     let closeBtn = null;
@@ -22851,7 +23176,7 @@
         input.value = "";
         run(v);
       });
-      root6 = h("div", {
+      root7 = h("div", {
         id: TERMINAL_ID2,
         class: "lfx-retro-term",
         role: "dialog",
@@ -22862,8 +23187,8 @@
         out,
         form
       ]);
-      root6.addEventListener("keydown", onKey4);
-      root6.addEventListener("pointerdown", (e) => {
+      root7.addEventListener("keydown", onKey4);
+      root7.addEventListener("pointerdown", (e) => {
         if (e.target === out && input) timers2.timeout(() => {
           if (alive && !String(window.getSelection && window.getSelection()).length) input.focus({ preventScroll: true });
         }, 0);
@@ -22874,18 +23199,18 @@
         if (input) input.focus();
         return;
       }
-      if (root6) teardown11();
+      if (root7) teardown11();
       opener2 = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
       busy3 = false;
       gen8 += 1;
       build13();
-      document.body.append(root6);
+      document.body.append(root7);
       document.documentElement.classList.add("lfx-retro-term-open");
       alive = true;
       print("LENZ//84 TERMINAL \u2014 TIPPE 'HILFE' F\xDCR BEFEHLE.");
       emitFx("open");
       timers2.timeout(() => {
-        if (root6) root6.classList.add("is-open");
+        if (root7) root7.classList.add("is-open");
         input.focus({ preventScroll: true });
       }, 20);
     }
@@ -22898,13 +23223,13 @@
       releaseSleepers();
       alive = false;
       busy3 = false;
-      if (root6) root6.remove();
-      root6 = out = input = closeBtn = null;
+      if (root7) root7.remove();
+      root7 = out = input = closeBtn = null;
       document.documentElement.classList.remove("lfx-retro-term-open");
     }
     function close2() {
       if (!alive) return;
-      const el4 = root6;
+      const el4 = root7;
       const back = opener2;
       opener2 = null;
       emitFx("close");
@@ -22914,7 +23239,7 @@
       document.documentElement.classList.remove("lfx-retro-term-open");
       timers2.clearAll();
       timers2.timeout(() => {
-        if (root6 === el4) teardown11();
+        if (root7 === el4) teardown11();
       }, 260);
       if (back && back.isConnected && typeof back.focus === "function") {
         try {
@@ -23771,9 +24096,9 @@
       return null;
     }
   }
-  function saveState(state24) {
-    if (!state24 || typeof state24 !== "object") return;
-    write3("sessionStorage", SESSION_STATE, JSON.stringify(state24));
+  function saveState(state25) {
+    if (!state25 || typeof state25 !== "object") return;
+    write3("sessionStorage", SESSION_STATE, JSON.stringify(state25));
   }
 
   // src/js/features/store/ultraguard.js
@@ -24569,7 +24894,7 @@
     const ck = `lfx.store.profile.${uid}`;
     let data = emptyProfile();
     let dirty = false;
-    let state24 = "unknown";
+    let state25 = "unknown";
     let rev = 0;
     let tries = 0;
     let timer2 = null;
@@ -24581,7 +24906,7 @@
       if (c && typeof c === "object" && c.data) {
         data = normalize(c.data);
         dirty = c.dirty === true;
-        state24 = "local";
+        state25 = "local";
       }
     } catch {
     }
@@ -24651,9 +24976,9 @@
           rem = emptyProfile();
         }
         const before = JSON.stringify(data);
-        const wasOk = state24 === "ok";
+        const wasOk = state25 === "ok";
         data = mergeProfiles(data, rem);
-        state24 = "ok";
+        state25 = "ok";
         sent = rev;
         save();
         if (!dead && (!wasOk || JSON.stringify(data) !== before)) {
@@ -24682,7 +25007,7 @@
     return {
       dev,
       get: () => data,
-      state: () => state24,
+      state: () => state25,
       update(mutator) {
         const d = JSON.parse(JSON.stringify(data));
         mutator(d);
@@ -24700,10 +25025,10 @@
       /** Konto laden (und ggf. hochladen); wartet höchstens timeoutMs. Löst mit dem Zustand auf. */
       load({ timeoutMs = 4e3 } = {}) {
         return new Promise((res) => {
-          const t = setTimeout(() => res(state24), timeoutMs);
+          const t = setTimeout(() => res(state25), timeoutMs);
           const done = () => {
             clearTimeout(t);
-            res(state24);
+            res(state25);
           };
           sync5().then(done, done);
         });
@@ -24730,7 +25055,7 @@
   var lastKey3 = null;
   var prof = null;
   var shown = false;
-  var root5 = () => document.documentElement;
+  var root6 = () => document.documentElement;
   var bridge = null;
   var xr = { presenting: false, cinema: false };
   var palast = { active: false, full: false };
@@ -24774,7 +25099,7 @@
   function onCinema2d(s) {
     palast.active = Boolean(s && s.active);
     palast.full = palast.active && Boolean(s.full);
-    const cl2 = root5().classList;
+    const cl2 = root6().classList;
     cl2.toggle("lfx-store-palast", palast.active);
     cl2.toggle("lfx-store-palast-full", palast.full);
     if (palast.active) getBridge().activate(true);
@@ -24909,7 +25234,7 @@
     }
     ui2 = null;
     document.getElementById(ROOT_ID22)?.remove();
-    root5().classList.remove(ON_CLASS21);
+    root6().classList.remove(ON_CLASS21);
     shown = false;
   }
   function showFallback2(message, { retry = false, detail = "" } = {}) {
@@ -25207,7 +25532,7 @@
     teardownUi2();
     ui2 = buildUi();
     tab2.prepend(ui2.root);
-    root5().classList.add(ON_CLASS21);
+    root6().classList.add(ON_CLASS21);
     shown = true;
     const r = storeHomeRoute(route);
     if (inst3 && inst3.instance && inst3.uid !== getUserId()) disposeInstance2();
@@ -25369,7 +25694,7 @@
   var storeFeatures = [home_default5, bar_default];
 
   // src/js/features/index.js
-  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, dsbtn_default, osdcenter_default, autonext_default, playerbg_default, home_default, hovercard_default, modal_default, library_default, mylist_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, secretmenu_default, statshint_default, sabback_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];
+  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, dsbtn_default, profilemenu_default, osdcenter_default, autonext_default, playerbg_default, home_default, hovercard_default, modal_default, library_default, mylist_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, secretmenu_default, statshint_default, sabback_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];
 
   // src/js/main.js
   var WATCH_MS = 3e3;

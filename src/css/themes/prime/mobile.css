@@ -888,6 +888,11 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__item {
   text-decoration: none;
   cursor: pointer;
 }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__sep {
+  height: 0;
+  margin: 6px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__item.is-stats {
   color: var(--lfx-gold);
 }

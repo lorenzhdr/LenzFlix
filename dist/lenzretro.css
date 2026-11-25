@@ -1446,6 +1446,11 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-
   padding: 0 12px;
 }
 
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__sep {
+  border-top: 1px dashed var(--lfx-retro-line);
+  margin: 6px 0;
+}
+
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:before {
   content: ">";
   opacity: 0;
@@ -7059,6 +7064,12 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item {
   color: var(--lfx-retro-amber);
   text-shadow: var(--lfx-retro-glow);
   border-top: 1px dashed rgba(255, 176, 0, .25);
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__sep {
+  border-top: 1px solid var(--lfx-retro-amber);
+  opacity: .55;
+  margin: 4px 0;
 }
 
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item:before {

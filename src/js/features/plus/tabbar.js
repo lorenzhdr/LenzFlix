@@ -37,7 +37,7 @@ export function tabKey(route) {
     if (tab === '1') return 'list';
     return !tab || tab === '0' ? 'home' : null;
   }
-  if (/^\/(mypreferences|usermenu)/.test(route.path)) return 'profile';
+  if (/^\/(mypreferences|usermenu|userprofile|quickconnect|metadata)/.test(route.path)) return 'profile';
   return null;
 }
 
@@ -54,8 +54,12 @@ export function sheetEntries(libs, profile, { go, close }) {
     const href = l.hubCapable ? hubHref(l.id) : l.href;
     if (href) entries.push({ label: l.name, onClick: () => { close(); go(href); } });
   }
-  for (const p of Array.isArray(profile) ? profile : []) {
-    if (p.switch) entries.push(p);
+  const prof = Array.isArray(profile) ? profile : [];
+  // Trenner zwischen Bibliotheken und Profil-Einträgen (die Liste selbst bringt ihre Trenner mit)
+  if (prof.length && !prof[0].separator) entries.push({ key: 'sep', separator: true });
+  for (const p of prof) {
+    if (p.separator) entries.push({ key: 'sep', separator: true });
+    else if (p.switch) entries.push(p);
     else if (p.href) entries.push({ label: p.label, onClick: () => { close(); go(p.href); }, stats: p.key === 'stats' });
     else if (typeof p.onClick === 'function') entries.push({ label: p.label, onClick: () => { close(); p.onClick(); } });
   }
@@ -113,7 +117,7 @@ async function openProfile() {
   const entries = sheetEntries(libs, profile, { go, close: () => closeChooser() });
   renderSheet(c, (user && user.name) || 'Profil', entries);
   const buttons = c.list ? c.list.querySelectorAll('.lfx-sheet__item') : [];
-  entries.forEach((e, i) => { if (e.stats && buttons[i]) buttons[i].classList.add('is-stats'); });
+  entries.filter((e) => !e.separator).forEach((e, i) => { if (e.stats && buttons[i]) buttons[i].classList.add('is-stats'); });
 }
 
 // Bewusst ohne seq-Prüfung: state.seq zählt auch das Öffnen des Profil-Sheets hoch.

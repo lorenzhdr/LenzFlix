@@ -304,6 +304,10 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-
   text-transform: uppercase;
   text-shadow: var(--lfx-retro-glow);
 }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__sep {
+  margin: 6px 0;
+  border-top: 1px dashed var(--lfx-retro-line);
+}
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item::before {
   content: ">";
   margin-right: 0.6em;

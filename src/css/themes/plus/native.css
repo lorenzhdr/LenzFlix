@@ -215,6 +215,10 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item:not(.lfx-sheet__item
     color: #fff;
   }
 }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__sep {
+  margin: 6px 0;
+  border-top-color: var(--lfx-plus-menu-border);
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:focus,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:active {

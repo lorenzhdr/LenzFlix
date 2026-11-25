@@ -22,8 +22,11 @@ const designClick = vi.fn();
 const logoutClick = vi.fn();
 vi.mock('../src/js/shared/profile.js', () => ({
   profileEntries: vi.fn(async () => [
-    { key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' },
+    { key: 'stats', label: 'Meine Statistik', href: '#/home?lfx=stats', className: 'is-stats' },
     { key: 'design', label: 'Design-Einstellungen', onClick: designClick },
+    { key: 'sep', separator: true },
+    { key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' },
+    { key: 'sep', separator: true },
     { key: 'logout', label: 'Abmelden', onClick: logoutClick },
   ]),
   getUserChip: vi.fn(async () => ({ name: 'Lorenz', imageUrl: null })),
@@ -53,6 +56,8 @@ describe('plus-tabbar: Modell', () => {
     expect(tabKey(R('#/home?lfx=tv'))).toBeNull();
     expect(tabKey(R('#/home?lfx=new'))).toBe('profile');
     expect(tabKey(R('#/mypreferencesmenu'))).toBe('profile');
+    expect(tabKey(R('#/quickconnect'))).toBe('profile');
+    expect(tabKey(R('#/metadata'))).toBe('profile');
     expect(tabKey(R('#/home?lfx=title&id=1'))).toBeNull();
     expect(tabKey(R('#/movies?topParentId=m1'))).toBeNull();
   });
@@ -66,11 +71,11 @@ describe('plus-tabbar: Modell', () => {
       { label: 'Einstellungen', href: '#/mypreferencesmenu' },
       { label: 'Design-Einstellungen', onClick: act },
     ], { go, close });
-    expect(entries.map((e) => e.label)).toEqual(['Neu & beliebt', 'Filme', 'Musik', 'Einstellungen', 'Design-Einstellungen']);
+    expect(entries.map((e) => (e.separator ? '|' : e.label))).toEqual(['Neu & beliebt', 'Filme', 'Musik', '|', 'Einstellungen', 'Design-Einstellungen']);
     entries[0].onClick();
     entries[1].onClick();
     entries[2].onClick();
-    entries[4].onClick();
+    entries[5].onClick();
     expect(calls).toEqual([
       'close', 'go:#/home?lfx=new',
       'close', 'go:#/home?lfx=hub&lib=m1',
@@ -166,7 +171,8 @@ describe('plus-tabbar: Feature', () => {
     expect(sheetMod.openSheet).toHaveBeenCalledTimes(1);
     const [, title, entries] = sheetMod.renderSheet.mock.calls[0];
     expect(title).toBe('Lorenz');
-    expect(entries.map((e) => e.label)).toEqual(['Neu & beliebt', 'Filme', 'Musik', 'Einstellungen', 'Design-Einstellungen', 'Abmelden']);
+    expect(entries.map((e) => (e.separator ? '|' : e.label))).toEqual(['Neu & beliebt', 'Filme', 'Musik', '|', 'Meine Statistik', 'Design-Einstellungen', '|', 'Einstellungen', '|', 'Abmelden']);
+    expect(entries.find((e) => e.stats).label).toBe('Meine Statistik');
     btn.click();
     await flush();
     expect(sheetMod.closeChooser).toHaveBeenCalled();

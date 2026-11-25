@@ -16,6 +16,7 @@ import { dataSaverItem, switchButton } from '../shared/dsswitch.js';
 import { parseLfxRoute, libraryHref, myListHref, isLibraryRoute, isMyListRoute } from '../shared/routes.js';
 import { getLibraryGenres } from './library/sources.js';
 import { buildNavModel, navItems, activeKey } from './nav.js';
+import { findProfileButton } from './profilebtn.js';
 
 const { STATS_LABEL } = stats;
 const statsLink = () => (typeof stats.statsHref === 'function' ? stats.statsHref() : stats.getStatsUrl());
@@ -49,9 +50,9 @@ export function overlayItems(model) {
   const items = navItems(model).map((it) => ({ key: it.key, label: it.label, href: it.href }));
   for (const m of model.more) items.push({ key: 'more', label: m.label, href: m.href, id: m.id });
   const statsUrl = statsLink();
-  if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true });
-  items.push({ key: 'design', label: 'Design-Einstellungen', action: 'design' });
-  if (dataSaverAvailable()) items.push({ key: 'datasaver', label: 'Datensparmodus', action: 'datasaver' });
+  if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true, account: true });
+  items.push({ key: 'design', label: 'Design-Einstellungen', action: 'design', account: true });
+  if (dataSaverAvailable()) items.push({ key: 'datasaver', label: 'Datensparmodus', action: 'datasaver', account: true });
   return items;
 }
 
@@ -113,8 +114,16 @@ function isOpen() {
   return Boolean(state.overlay && !state.overlay.hidden);
 }
 
+/** Konto-Einträge (Statistik, Design, Datensparmodus) wohnen im Profilmenü, solange Jellyfins Profil-Knopf existiert. */
+function syncAccountItems() {
+  if (!state.overlay) return;
+  const hide = Boolean(findProfileButton());
+  for (const li of state.overlay.querySelectorAll('[data-lfx-account]')) li.hidden = hide;
+}
+
 function openOverlay() {
   if (!state.overlay || isOpen()) return;
+  syncAccountItems();
   state.returnFocus = document.activeElement;
   state.overlay.hidden = false;
   cl().add('lfx-mnav-open');
@@ -145,7 +154,7 @@ function onOverlayKey(e) {
 /** Fokus-Falle: Tab zyklisch innerhalb des Containers. */
 function trapTab(e, root) {
   if (e.key !== 'Tab' || !root) return;
-  const nodes = [...root.querySelectorAll(FOCUSABLE)];
+  const nodes = [...root.querySelectorAll(FOCUSABLE)].filter((n) => !n.closest('[hidden]'));
   if (!nodes.length) return;
   const first = nodes[0];
   const last = nodes[nodes.length - 1];
@@ -284,7 +293,7 @@ function render() {
   renderCats();
 
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
-    overlayItems(state.model).map((it) => h('li', null, [
+    overlayItems(state.model).map((it) => h('li', it.account ? { dataset: { lfxAccount: '' } } : null, [
       it.action === 'datasaver' ? switchButton(dataSaverItem(), { className: 'lfx-mnav-overlay__link lfx-mnav-overlay__link--datasaver', role: 'switch' }) :
       it.action ? h('button', { type: 'button', class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, dataset: { action: it.action } }, it.label) :
       // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
@@ -294,6 +303,7 @@ function render() {
   close.addEventListener('click', () => closeOverlay());
   state.overlay.textContent = '';
   state.overlay.append(list, close);
+  syncAccountItems();
   applyActive();
   applyPillsVisibility();
 }

@@ -301,3 +301,39 @@ describe('mobilenav (DOM)', () => {
     expect([...document.querySelectorAll('.lfx-mnav-overlay__link')].some((x) => x.textContent === 'Meine Statistik')).toBe(false);
   });
 });
+
+describe('mobilenav: Konto-Einträge mit Profil-Knopf', () => {
+  const PROFILE = '<header class="MuiAppBar-root"><button aria-controls="app-user-menu"><div class="MuiAvatar-root"></div></button></header>';
+  beforeEach(() => { clearCache(); });
+  afterEach(() => {
+    mobilenav.unmount();
+    document.body.innerHTML = '';
+  });
+  const accountLis = () => [...document.querySelectorAll('#lfx-mnav-overlay [data-lfx-account]')];
+
+  it('ohne Profil-Knopf bleiben Design und Datensparmodus sichtbar', async () => {
+    document.body.innerHTML = '';
+    mobilenav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(accountLis().length).toBeGreaterThanOrEqual(1));
+    document.querySelector('.lfx-mnav__pill--cats').click();
+    expect(accountLis().every((li) => !li.hidden)).toBe(true);
+  });
+
+  it('mit Profil-Knopf sind sie versteckt und die Tab-Falle überspringt sie', async () => {
+    document.body.innerHTML = PROFILE;
+    mobilenav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(accountLis().length).toBeGreaterThanOrEqual(1));
+    document.querySelector('.lfx-mnav__pill--cats').click();
+    expect(accountLis().every((li) => li.hidden)).toBe(true);
+    const last = document.querySelector('.lfx-mnav-overlay__close');
+    last.focus();
+    const ev = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    last.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    const first = document.querySelector('#lfx-mnav-overlay .lfx-mnav-overlay__list a');
+    expect(document.activeElement).toBe(first);
+    const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    first.dispatchEvent(back);
+    expect(document.activeElement).toBe(last);
+  });
+});

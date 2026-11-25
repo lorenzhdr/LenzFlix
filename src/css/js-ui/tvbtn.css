@@ -1,6 +1,7 @@
 /* LenzFlix · js-ui/tvbtn: TV-Symbol links neben der nativen Suche (flix, Modern). Greift nur mit html.lfx-js.
    Die native Suche bekommt links 40 px Luft, das Symbol steht fixiert genau in dieser Lücke.
-   Rechter Abstand = Toolbar-Rand + User-Menü (Desktop 32+8+18 px, Handy 40+4 px) + Suche (40 px). */
+   Rechter Abstand = Toolbar-Rand + User-Menü (Desktop 32+8+18 px, Handy 40+4 px) + Suche (40-px-Box, padding 8 aus
+   modern/header.css). Alle Symbole stehen in 40-px-Boxen ohne Margins: 16 px Lücke zwischen den Glyphen. */
 html.lfx-js.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"] {
   margin-inline-start: 40px;
 }

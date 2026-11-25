@@ -144,6 +144,11 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item {
   color: var(--lfx-retro-amber);
   text-shadow: var(--lfx-retro-glow);
 }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__sep {
+  margin: 4px 0;
+  border-top: 1px solid var(--lfx-retro-amber);
+  opacity: 0.55;
+}
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item::before { content: ">"; margin-right: 0.6em; opacity: 0.4; }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item[data-sw],
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item[data-pref="sound"],

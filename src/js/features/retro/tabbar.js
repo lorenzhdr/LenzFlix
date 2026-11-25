@@ -35,7 +35,7 @@ export function tabKey(route) {
   const k = activeKey(route);
   if (k === 'home' || k === 'search' || k === 'new' || k === 'list') return k;
   if (k && k.startsWith('lib:')) return 'more';
-  if (/^\/(mypreferences|usermenu)/.test(route.path)) return 'more';
+  if (/^\/(mypreferences|usermenu|userprofile|quickconnect|metadata)/.test(route.path)) return 'more';
   return null;
 }
 
@@ -61,7 +61,10 @@ export function moreEntries(libs, profile, { go: goFn, close, toggle }) {
     const href = l.hubCapable ? hubHref(l.id) : l.href;
     if (href) entries.push({ key: `lib:${l.id}`, label: l.name, onClick: () => { close(); goFn(href); } });
   }
-  for (const p of Array.isArray(profile) ? profile : []) {
+  const prof = Array.isArray(profile) ? profile : [];
+  if (entries.length && prof.length && !prof[0].separator) entries.push({ key: 'sep', separator: true });
+  for (const p of prof) {
+    if (p.separator) { entries.push({ key: 'sep', separator: true }); continue; }
     if (p.switch && typeof p.onToggle === 'function') {
       // Schalter bleibt im Blatt: Text „Label: AN|AUS“, Zustand liest/schreibt openMore am Button (Klick ohne Event: Zustand aus p.checked)
       entries.push({
@@ -76,6 +79,7 @@ export function moreEntries(libs, profile, { go: goFn, close, toggle }) {
     } else if (p.href) entries.push({ key: p.key, label: p.label, stats: p.key === 'stats', onClick: () => { close(); goFn(p.href); } });
     else if (typeof p.onClick === 'function') entries.push({ key: p.key, label: p.label, onClick: () => { close(); p.onClick(); } });
   }
+  if (entries.length && !entries[entries.length - 1].separator) entries.push({ key: 'sep', separator: true });
   for (const pref of ['sound', 'crt']) {
     entries.push({ key: `pref-${pref}`, label: PREF_LABEL[pref], pref, onClick: () => toggle(pref) });
   }
@@ -159,7 +163,7 @@ async function openMore() {
   });
   renderSheet(c, 'Mehr', entries);
   const buttons = c.list ? c.list.querySelectorAll('.lfx-sheet__item') : [];
-  entries.forEach((e, i) => {
+  entries.filter((e) => !e.separator).forEach((e, i) => {
     const b = buttons[i];
     if (!b) return;
     if (e.stats) b.classList.add('is-stats');

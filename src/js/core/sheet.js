@@ -4,6 +4,7 @@ import { h, mountPoint, unmountPoint } from './dom.js';
 import { computeMenuPosition, anchorRect } from './itemmenu.js';
 import { attachSwipeClose } from './swipe.js';
 import { switchButton, releaseSwitches } from './switch.js';
+import { tidyItems } from './popover.js';
 
 const SHEET_ID = 'lfx-sheet';
 
@@ -48,8 +49,8 @@ export function renderSheet(c, title, entries) {
   if (title) c.sheet.setAttribute('aria-label', title);
   releaseSwitches(c.list);
   c.list.replaceChildren(
-    ...entries.map(({ label, note, onClick, disabled, primary, ...rest }) =>
-      rest.switch ? switchButton({ label, ...rest }, { className: 'lfx-sheet__item lfx-sheet__item--switch', role: 'switch' }) : h(
+    ...tidyItems(entries).map(({ label, note, onClick, disabled, primary, ...rest }) =>
+      rest.separator ? h('div', { class: 'lfx-sheet__sep', role: 'separator' }) : rest.switch ? switchButton({ label, ...rest }, { className: 'lfx-sheet__item lfx-sheet__item--switch', role: 'switch' }) : h(
         'button',
         {
           type: 'button',

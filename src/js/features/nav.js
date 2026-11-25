@@ -12,6 +12,7 @@ import { mountAmbient, unmountAmbient } from '../core/ambient.js';
 import { dataSaverAvailable, DATASAVER_EVENT } from '../core/datasaver.js';
 import { dataSaverItem, switchButton } from '../shared/dsswitch.js';
 import { parseLfxRoute, libraryHref, myListHref } from '../shared/routes.js';
+import { findProfileButton } from './profilebtn.js';
 
 
 const { STATS_LABEL } = stats;
@@ -158,11 +159,25 @@ function fit() {
     for (const el of nav.querySelectorAll('.lfx-nav__menu-item--fold')) el.hidden = !off.has(el.dataset.key);
   };
   fold(0);
+  // Konto-Einträge (Statistik, Design, Datensparmodus) stehen im Profilmenü, solange Jellyfins Profil-Knopf existiert;
+  // ohne ihn (Jellyfin-Update) bleiben sie hier erreichbar.
+  const accountEntries = [...nav.querySelectorAll('.lfx-nav__menu-item--account')];
+  const account = !findProfileButton();
+  for (const el of accountEntries) el.hidden = !account;
+  const hasContent = state.model.more.length > 0 || (account && accountEntries.length > 0);
+  // Zum Messen immer einblenden; leeres „Mehr“ misst die linke Kante (= Ende des letzten Punkts)
+  wrap.hidden = false;
+  const edge = (count) => {
+    const r = wrap.getBoundingClientRect();
+    return hasContent || count > 0 ? r.right : r.left;
+  };
   let n = 0;
   if (!isNavCompact()) {
     const limit = rightLimit(nav.getBoundingClientRect().left);
-    while (n < items.length && wrap.getBoundingClientRect().right > limit) fold(++n);
+    while (n < items.length && edge(n) > limit) fold(++n);
   }
+  wrap.hidden = !hasContent && n === 0;
+  if (wrap.hidden && state.menuOpen) setMenu(false);
   // Leichte Pille am „Mehr“-Knopf, sobald mindestens ein Punkt eingeklappt ist
   const moreBtn = wrap.querySelector('.lfx-nav__more-btn');
   if (moreBtn) moreBtn.classList.toggle('has-fold', n > 0);
@@ -216,11 +231,11 @@ function render() {
       .map((it) => h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--fold', role: 'menuitem', href: it.href, hidden: true, dataset: { key: it.key } }, it.label));
     for (const m of more) entries.push(h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label));
     // Eigenständige Seite (kein Hash-Link, kein data-key -> nie „aktiv“)
-    if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
-    const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem' }, 'Design-Einstellungen');
+    if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--account lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
+    const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--account lfx-nav__menu-item--design', role: 'menuitem' }, 'Design-Einstellungen');
     entries.push(designBtn);
     // Datensparmodus: Schalterzeile (kein Nav-Punkt, nie eingeklappt); Klick schließt das Menü nicht
-    const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: 'lfx-nav__menu-item lfx-nav__menu-item--datasaver' }) : null;
+    const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: 'lfx-nav__menu-item lfx-nav__menu-item--account lfx-nav__menu-item--datasaver' }) : null;
     if (dsBtn) entries.push(dsBtn);
     const menu = h('div', { class: 'lfx-nav__menu', role: 'menu', id: 'lfx-nav-menu' }, entries);
     const btn = h('button', {
@@ -250,7 +265,8 @@ function render() {
         setMenu(false);
         btn.focus();
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden]), [role="menuitemcheckbox"]')];
+        const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden]), [role="menuitemcheckbox"]:not([hidden])')];
+        if (!items.length) return;
         const i = items.indexOf(document.activeElement);
         const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
         setMenu(true);

@@ -110,6 +110,10 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-
   letter-spacing: 0.64px;
   transition: color 0.1s ease-in-out, background-color 0.1s ease-in-out;
 }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__sep {
+  margin: 6px 8px;
+  border-top-color: rgba(255, 255, 255, 0.16);
+}
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats,
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus,
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus-visible {

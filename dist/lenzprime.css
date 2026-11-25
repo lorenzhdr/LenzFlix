@@ -425,6 +425,11 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-
   transition: color .1s ease-in-out, background-color .1s ease-in-out;
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__sep {
+  border-top-color: rgba(255, 255, 255, .16);
+  margin: 6px 8px;
+}
+
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats, html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus {
   color: var(--lfx-gold);
 }
@@ -4295,6 +4300,12 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__item {
   padding: 0 8px;
   text-decoration: none;
   display: flex;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__sep {
+  border-top: 1px solid rgba(255, 255, 255, .16);
+  height: 0;
+  margin: 6px 8px;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__item.is-stats {

@@ -107,8 +107,16 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
       }
     }
 
-    /* Profil-Avatar 32x32 mit Caret */
-    & button[aria-haspopup] {
+    /* Rechte Symbolgruppe (Sync-Play, Cast, Suche): einheitliche 40-px-Box (8 px Rand um das 24-px-Symbol) ohne
+       eigene Margins -> 16 px Lücke von Symbol zu Symbol. :where() hält die Spezifität niedrig, damit die Profil-Regel
+       und die Lücken für TV-/Sparmodus-Symbol (js-ui/tvbtn.css, js-ui/switch.css) gewinnen. */
+    & :where(.MuiBox-root > .MuiIconButton-root, a[href="#/search"]) {
+      padding: 8px;
+      margin: 0;
+    }
+
+    /* Profil-Avatar 32x32 mit Caret. Nur der Profil-Knopf: aria-haspopup tragen auch Sync-Play und Cast. */
+    & :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) {
       position: relative;
       margin-left: 8px;
       margin-right: 18px;

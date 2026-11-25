@@ -14,6 +14,20 @@ export function isPopoverOpen() {
   return current !== null;
 }
 
+/** Entfernt falsy/hidden-Einträge sowie führende, abschließende und doppelte Trenner. */
+export function tidyItems(list) {
+  const out = [];
+  for (const it of Array.isArray(list) ? list : []) {
+    if (!it || it.hidden) continue;
+    if (it.separator) {
+      if (!out.length || out[out.length - 1].separator) continue;
+    }
+    out.push(it);
+  }
+  while (out.length && out[out.length - 1].separator) out.pop();
+  return out;
+}
+
 export function closePopover({ restoreFocus = false } = {}) {
   const c = current;
   if (!c) return;
@@ -26,7 +40,7 @@ export function closePopover({ restoreFocus = false } = {}) {
   unmountPoint(c.el);
   document.documentElement.classList.remove('lfx-popover-open');
   if (c.anchorEl) {
-    c.anchorEl.setAttribute('aria-expanded', c.hadExpanded !== null ? c.hadExpanded : 'false');
+    if (c.expand) c.anchorEl.setAttribute('aria-expanded', c.hadExpanded !== null ? c.hadExpanded : 'false');
     if (restoreFocus && c.anchorEl.isConnected && typeof c.anchorEl.focus === 'function') {
       try {
         c.anchorEl.focus({ preventScroll: true });
@@ -34,6 +48,9 @@ export function closePopover({ restoreFocus = false } = {}) {
         /* Fokus ist optional */
       }
     }
+  }
+  if (typeof c.onClosed === 'function') {
+    try { c.onClosed(); } catch { /* Rückruf darf das Schließen nicht stören */ }
   }
 }
 
@@ -54,17 +71,31 @@ function place(el, anchorEl, align) {
 /**
  * items: [{ key, label, href?, onClick?, className?, icon? (SVG-String), hidden? }]
  * Varianten: { switch:true, checked, onToggle(next), watch? } = Schalter (role=menuitemcheckbox, Klick schließt NICHT);
- * { note:true, label } = nicht fokussierbarer Hinweistext (nicht in der Pfeiltasten-Liste).
+ * { note:true, label } = nicht fokussierbarer Hinweistext (nicht in der Pfeiltasten-Liste);
+ * { separator:true } = Trennlinie; { head:true, label, imageUrl? } = nicht fokussierbarer Kopf (Avatar + Name).
+ * expand:false lässt aria-expanded des Ankers unangetastet; focus:false setzt keinen Anfangsfokus;
+ * onClosed() läuft genau einmal beim Schließen auf jedem Weg.
  */
-export function openPopover(anchorEl, { label, items = [], align = 'end', className = '' } = {}) {
+export function openPopover(anchorEl, { label, items = [], align = 'end', className = '', expand = true, focus = true, onClosed } = {}) {
   closePopover();
   const el = mountPoint(ID, { className: `lfx-popover${className ? ` ${className}` : ''}` });
   el.className = `lfx-popover${className ? ` ${className}` : ''}`;
   el.setAttribute('role', 'menu');
   if (label) el.setAttribute('aria-label', label);
 
-  const list = items.filter((it) => it && !it.hidden);
+  const list = tidyItems(items);
   const nodes = list.map((it) => {
+    if (it.separator) return h('div', { class: 'lfx-popover__sep', role: 'separator' });
+    if (it.head) {
+      const name = String(it.label || '');
+      const initial = name.trim().charAt(0).toUpperCase() || '?';
+      return h('div', { class: 'lfx-popover__head', role: 'none' }, [
+        h('span', { class: 'lfx-popover__avatar', 'aria-hidden': 'true' }, it.imageUrl
+          ? h('img', { src: it.imageUrl, alt: '', draggable: 'false' })
+          : h('span', null, initial)),
+        h('span', { class: 'lfx-popover__name' }, name),
+      ]);
+    }
     if (it.note) return h('div', { class: 'lfx-popover__note', role: 'none', dataset: { key: it.key || '' } }, it.label);
     const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ''}`;
     if (it.switch) {
@@ -87,9 +118,9 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
     return node;
   });
   el.replaceChildren(...nodes);
-  const focusable = nodes.filter((n) => !n.classList.contains('lfx-popover__note'));
+  const focusable = nodes.filter((n) => n.matches('a, button'));
 
-  const c = { el, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute('aria-expanded') : null };
+  const c = { el, anchorEl, expand, onClosed, hadExpanded: anchorEl && expand ? anchorEl.getAttribute('aria-expanded') : null };
   c.close = () => {
     if (current === c) closePopover({ restoreFocus: true });
   };
@@ -110,6 +141,8 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
       e.stopPropagation();
       e.stopImmediatePropagation();
       c.close();
+    } else if (!focus && !el.contains(document.activeElement) && !(anchorEl && anchorEl.contains(document.activeElement))) {
+      // Ohne Anfangsfokus (z. B. per Hover geöffnet) gehören Tab/Pfeile der Seite, solange der Fokus woanders liegt
     } else if (e.key === 'Tab') {
       closePopover({ restoreFocus: true });
     } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) && focusable.length) {
@@ -125,13 +158,13 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
   };
   current = c;
   document.documentElement.classList.add('lfx-popover-open');
-  if (anchorEl) anchorEl.setAttribute('aria-expanded', 'true');
+  if (anchorEl && expand) anchorEl.setAttribute('aria-expanded', 'true');
   window.addEventListener('keydown', c.onKeydown, true);
   document.addEventListener('click', c.onDocClick, true);
   window.addEventListener('resize', c.onClose);
   window.addEventListener('scroll', c.onScroll, true);
   if (anchorEl) place(el, anchorEl, align);
-  if (focusable[0]) focusable[0].focus({ preventScroll: true });
+  if (focus && focusable[0]) focusable[0].focus({ preventScroll: true });
   const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
   raf(() => { if (current === c) el.classList.add('is-open'); });
   return { el, close: c.close };

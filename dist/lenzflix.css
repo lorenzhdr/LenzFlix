@@ -292,7 +292,12 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
   height: 24px;
 }
 
-html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup] {
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :where(.MuiBox-root > .MuiIconButton-root, a[href="#/search"]) {
+  margin: 0;
+  padding: 8px;
+}
+
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) {
   border-radius: 6px;
   margin-left: 8px;
   margin-right: 18px;
@@ -301,17 +306,17 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
   overflow: visible;
 }
 
-html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup]:hover {
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):hover {
   background-color: rgba(0, 0, 0, 0);
 }
 
-html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup] .MuiAvatar-root {
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) .MuiAvatar-root {
   border-radius: 6px;
   width: 32px;
   height: 32px;
 }
 
-html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup]:after {
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):after {
   content: "";
   border: 5px solid rgba(0, 0, 0, 0);
   border-top-color: var(--lfx-text);
@@ -323,7 +328,42 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
   right: -16px;
 }
 
-html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup][aria-expanded="true"]:after {
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root))[aria-expanded="true"]:after {
+  transform: rotate(180deg);
+}
+
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) {
+  border-radius: 6px;
+  margin-left: 8px;
+  margin-right: 18px;
+  padding: 0;
+  position: relative;
+  overflow: visible;
+}
+
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):hover {
+  background-color: rgba(0, 0, 0, 0);
+}
+
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) .MuiAvatar-root {
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+}
+
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):after {
+  content: "";
+  border: 5px solid rgba(0, 0, 0, 0);
+  border-top-color: var(--lfx-text);
+  transition: transform var(--lfx-dur-fast) var(--lfx-ease);
+  border-bottom-width: 0;
+  margin-top: -2px;
+  position: absolute;
+  top: 50%;
+  right: -16px;
+}
+
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root))[aria-expanded="true"]:after {
   transform: rotate(180deg);
 }
 
@@ -2496,7 +2536,7 @@ html:not(.layout-tv) #searchPage .noItemsMessage {
     margin-left: -8px;
   }
 
-  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup] {
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) {
     align-items: center;
     justify-items: center;
     min-width: 40px;
@@ -2506,7 +2546,21 @@ html:not(.layout-tv) #searchPage .noItemsMessage {
     display: inline-grid;
   }
 
-  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup]:after {
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)) {
+    align-items: center;
+    justify-items: center;
+    min-width: 40px;
+    min-height: 40px;
+    margin: 0 0 0 4px;
+    padding: 4px;
+    display: inline-grid;
+  }
+
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):after {
+    display: none;
+  }
+
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):after {
     display: none;
   }
 
@@ -3274,6 +3328,10 @@ html.lfx-js #lfx-nav .lfx-nav__more {
   height: 100%;
   display: flex;
   position: relative;
+}
+
+html.lfx-js #lfx-nav .lfx-nav__more[hidden] {
+  display: none;
 }
 
 html.lfx-js #lfx-nav .lfx-nav__menu {
@@ -5631,6 +5689,12 @@ html.lfx-js .lfx-sheet__title {
 html.lfx-js .lfx-sheet__list {
   flex-direction: column;
   display: flex;
+}
+
+html.lfx-js .lfx-sheet__sep {
+  border-top: 1px solid var(--lfx-border);
+  height: 0;
+  margin: 6px 8px;
 }
 
 html.lfx-js .lfx-sheet__item:disabled {
@@ -9388,6 +9452,50 @@ html.lfx-js .lfx-popover__item:focus-visible {
   }
 }
 
+html.lfx-js .lfx-popover__sep {
+  border-top: 1px solid var(--lfx-border);
+  height: 0;
+  margin: 6px 4px;
+}
+
+html.lfx-js .lfx-popover__head {
+  border-bottom: 1px solid var(--lfx-border);
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  padding: 8px 12px 10px;
+  display: flex;
+}
+
+html.lfx-js .lfx-popover__avatar {
+  background: var(--lfx-surface-3, var(--lfx-border));
+  width: 32px;
+  height: 32px;
+  color: var(--lfx-text);
+  font: 700 var(--lfx-fs-meta) / 1 var(--lfx-font);
+  border-radius: 6px;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+  overflow: hidden;
+}
+
+html.lfx-js .lfx-popover__avatar img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+html.lfx-js .lfx-popover__name {
+  min-width: 0;
+  color: var(--lfx-text);
+  font: 600 var(--lfx-fs-meta) / 1.3 var(--lfx-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js .lfx-popover {
     transition: none;
@@ -9596,6 +9704,273 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
 @media (max-width: 799px) {
   html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
     right: calc(max(4vw, env(safe-area-inset-right, 0px)) + 124px);
+  }
+}
+
+html.lfx-js.lfx-flix-profile-open:not(.layout-tv) header.MuiAppBar-root > .MuiToolbar-root:first-child :-webkit-any(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):after {
+  transform: rotate(180deg);
+}
+
+html.lfx-js.lfx-flix-profile-open:not(.layout-tv) header.MuiAppBar-root > .MuiToolbar-root:first-child :is(button[aria-controls="app-user-menu"], button[aria-haspopup]:has(.MuiAvatar-root)):after {
+  transform: rotate(180deg);
+}
+
+html.lfx-js.lfx-flix-profile-open:not(.layout-tv) .MuiTooltip-popper {
+  display: none;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-popover.lfx-flix-profile {
+  z-index: 1350;
+  border-radius: var(--lfx-popup-radius);
+  min-width: 200px;
+  box-shadow: var(--lfx-shadow-card);
+  background: rgba(20, 20, 20, .96);
+  border: 1px solid rgba(255, 255, 255, .15);
+  padding: 8px 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__head {
+  color: var(--lfx-text);
+  border-bottom: 1px solid rgba(255, 255, 255, .15);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding: 6px 20px 12px;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__avatar {
+  background: var(--lfx-surface-2);
+  width: 32px;
+  height: 32px;
+  font: 700 14px/1 var(--lfx-font);
+  border-radius: 6px;
+  flex: none;
+  align-items: center;
+  justify-items: center;
+  display: grid;
+  overflow: hidden;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__avatar img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__name {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font: 700 var(--lfx-fs-meta) / 1.3 var(--lfx-font);
+  overflow: hidden;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__sep {
+  background: rgba(255, 255, 255, .15);
+  height: 1px;
+  margin: 6px 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__item {
+  min-height: 0;
+  color: var(--lfx-text-body);
+  font: inherit;
+  border-radius: 0;
+  padding: 10px 20px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__item--switch {
+  justify-content: space-between;
+  gap: 20px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__item:focus {
+  color: var(--lfx-text);
+  background: rgba(255, 255, 255, .1);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__item.is-stats {
+  color: var(--lfx-gold);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__item:hover {
+    color: var(--lfx-text);
+    background: rgba(255, 255, 255, .1);
+  }
+
+  html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__item.is-stats:hover {
+    color: var(--lfx-gold-hover);
+  }
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-profile .lfx-popover__item.is-stats:focus {
+  color: var(--lfx-gold-hover);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet-overlay {
+  z-index: 1300;
+  background: rgba(0, 0, 0, .6);
+  align-items: flex-end;
+  animation: .2s lfx-flix-psheet-fade;
+  display: flex;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 86vh;
+  max-height: 86dvh;
+  padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
+  color: var(--lfx-text);
+  font-family: var(--lfx-font);
+  background: rgba(20, 20, 20, .98);
+  border-top: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 16px 16px 0 0;
+  outline: none;
+  animation: .25s cubic-bezier(.2, 0, 0, 1) lfx-flix-psheet-up;
+  overflow-y: auto;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__grip {
+  background: rgba(255, 255, 255, .3);
+  border-radius: 2px;
+  width: 36px;
+  height: 4px;
+  margin: 4px auto 12px;
+  display: block;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__who {
+  border-bottom: 1px solid rgba(255, 255, 255, .15);
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 4px 12px;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__avatar {
+  background: var(--lfx-surface-2);
+  border-radius: 8px;
+  flex: none;
+  align-items: center;
+  justify-items: center;
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+  font-weight: 700;
+  display: grid;
+  overflow: hidden;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__avatar img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__name {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__section {
+  padding: 6px 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__section + .lfx-flix-psheet__section {
+  border-top: 1px solid rgba(255, 255, 255, .15);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__head {
+  color: var(--lfx-text-soft);
+  font: 700 12px/1.4 var(--lfx-font);
+  letter-spacing: .7px;
+  text-transform: uppercase;
+  margin: 8px 8px 4px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__sep {
+  background: rgba(255, 255, 255, .15);
+  height: 1px;
+  margin: 6px 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__item {
+  box-sizing: border-box;
+  border-radius: var(--lfx-popup-radius);
+  width: 100%;
+  min-height: 48px;
+  color: var(--lfx-text-body);
+  font: 500 16px/1.2 var(--lfx-font);
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  align-items: center;
+  margin: 0;
+  padding: 0 8px;
+  text-decoration: none;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__item--switch {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__item.is-stats {
+  color: var(--lfx-gold);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-flix-psheet__item:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: -2px;
+}
+
+html.lfx-flix-profilesheet-open.lfx-js:not(.layout-tv) body {
+  overflow: hidden;
+}
+
+@keyframes lfx-flix-psheet-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lfx-flix-psheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-flix-psheet, html.lfx-js:not(.layout-tv) .lfx-flix-psheet-overlay {
+    animation: none;
   }
 }
 

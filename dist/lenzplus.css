@@ -445,6 +445,11 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item {
   padding: 8px 20px 7px;
 }
 
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__sep {
+  border-top-color: var(--lfx-plus-menu-border);
+  margin: 8px 0;
+}
+
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item.is-stats {
   color: var(--lfx-gold);
 }
@@ -3009,6 +3014,11 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item:not(.lfx-sheet__item
     color: #fff;
     background: rgba(255, 255, 255, .1);
   }
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__sep {
+  border-top-color: var(--lfx-plus-menu-border);
+  margin: 6px 0;
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats, html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:focus, html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:active {

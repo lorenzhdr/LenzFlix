@@ -64,11 +64,11 @@ Quellen:
   - `a[href="#/home?tab=1"]` (Favoriten)
   - Bibliotheks-Buttons `a.MuiButton-root[href*="topParentId"]`, aktiv mit `.MuiButton-textPrimary`
 - Rechts:
-  - Sync-Play-Button `[aria-label="Synchronwiedergabe"]`
-  - Cast-Button `[aria-label="Auf Gerät wiedergeben"]`
+  - Sync-Play-Button `[aria-label="Synchronwiedergabe"]` (`aria-controls="app-sync-play-menu"`)
+  - Cast-Button `[aria-label="Auf Gerät wiedergeben"]` (`aria-controls="app-remote-play-menu"`; Sync-Play und Cast liegen gemeinsam in einer `MuiBox`)
   - Suche `a[href="#/search"]`
-  - User-Menü `button[aria-haspopup]`
-  - Die aria-Labels sind lokalisiert. Deshalb besser über `href` bzw. `[aria-haspopup]` selektieren.
+  - User-Menü `button[aria-controls="app-user-menu"]` mit `.MuiAvatar-root` in eigener `MuiBox` (live 12.4 ✅; `aria-controls` steht auch geschlossen). Jellyfins Benutzermenü ist `keepMounted` (versteckt im DOM). Ziele: Profil `#/userprofile?userId=<id>`, Einstellungen `#/mypreferencesmenu`, Übersicht `#/dashboard` und Metadaten-Manager `#/metadata` (nur Admin), Quick Connect `#/quickconnect` (nur wenn am Server an), Abmelden.
+  - Die aria-Labels sind lokalisiert. Deshalb über `href` bzw. `aria-controls` selektieren. **`button[aria-haspopup]` ist nicht eindeutig:** Sync-Play und Cast tragen es ebenfalls (die Profil-Regel traf bis 1.22 auch sie). Der Suchknopf hat MUI-Padding 12, die übrigen Symbole 8; das Theme gleicht auf 8 px an (16-px-Lücken).
 - Zustände: `.MuiAppBar-colorTransparent` am Seitenanfang, beim Scrollen `MuiAppBar-colorDefault` mit Elevation.
 - Auf Bibliotheksseiten hängt eine 2. Toolbar mit Filter-, Sortier- und Ansichtsbuttons und Pagination in der AppBar.
 - Ein Drawer erscheint erst unter 900 px Breite (MUI-Drawer).

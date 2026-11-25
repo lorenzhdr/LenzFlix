@@ -15,9 +15,13 @@ vi.mock('../src/js/shared/libraries.js', () => ({
 vi.mock('../src/js/shared/profile.js', () => ({
   getUserChip: vi.fn(async () => ({ name: 'Lena', imageUrl: null })),
   profileEntries: vi.fn(async () => [
+    { key: 'stats', label: 'Meine Statistik', href: '#/home?lfx=stats', className: 'is-stats' },
     { key: 'design', label: 'Design-Einstellungen', onClick: () => {} },
-    { key: 'logout', label: 'Abmelden', onClick: () => {} },
     { key: 'datasaver', label: 'Datensparmodus', switch: true, checked: false, onToggle: (n) => dsToggle(n), watch: (cb) => { dsWatchers.add(cb); return () => dsWatchers.delete(cb); } },
+    { key: 'sep', separator: true },
+    { key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' },
+    { key: 'sep', separator: true },
+    { key: 'logout', label: 'Abmelden', onClick: () => {} },
   ]),
 }));
 
@@ -101,11 +105,13 @@ describe('retro-tabbar: Modell', () => {
     const close = vi.fn();
     const toggle = vi.fn();
     const onToggle = vi.fn();
-    const e = moreEntries(libs, [
+    const e0 = moreEntries(libs, [
       { key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' },
       { key: 'datasaver', label: 'Datensparmodus', switch: true, checked: false, onToggle },
     ], { go, close, toggle });
-    expect(e.map((x) => x.label)).toEqual(['Filme', 'Musik', 'Einstellungen', 'Datensparmodus', 'Sound', 'CRT-Effekt']);
+    // Trenner vor der Profil-Gruppe und vor Sound/CRT
+    expect(e0.map((x) => (x.separator ? '|' : x.label))).toEqual(['Filme', 'Musik', '|', 'Einstellungen', 'Datensparmodus', '|', 'Sound', 'CRT-Effekt']);
+    const e = e0.filter((x) => !x.separator);
     e[0].onClick();
     expect(close).toHaveBeenCalled();
     expect(go).toHaveBeenCalledWith('#/home?lfx=hub&lib=m1');
@@ -146,10 +152,14 @@ describe('retro-tabbar: Feature', () => {
     expect(sheet).toBeTruthy();
     const items = [...sheet.querySelectorAll('.lfx-sheet__item')];
     expect(items.map((b) => b.textContent.replace(/\s+/g, ' ').trim())).toEqual([
-      'Filme', 'Serien', 'Musik', 'Design-Einstellungen', 'Abmelden', 'Datensparmodus: AUS', 'Sound: AUS', 'CRT-Effekt: AN',
+      'Filme', 'Serien', 'Musik', 'Meine Statistik', 'Design-Einstellungen', 'Datensparmodus: AUS', 'Einstellungen', 'Abmelden', 'Sound: AUS', 'CRT-Effekt: AN',
     ]);
-    expect(items[3].querySelector('.lfx-beta')).toBeNull();
-    const sound = items[6];
+    // Trenner: vor Profil-Gruppe, zwischen den Gruppen und vor Sound/CRT; Klasse is-stats bleibt am richtigen Knopf
+    expect(sheet.querySelectorAll('.lfx-sheet__sep[role="separator"]').length).toBe(4);
+    expect(items[3].classList.contains('is-stats')).toBe(true);
+    expect(items[4].classList.contains('is-stats')).toBe(false);
+    expect(items[4].querySelector('.lfx-beta')).toBeNull();
+    const sound = items[8];
     expect(sound.getAttribute('aria-pressed')).toBe('false');
     sound.click();
     expect(sound.getAttribute('aria-pressed')).toBe('true');

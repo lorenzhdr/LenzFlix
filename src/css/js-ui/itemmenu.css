@@ -172,6 +172,11 @@ html.lfx-js .lfx-sheet__list {
   display: flex;
   flex-direction: column;
 }
+html.lfx-js .lfx-sheet__sep {
+  height: 0;
+  margin: 6px 8px;
+  border-top: 1px solid var(--lfx-border);
+}
 html.lfx-js .lfx-sheet__item:disabled {
   color: var(--lfx-text-soft);
   cursor: default;

@@ -121,6 +121,9 @@ html.lfx-js #lfx-nav .lfx-nav__more {
   display: flex;
   align-items: center;
 }
+html.lfx-js #lfx-nav .lfx-nav__more[hidden] {
+  display: none;
+}
 html.lfx-js #lfx-nav .lfx-nav__menu {
   display: none;
   position: absolute;

@@ -86,6 +86,8 @@ const NATIVE_TITLES = {
   '/mypreferencessubtitles': 'Untertitel',
   '/mypreferencescontrols': 'Steuerung',
   '/mypreferencesquickconnect': 'Quick Connect',
+  '/quickconnect': 'Quick Connect',
+  '/metadata': 'Metadaten-Manager',
   '/userprofile': 'Profil',
   '/search': 'Suche',
   '/queue': 'Warteschlange',
